@@ -44,5 +44,3 @@ class ClusteringKMeans:
             bag_of_words.append(embedding)
 
         return bag_of_words
-
-

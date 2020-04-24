@@ -3,9 +3,9 @@ from sklearn.decomposition import LatentDirichletAllocation
 
 class LDATopicGen:
 
-    def __init__(self, data):
+    def __init__(self, data, topics=5):
         self.data = data
-        self.components = 100
+        self.components = topics
         self.model = None
 
     def fit_model(self):
