@@ -7,7 +7,7 @@ class ClusteringKMeans:
 
     def __init__(self, data):
         self.data = data
-        self.clusters = 100
+        self.clusters = 25
         self.model = None
 
     def fit_model(self):
@@ -15,14 +15,8 @@ class ClusteringKMeans:
         TODO: Fit the K-Means model to the encoded features
         '''
 
-        data_points = []
-
-        for data in self.data:
-            for n in data:
-                data_points.append(n)
-
         self.model = KMeans(n_clusters=self.clusters)
-        self.model.fit(data_points)
+        self.model.fit(self.data)
 
     def generate_embeddings(self):
         '''
@@ -32,7 +26,7 @@ class ClusteringKMeans:
         bag_of_words = []
 
         for data_point in self.data:
-            clusters = self.model.predict(data_point)
+            clusters = self.model.predict(data_point.reshape(1, -1))
             embedding = [0] * self.clusters
 
             c = Counter(clusters)
