@@ -2,6 +2,11 @@ from collections import Counter
 
 import numpy as np
 
+'''
+Author: Aswin Visva
+Email: aavisva@uwaterloo.ca
+'''
+
 def generate(images, vector_size=5000):
     feature_vec = []
 
@@ -15,5 +20,7 @@ def generate(images, vector_size=5000):
             bag_of_cells_vec[cell] = cell_counts[cell]
 
         feature_vec.append(bag_of_cells_vec)
+
+    print(feature_vec)
 
     return feature_vec

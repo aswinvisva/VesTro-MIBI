@@ -1,6 +1,11 @@
 import numpy as np
 import cv2 as cv
 
+'''
+Author: Aswin Visva
+Email: aavisva@uwaterloo.ca
+'''
+
 def generate(img, show_keypoints=True, n_keypoints=300):
     '''
     TODO: Create method which takes an image and returns encoded features using SIFT

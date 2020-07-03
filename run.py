@@ -1,70 +1,81 @@
+import datetime
 import random
 from collections import Counter
 import os
 
-from feature_extraction import sift_feature_gen
-from feature_clustering.k_means_clustering import ClusteringKMeans
-from topic_generation.lda_topic_generation import LDATopicGen
-from image_preprocessing import sliding_window
-from image_preprocessing.core import marker_stitching
-from feature_extraction import bag_of_cells_feature_gen
-from feature_extraction.cnn_feature_gen import CNNFeatureGen
 import cv2 as cv
 import numpy as np
 import matplotlib.pyplot as plt
 from PIL import Image
-from sklearn.decomposition import PCA
+
+from marker_processing.k_means_clustering import ClusteringKMeans
+from marker_processing.stitch_markers import image_stitching
+from topic_generation.lda_topic_generation import LDATopicGen
+from image_segmentation.watershed_segmentation import *
+from image_segmentation.sliding_window_segmentation import *
+from feature_extraction import bag_of_cells_feature_gen
+from marker_processing.markers_feature_gen import *
+
+'''
+Author: Aswin Visva
+Email: aavisva@uwaterloo.ca
+'''
 
 
-def run_sift_test(image=cv.imread('Images/michael-angelo-breast-cancer-cells.jpg'),
-                  size=32,
-                  no_topics=5,
-                  vec_size=32):
+def run_complete(size=4,
+                 point="Point16",
+                 no_topics=2,
+                 use_watershed=True,
+                 use_test_data=False,
+                 pretrained=False):
 
-    images, contours = sliding_window.oversegmentation_watershed(image)
-    # images = sliding_window.split_image(image, n=size)
+    '''
+    Run execution to get segmented image with cell labels
 
-    model = CNNFeatureGen(n=size)
+    :param size: (If using sliding window) Window side length
+    :param point: Point number to get data
+    :param no_topics: Number of clusters for K-Means
+    :param use_watershed: Should use watershed segmentation?
+    :param use_test_data: Should use online data?
+    :param pretrained: Is K-Means model pre-trained?
+    :return:
+    '''
 
-    data = []
-    for img in images:
-        # data_points = sift_feature_gen.generate(img, show_keypoints=False)
-        data_points = model.generate(img)
+    begin_time = datetime.datetime.now()
 
-        if data_points is not None:
-            data.append(data_points)
+    if use_test_data:
+        image = cv.imread('data/Images/michael-angelo-breast-cancer-cells.jpg')
+    else:
+        image, marker_data, marker_names = image_stitching(point_name=point)
 
-    data = np.array(data).reshape(len(data), 2048)
-    pca = PCA(n_components=vec_size)
-    pca.fit(data)
-    data = pca.transform(data)
-    print(data[0:1])
+    if use_watershed:
+        images, contours = oversegmentation_watershed(image)
+    else:
+        images = split_image(image, n=size)
 
-    model = ClusteringKMeans(data)
+    data = mean_normalized_expression(marker_data, contours)
+
+    model = ClusteringKMeans(data, point, marker_names,  clusters=no_topics, pretrained=pretrained)
+    model.elbow_method()
     model.fit_model()
-    bag_of_visual_words = model.generate_embeddings()
-    print(bag_of_visual_words)
+    indices = model.generate_embeddings()
 
-    topic_gen_model = LDATopicGen(bag_of_visual_words, topics=no_topics)
-    topics = topic_gen_model.fit_model()
+    if use_watershed:
+        label_image_watershed(image, contours, indices, topics=no_topics)
+    else:
+        label_image(image, indices, topics=no_topics, n=size)
 
-    indices = []
+    end_time = datetime.datetime.now()
 
-    for idx, topic in enumerate(topics):
-        indices.append(np.where(topic == topic.max())[0][0])
+    print("Segmentation finished. Time taken:", end_time-begin_time)
 
-    print(indices)
-
-    sliding_window.label_image_watershed(image, contours, indices, topics=no_topics)
-    # sliding_window.label_image(image, indices, topics=50, n=size)
 
 
 def run_TNBC_dataset_test(square_side_length=50,
                           no_topics=10,
-                          img_loc='TNBC_shareCellData/p23_labeledcellData.tiff'):
+                          img_loc='data/TNBC_shareCellData/p23_labeledcellData.tiff'):
     im = Image.open(img_loc)
     color_im = im.convert("RGB")
-    # im.show()
 
     np_im = np.array(im)
     np_color_im = np.array(color_im)
@@ -76,7 +87,7 @@ def run_TNBC_dataset_test(square_side_length=50,
     vector_size = max(keys) + 1
     print(c)
 
-    images = sliding_window.split_image(np_im, n=square_side_length)
+    images = split_image(np_im, n=square_side_length)
 
     bag_of_visual_words = bag_of_cells_feature_gen.generate(images, vector_size=vector_size)
 
@@ -88,11 +99,8 @@ def run_TNBC_dataset_test(square_side_length=50,
     for idx, topic in enumerate(topics):
         indices.append(np.where(topic == topic.max())[0][0])
 
-    sliding_window.label_image(np_color_im, indices, topics=no_topics, n=square_side_length)
+    label_image(np_color_im, indices, topics=no_topics, n=square_side_length)
 
 
 if __name__ == '__main__':
-    # run_sift_test()
-    # run_TNBC_dataset_test()
-    img = marker_stitching()
-    run_sift_test(image=img)
+    run_complete()

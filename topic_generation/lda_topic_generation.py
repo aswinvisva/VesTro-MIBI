@@ -1,6 +1,12 @@
 import numpy as np
 from sklearn.decomposition import LatentDirichletAllocation
 
+'''
+Author: Aswin Visva
+Email: aavisva@uwaterloo.ca
+'''
+
+
 class LDATopicGen:
 
     def __init__(self, data, topics=5):
