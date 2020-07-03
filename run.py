@@ -23,11 +23,12 @@ Email: aavisva@uwaterloo.ca
 
 
 def run_complete(size=4,
-                 point="Point16",
-                 no_topics=2,
+                 point="Point13",
+                 no_topics=4,
                  use_watershed=True,
                  use_test_data=False,
-                 pretrained=False):
+                 pretrained=True,
+                 show_plots=True):
 
     '''
     Run execution to get segmented image with cell labels
@@ -38,6 +39,7 @@ def run_complete(size=4,
     :param use_watershed: Should use watershed segmentation?
     :param use_test_data: Should use online data?
     :param pretrained: Is K-Means model pre-trained?
+    :param show_plots: Should show plots?
     :return:
     '''
 
@@ -55,13 +57,18 @@ def run_complete(size=4,
 
     data = mean_normalized_expression(marker_data, contours)
 
-    model = ClusteringKMeans(data, point, marker_names,  clusters=no_topics, pretrained=pretrained)
+    model = ClusteringKMeans(data,
+                             point,
+                             marker_names,
+                             clusters=no_topics,
+                             pretrained=pretrained,
+                             show_plots=show_plots)
     model.elbow_method()
     model.fit_model()
     indices = model.generate_embeddings()
 
     if use_watershed:
-        label_image_watershed(image, contours, indices, topics=no_topics)
+        label_image_watershed(image, contours, indices, show_plot=show_plots)
     else:
         label_image(image, indices, topics=no_topics, n=size)
 

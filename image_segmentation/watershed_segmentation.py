@@ -3,6 +3,8 @@ import random
 
 import numpy as np
 import cv2 as cv
+import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
 
 '''
 Author: Aswin Visva
@@ -13,7 +15,7 @@ def random_color():
     return tuple([random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)])
 
 
-def label_image_watershed(img, contours, indices, topics=10):
+def label_image_watershed(img, contours, indices, show_plot=True):
     original = np.array(img)
 
     with open('config/cluster_colours.json') as json_file:
@@ -25,8 +27,13 @@ def label_image_watershed(img, contours, indices, topics=10):
         cv.drawContours(img, [cnt], 0, color, thickness=-1)
         index = index + 1
 
-    cv.imshow("Segmented", img)
-    cv.waitKey(0)
+    if show_plot:
+        legend_color_values = [(colors[i][0]/255, colors[i][1]/255, colors[i][2]/255) for i in colors.keys()]
+
+        patches = [mpatches.Patch(color=legend_color_values[i], label="Cell Type {l}".format(l=i)) for i in range(len(colors.keys()))]
+        plt.imshow(img)
+        plt.legend(handles=patches, bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
+        plt.show()
 
 
 def oversegmentation_watershed(img):
