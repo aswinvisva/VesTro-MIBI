@@ -25,7 +25,7 @@ class ClusteringFlowSOM:
                  y_n=10,
                  d=34):
         '''
-        K-Means algorithm for clustering marker distributions
+        FlowSOM algorithm for clustering marker distributions
 
         :param data: Marker data for each cell
         :param point_name: The name of the point being used
