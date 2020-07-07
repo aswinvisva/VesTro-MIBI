@@ -100,7 +100,7 @@ class ClusteringKMeans:
             plt.savefig(os.path.join('annotated_data', self.point_name, 'cell_counts.png'))
             plt.show()
 
-        return labels
+        return labels, cell_counts
 
     def elbow_method(self):
         '''
