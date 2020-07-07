@@ -3,7 +3,7 @@ import pickle
 from collections import Counter
 
 from flowsom.cluster import ConsensusCluster
-from sklearn.cluster import KMeans
+from sklearn.cluster import *
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.pyplot import figure
@@ -53,17 +53,32 @@ class ClusteringFlowSOM:
         :return: None
         '''
 
-        self.som_mapping(self.x_n, self.y_n, self.d, sigma=2.5, lr=0.1)
+        if not self.pretrained:
+            self.som_mapping(self.x_n, self.y_n, self.d, sigma=2.5, lr=0.1)
+            # saving the som in the file som.p
+            with open('models/som.p', 'wb') as outfile:
+                pickle.dump(self.model, outfile)
+        else:
+            with open('models/som.p', 'rb') as infile:
+                self.model = pickle.load(infile)
 
     def generate_embeddings(self):
         flatten_weights = self.model.get_weights().reshape(self.x_n * self.y_n, self.d)
         print(flatten_weights.shape)
 
-        # initialize cluster
-        cluster_ = ConsensusCluster(KMeans,
-                                    self.clusters, self.clusters + 10, 3)
+        if not self.pretrained:
+            # initialize cluster
+            cluster_ = ConsensusCluster(AgglomerativeClustering,
+                                        self.clusters, self.clusters + 10, 3)
 
-        cluster_.fit(flatten_weights, verbose=True)  # fitting SOM weights into clustering algorithm
+            cluster_.fit(flatten_weights, verbose=True)  # fitting SOM weights into clustering algorithm
+
+            with open('models/som_clustering.p', 'wb') as outfile:
+                pickle.dump(cluster_, outfile)
+
+        else:
+            with open('models/som_clustering.p', 'rb') as infile:
+                cluster_ = pickle.load(infile)
 
         # get the prediction of each weight vector on meta clusters (on bestK)
         flatten_class = cluster_.predict_data(flatten_weights)
@@ -110,18 +125,8 @@ class ClusteringFlowSOM:
                the standard deviation of initialized weights
         lr : float
             learning rate
-        batch_size : int
-                     iteration times
         neighborhood : string
                        e.g. 'gaussian', the initialized weights' distribution
-        tf_str : string
-                 tranform parameters, go check self.tf()
-                 e.g. None, 'hlog' - the transform algorithm
-        if_fcs : bool
-                 tranform parameters, go check self.tf()
-                 whethe the imput file is fcs file. If not, it should be a csv file
-                 only the fcs file could be transformed
-                 if it is a csv file, you have to make your own transform function
         seed : int
                for reproducing
         """
@@ -129,7 +134,7 @@ class ClusteringFlowSOM:
         som = MiniSom(x_n, y_n, d, sigma, lr, neighborhood_function=neighborhood, random_seed=seed) # initialize the map
         som.pca_weights_init(self.data) # initialize the weights
         print("Training...")
-        som.train(self.data, 1000)  # random training
+        som.train(self.data, 500)  # random training
         print("\n...ready!")
         self.model = som
 

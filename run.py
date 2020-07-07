@@ -32,7 +32,7 @@ def get_cell_counts_from_point(size=4,
                                use_watershed=True,
                                use_test_data=False,
                                pretrained=True,
-                               show_plots=False):
+                               show_plots=True):
     '''
     Run execution to get segmented image with cell labels
 
