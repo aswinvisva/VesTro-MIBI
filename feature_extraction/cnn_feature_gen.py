@@ -9,6 +9,7 @@ from tensorflow.keras.models import Model
 from tensorflow.keras.applications.resnet import ResNet50
 from tensorflow.keras.applications.resnet import preprocess_input
 import cv2 as cv
+
 gpus = tf.config.experimental.list_physical_devices('GPU')
 for gpu in gpus:
     tf.config.experimental.set_memory_growth(gpu, True)
@@ -17,6 +18,7 @@ for gpu in gpus:
 Author: Aswin Visva
 Email: aavisva@uwaterloo.ca
 '''
+
 
 class CNNFeatureGen:
 
@@ -34,11 +36,11 @@ class CNNFeatureGen:
 
     def generate(self, img):
         img = cv.resize(img, (self.n, self.n))
-        # # img = preprocess_input(img)
+        img = preprocess_input(img)
         # cv.imshow("Keypoint", img)
         # cv.waitKey(0)
 
         img = img.reshape(1, self.n, self.n, 3)
-        feature_vec = self.model.predict(img)
+        feature_vec = self.model.predict(img)[0]
 
         return feature_vec

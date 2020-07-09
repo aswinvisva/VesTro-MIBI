@@ -2,7 +2,7 @@ import os
 import pickle
 from collections import Counter
 
-from flowsom.cluster import ConsensusCluster
+from marker_processing.consensus_clustering import ConsensusCluster
 from sklearn.cluster import *
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -21,8 +21,8 @@ class ClusteringFlowSOM:
                  clusters=10,
                  pretrained=False,
                  show_plots=False,
-                 x_n=10,
-                 y_n=10,
+                 x_n=15,
+                 y_n=15,
                  d=34):
         '''
         FlowSOM algorithm for clustering marker distributions
@@ -71,17 +71,18 @@ class ClusteringFlowSOM:
             cluster_ = ConsensusCluster(AgglomerativeClustering,
                                         self.clusters, self.clusters + 10, 3)
 
-            cluster_.fit(flatten_weights, verbose=True)  # fitting SOM weights into clustering algorithm
-
-            with open('models/som_clustering.p', 'wb') as outfile:
-                pickle.dump(cluster_, outfile)
+            k = cluster_.get_optimal_number_of_clusters(flatten_weights, verbose=True)  # fitting SOM weights into clustering algorithm
+            print(k)
+            cluster = cluster_.cluster_(n_clusters=k).fit(flatten_weights)
+            pickle.dump(cluster, open("models/som_clustering.p", "wb"))
 
         else:
             with open('models/som_clustering.p', 'rb') as infile:
-                cluster_ = pickle.load(infile)
+                cluster = pickle.load(infile)
 
         # get the prediction of each weight vector on meta clusters (on bestK)
-        flatten_class = cluster_.predict_data(flatten_weights)
+        flatten_class = cluster.fit_predict(flatten_weights)
+
         map_class = flatten_class.reshape(self.x_n, self.y_n)
 
         label_list = []
@@ -130,11 +131,10 @@ class ClusteringFlowSOM:
         seed : int
                for reproducing
         """
-
         som = MiniSom(x_n, y_n, d, sigma, lr, neighborhood_function=neighborhood, random_seed=seed) # initialize the map
         som.pca_weights_init(self.data) # initialize the weights
         print("Training...")
-        som.train(self.data, 500)  # random training
+        som.train(self.data, 20000)  # random training
         print("\n...ready!")
         self.model = som
 

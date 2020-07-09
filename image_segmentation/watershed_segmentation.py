@@ -38,7 +38,7 @@ def label_image_watershed(img, contours, indices, no_topics=20, show_plot=True):
         plt.legend(handles=patches, bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
         plt.show()
     else:
-        cv.imshow("Combined Image", img)
+        cv.imshow("Segmented Image", img)
         cv.waitKey(0)
 
     return img
