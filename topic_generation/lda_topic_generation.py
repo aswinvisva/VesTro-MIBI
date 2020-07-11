@@ -14,7 +14,7 @@ class LDATopicGen:
         self.components = topics
         self.model = None
 
-    def fit_model(self):
+    def fit_predict(self):
         '''
         TODO: Fit the model to the encoded features
         '''
