@@ -29,16 +29,16 @@ class CNNFeatureGen:
         for layer in xception_base_model.layers:
             layer.trainable = False
 
-        x = Flatten()(xception_base_model.output)
-
-        self.model = Model(inputs=xception_base_model.input, outputs=x)
+        self.model = Model(inputs=xception_base_model.input, outputs=xception_base_model.output)
         self.model.summary()
 
-    def generate(self, img):
+    def generate(self, img, show=False):
         img = cv.resize(img, (self.n, self.n))
         img = preprocess_input(img)
-        # cv.imshow("Keypoint", img)
-        # cv.waitKey(0)
+
+        if show:
+            cv.imshow("Keypoint", img)
+            cv.waitKey(0)
 
         img = img.reshape(1, self.n, self.n, 3)
         feature_vec = self.model.predict(img)[0]

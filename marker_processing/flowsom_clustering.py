@@ -1,6 +1,11 @@
+import json
 import os
 import pickle
 from collections import Counter
+
+import matplotlib
+import numpy as np
+from matplotlib import gridspec
 
 from marker_processing.consensus_clustering import ConsensusCluster
 from sklearn.cluster import *
@@ -19,6 +24,7 @@ class ClusteringFlowSOM:
                  point_name,
                  x_labels,
                  clusters=10,
+                 explore_clusters=0,
                  pretrained=False,
                  show_plots=False,
                  x_n=15,
@@ -37,6 +43,7 @@ class ClusteringFlowSOM:
 
         self.data = data
         self.clusters = clusters
+        self.explore_clusters = explore_clusters
         self.pretrained = pretrained
         self.model = None
         self.x_labels = x_labels
@@ -62,26 +69,47 @@ class ClusteringFlowSOM:
             with open('models/som.p', 'rb') as infile:
                 self.model = pickle.load(infile)
 
-    def generate_embeddings(self):
-        flatten_weights = self.model.get_weights().reshape(self.x_n * self.y_n, self.d)
-        print(flatten_weights.shape)
+    def predict_data(self, data):
+        # get the prediction of each weight vector on meta clusters (on bestK)
+        flatten_class = self.cluster.fit_predict(self.flatten_weights)
 
-        if not self.pretrained:
-            # initialize cluster
-            cluster_ = ConsensusCluster(AgglomerativeClustering,
-                                        self.clusters, self.clusters + 10, 3)
+        map_class = flatten_class.reshape(self.x_n, self.y_n)
 
-            k = cluster_.get_optimal_number_of_clusters(flatten_weights, verbose=True)  # fitting SOM weights into clustering algorithm
-            print(k)
-            cluster = cluster_.cluster_(n_clusters=k).fit(flatten_weights)
-            pickle.dump(cluster, open("models/som_clustering.p", "wb"))
+        label_list = []
+        for i in range(len(data)):
+            # print the milestone
+            if i % 10000 == 0:
+                print('%d samples done...' % i)
 
-        else:
-            with open('models/som_clustering.p', 'rb') as infile:
-                cluster = pickle.load(infile)
+            xx = data[i, :]  # fetch the sample data
+            winner = self.model.winner(xx)  # make prediction, prediction = the closest entry location in the SOM
+            c = map_class[winner]  # from the location info get cluster info
+            label_list.append(c)
+
+        c = Counter(label_list)
+
+        cell_counts = []
+
+        for i in range(self.clusters):
+            if i in c.keys():
+                cell_counts.append(c[i])
+            else:
+                cell_counts.append(0)
+
+        # get discrete colormap
+        cmap = plt.get_cmap('RdBu', np.max(map_class) - np.min(map_class) + 1)
+        # set limits .5 outside true range
+        mat = plt.matshow(map_class, cmap=cmap, vmin=np.min(map_class) - .5, vmax=np.max(map_class) + .5)
+        # tell the colorbar to tick at integers
+        plt.colorbar(mat, ticks=np.arange(np.min(map_class), np.max(map_class) + 1))
+        plt.show()
+
+        return label_list, cell_counts
+
+    def predict(self):
 
         # get the prediction of each weight vector on meta clusters (on bestK)
-        flatten_class = cluster.fit_predict(flatten_weights)
+        flatten_class = self.cluster.fit_predict(self.flatten_weights)
 
         map_class = flatten_class.reshape(self.x_n, self.y_n)
 
@@ -105,6 +133,14 @@ class ClusteringFlowSOM:
                 cell_counts.append(c[i])
             else:
                 cell_counts.append(0)
+
+        # get discrete colormap
+        cmap = plt.get_cmap('RdBu', np.max(map_class) - np.min(map_class) + 1)
+        # set limits .5 outside true range
+        mat = plt.matshow(map_class, cmap=cmap, vmin=np.min(map_class) - .5, vmax=np.max(map_class) + .5)
+        # tell the colorbar to tick at integers
+        plt.colorbar(mat, ticks=np.arange(np.min(map_class), np.max(map_class) + 1))
+        plt.show()
 
         return label_list, cell_counts
 
@@ -138,3 +174,22 @@ class ClusteringFlowSOM:
         print("\n...ready!")
         self.model = som
 
+        flatten_weights = self.model.get_weights().reshape(self.x_n * self.y_n, self.d)
+        print(flatten_weights.shape)
+
+        if not self.pretrained:
+            # initialize cluster
+            cluster_ = ConsensusCluster(AgglomerativeClustering,
+                                        self.clusters, self.clusters + self.explore_clusters, 3)
+
+            k = cluster_.get_optimal_number_of_clusters(flatten_weights, verbose=True)
+            # fitting SOM weights into clustering algorithm
+            print(k)
+            self.cluster = cluster_.cluster_(n_clusters=k).fit(flatten_weights)
+            pickle.dump(self.cluster, open("models/som_clustering.p", "wb"))
+
+        else:
+            with open('models/som_clustering.p', 'rb') as infile:
+                self.cluster = pickle.load(infile)
+
+        self.flatten_weights = flatten_weights

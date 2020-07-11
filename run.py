@@ -8,6 +8,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from PIL import Image
 from sklearn.cluster import KMeans
+from sklearn.decomposition import PCA
 
 from marker_processing.k_means_clustering import ClusteringKMeans
 from marker_processing.flowsom_clustering import ClusteringFlowSOM
@@ -20,6 +21,7 @@ from image_segmentation.sliding_window_segmentation import *
 from feature_extraction import bag_of_cells_feature_gen
 from feature_extraction.cnn_feature_gen import CNNFeatureGen
 from marker_processing.markers_feature_gen import *
+from topic_generation.cnnfcluster import CNNFCluster
 
 '''
 Author: Aswin Visva
@@ -27,14 +29,15 @@ Email: aavisva@uwaterloo.ca
 '''
 
 
-def get_cell_counts_from_point(size=4,
-                               point="Point16",
-                               no_topics=20,
-                               use_flowsom=True,
-                               use_watershed=True,
-                               use_test_data=False,
-                               pretrained=True,
-                               show_plots=True):
+def run_complete(size=256,
+                 no_environments=16,
+                 point="Point16",
+                 no_topics=40,
+                 use_flowsom=True,
+                 use_watershed=True,
+                 use_test_data=False,
+                 pretrained=False,
+                 show_plots=True):
     """
     Run execution to get segmented image with cell labels
 
@@ -83,10 +86,10 @@ def get_cell_counts_from_point(size=4,
                                   pretrained=pretrained,
                                   show_plots=show_plots)
         model.fit_model()
-        indices, cell_counts = model.generate_embeddings()
+        indices, cell_counts = model.predict()
 
     if use_watershed:
-        segmented_image = label_image_watershed(image, contours, indices, show_plot=show_plots, no_topics=no_topics)
+        segmented_image, data = label_image_watershed(image, contours, indices, show_plot=show_plots, no_topics=no_topics)
     else:
         label_image(image, indices, topics=no_topics, n=size)
 
@@ -94,18 +97,24 @@ def get_cell_counts_from_point(size=4,
 
     print("Segmentation finished. Time taken:", end_time - begin_time)
 
-    split_segmented_images = split_image(segmented_image, n=256, show=False)
+    segmented_images = split_image(segmented_image, n=size)
+    split_data = split_image(data, n=size)
 
-    cnn = CNNFeatureGen()
+    cnn = CNNFeatureGen(n=size)
+
     vec = []
+    vec_map = {}
+    bag_of_words_data = bag_of_cells_feature_gen.generate(split_data, vector_size=no_topics)
 
-    for img in split_segmented_images:
-        vec.append(cnn.generate(img))
+    for i in range(len(segmented_images)):
+        img = segmented_images[i]
+        v = cnn.generate(img)
+        vec_map[str(bag_of_words_data[i].tolist())] = v
 
-    cluster = KMeans(n_clusters=8)
-    labels = cluster.fit_predict(vec)
+    cnnfcluster = CNNFCluster()
+    label_list, clusters = cnnfcluster.fit_predict(bag_of_words_data, vec_map)
 
-    label_image(segmented_image, labels, n=256)
+    label_image(segmented_image, label_list, n=size, topics=clusters)
 
     return cell_counts
 
@@ -142,6 +151,4 @@ def run_TNBC_dataset_test(square_side_length=50,
 
 
 if __name__ == '__main__':
-    counts = get_cell_counts_from_point(use_flowsom=True)
-
-    print(counts)
+    counts = run_complete(use_flowsom=True, show_plots=True)

@@ -7,6 +7,7 @@ Author: Aswin Visva
 Email: aavisva@uwaterloo.ca
 '''
 
+
 def generate(images, vector_size=5000):
     feature_vec = []
 
@@ -17,10 +18,11 @@ def generate(images, vector_size=5000):
         keys = sorted(list(cell_counts.keys()))
 
         for cell in keys:
-            bag_of_cells_vec[cell] = cell_counts[cell]
+            if cell < 0:
+                continue
+
+            bag_of_cells_vec[int(cell)] = int(cell_counts[int(cell)])
 
         feature_vec.append(bag_of_cells_vec)
-
-    print(feature_vec)
 
     return feature_vec

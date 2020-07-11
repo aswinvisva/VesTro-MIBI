@@ -10,6 +10,19 @@ Email: aavisva@uwaterloo.ca
 '''
 
 
+def split_expression_data(img, n=100, show=False):
+    images = []
+    for r in range(0, img.shape[1], n):
+        for c in range(0, img.shape[2], n):
+            images.append(img[:, r:r + n, c:c + n, :])
+
+            if show:
+                cv.imshow("Split Image", img[r:r + n, c:c + n, :])
+                cv.waitKey(0)
+
+    return images
+
+
 def split_image(img, n=100, show=False):
     images = []
     for r in range(0, img.shape[0], n):

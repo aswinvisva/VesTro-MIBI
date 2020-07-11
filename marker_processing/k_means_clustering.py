@@ -56,16 +56,16 @@ class ClusteringKMeans:
         else:
             self.model = pickle.load(open("models/kmeans_model.pkl", "rb"))
 
-        for i in range(len(self.model.cluster_centers_)):
-            figure(num=None, figsize=(25, 12), facecolor='w', edgecolor='k')
-            plt.bar(range(len(self.model.cluster_centers_[i])), self.model.cluster_centers_[i])
-            plt.xticks(range(len(self.model.cluster_centers_[i])), self.x_labels, rotation='vertical')
-            plt.xlabel('Markers')
-            plt.ylabel('Mean Normalized Expression')
-
-            if self.show_plots:
-                plt.savefig(os.path.join('annotated_data', 'cell_type_' + str(i) + '.png'))
-                plt.show()
+        # for i in range(len(self.model.cluster_centers_)):
+        #     figure(num=None, figsize=(25, 12), facecolor='w', edgecolor='k')
+        #     plt.bar(range(len(self.model.cluster_centers_[i])), self.model.cluster_centers_[i])
+        #     plt.xticks(range(len(self.model.cluster_centers_[i])), self.x_labels, rotation='vertical')
+        #     plt.xlabel('Markers')
+        #     plt.ylabel('Mean Normalized Expression')
+        #
+        #     if self.show_plots:
+        #         plt.savefig(os.path.join('annotated_data', 'cell_type_' + str(i) + '.png'))
+        #         plt.show()
 
     def generate_embeddings(self):
         '''
