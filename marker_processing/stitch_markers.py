@@ -54,6 +54,10 @@ def image_stitching(point_name="Point16",
             img = np.asarray(Image.open(path))
             img = img.reshape(img.shape[0], img.shape[1], 1)
 
+            if file_name not in ignore:
+                marker_images.append(img.copy())
+                marker_names.append(file_name)
+
             img = cv.cvtColor(img, cv.COLOR_GRAY2BGR)
 
             img[np.where((img > threshold).all(axis=2))] = eval(data[file_name])
@@ -61,10 +65,6 @@ def image_stitching(point_name="Point16",
             cv.imwrite(os.path.join("annotated_data/" + point_name, file_name + ".jpg"), img)
 
             images.append(img)
-
-            if file_name not in ignore:
-                marker_images.append(img)
-                marker_names.append(file_name)
 
     mean_img = np.mean(images, axis=0)
     mean_img = mean_img.astype('uint8') * 100

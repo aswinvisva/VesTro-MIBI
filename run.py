@@ -32,8 +32,8 @@ Email: aavisva@uwaterloo.ca
 
 def run_complete(size=256,
                  no_environments=16,
-                 point="Point16",
-                 no_phenotypes=40,
+                 point="Point13",
+                 no_phenotypes=25,
                  use_flowsom=True,
                  use_watershed=True,
                  use_test_data=False,
@@ -110,6 +110,9 @@ def run_complete(size=256,
 
         for i in range(len(segmented_images)):
             img = segmented_images[i]
+            print("Data", bag_of_words_data[i])
+            cv.imshow("Image", img)
+            cv.waitKey(0)
             v = cnn.generate(img)
             vec_map[str(bag_of_words_data[i].tolist())] = v
 
@@ -126,7 +129,6 @@ def run_complete(size=256,
         for idx, topic in enumerate(topics):
             indices.append(np.where(topic == topic.max())[0][0])
 
-        print(indices)
         label_image(segmented_image, indices, n=size, topics=no_environments)
 
     return cell_counts

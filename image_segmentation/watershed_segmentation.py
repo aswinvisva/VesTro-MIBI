@@ -50,8 +50,6 @@ def label_image_watershed(img, contours, indices, no_topics=20, show_plot=True):
         cv.imshow("Segmented Image", img)
         cv.waitKey(0)
 
-
-
     return img, data
 
 

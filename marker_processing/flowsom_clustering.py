@@ -6,6 +6,7 @@ from collections import Counter
 import matplotlib
 import numpy as np
 from matplotlib import gridspec
+import seaborn as sns
 
 from marker_processing.consensus_clustering import ConsensusCluster
 from sklearn.cluster import *
@@ -123,6 +124,22 @@ class ClusteringFlowSOM:
             winner = self.model.winner(xx)  # make prediction, prediction = the closest entry location in the SOM
             c = map_class[winner]  # from the location info get cluster info
             label_list.append(c)
+
+        df = pd.DataFrame(self.data, columns=self.x_labels)
+        df['metacluster'] = label_list
+
+        mmm = df.groupby(['metacluster']).mean()
+
+        norm = matplotlib.colors.Normalize(-1, 1)
+        colors = [[norm(-1.0), "midnightblue"],
+                  [norm(-0.5), "seagreen"],
+                  [norm(0.5), "mediumspringgreen"],
+                  [norm(1.0), "yellow"]]
+
+        cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", colors)
+
+        ax = sns.heatmap(mmm, linewidth=0.5, xticklabels=self.x_labels, cmap=cmap)
+        plt.show()
 
         c = Counter(label_list)
 
