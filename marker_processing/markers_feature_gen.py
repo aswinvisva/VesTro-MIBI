@@ -4,6 +4,7 @@ from collections import Counter
 import numpy as np
 import cv2 as cv
 from scipy.special import softmax
+from scipy.stats import boxcox
 from sklearn import preprocessing
 from sklearn.preprocessing import StandardScaler, Normalizer
 import scipy.stats as stats
@@ -39,9 +40,9 @@ def sigmoid(x):
 
 
 def calculate_protein_expression_single_cell(markers_data, contours,
-                                             scaling_factor=1,
+                                             scaling_factor=15,
                                              expression_type="counts",
-                                             transformation="arcsinh",
+                                             transformation="sqrt",
                                              normalization="percentile"):
     '''
     Get mean normalized expression of markers in given cells
@@ -77,11 +78,19 @@ def calculate_protein_expression_single_cell(markers_data, contours,
     if scaling_factor > 0:
         contour_mean_values = np.array(contour_mean_values) * scaling_factor
 
-    if transformation == "arcsinh":
-        contour_mean_values = arcsinh(np.array(contour_mean_values))
-    elif transformation == "quantiletransform":
-        quantile_transformer = preprocessing.QuantileTransformer(output_distribution='normal', random_state=0)
+    # Apply arcsinh transformation
+    contour_mean_values = arcsinh(np.array(contour_mean_values))
+
+    if transformation == "quantiletransform":
+        quantile_transformer = preprocessing.QuantileTransformer(output_distribution='normal', random_state=0,
+                                                                 n_quantiles=100)
         contour_mean_values = quantile_transformer.fit_transform(np.array(contour_mean_values))
+    elif transformation == "boxcox":
+        contour_mean_values, _ = boxcox(contour_mean_values)
+    elif transformation == "sqrt":
+        contour_mean_values = np.sqrt(contour_mean_values)
+    elif transformation == "log":
+        contour_mean_values = np.log(contour_mean_values)
 
     if normalization == "percentile":
         # Scale data by the 99th percentile
@@ -94,6 +103,9 @@ def calculate_protein_expression_single_cell(markers_data, contours,
     flat_list = sorted([item for sublist in contour_mean_values for item in sublist])
 
     plt.plot(np.array(flat_list), stats.norm.pdf(np.array(flat_list)))
+    plt.xlabel('Area Normalized Marker Expression')
+    plt.ylabel('Probability')
+    plt.title('PDF of Marker Expression')
     plt.show()
 
     return contour_mean_values
