@@ -15,16 +15,41 @@ Email: aavisva@uwaterloo.ca
 '''
 
 
+def arcsinh(data, cofactor=5):
+    """Inverse hyperbolic sine transform
+
+    Parameters
+    ----------
+    data : array-like, shape=[n_samples, n_features]
+        Input data
+    cofactor : float or None, optional (default: 5)
+        Factor by which to divide data before arcsinh transform
+    """
+    if cofactor <= 0:
+        raise ValueError("Expected cofactor > 0 or None. " "Got {}".format(cofactor))
+    if cofactor is not None:
+        data = data / cofactor
+    return np.arcsinh(data)
+
+
 def sigmoid(x):
     e = np.exp(1)
     y = 1 / (1 + e ** (-x))
     return y
 
 
-def mean_normalized_expression(markers_data, contours):
+def calculate_protein_expression_single_cell(markers_data, contours,
+                                             scaling_factor=1,
+                                             expression_type="counts",
+                                             transformation="arcsinh",
+                                             normalization="percentile"):
     '''
     Get mean normalized expression of markers in given cells
 
+    :param scaling_factor: Scaling factor by which to scale the data
+    :param normalization: Method to scale data
+    :param transformation: Transformation of expression vector
+    :param expression_type: Method of determining protein expression
     :param markers_data: Pixel data for each marker
     :param contours: Contours of cells in image
     :return:
@@ -33,21 +58,38 @@ def mean_normalized_expression(markers_data, contours):
     contour_mean_values = []
 
     for idx, cnt in enumerate(contours):
-        mean_val_vec = []
+        data_vec = []
 
         for marker in markers_data:
             x, y, w, h = cv.boundingRect(cnt)
-            mean_val = cv.mean(marker[y:y + h, x:x + w])[0]
 
-            mean_val_vec.append(mean_val)
+            if expression_type == "mean":
+                # Get mean intensity of marker
+                marker_data = cv.mean(marker[y:y + h, x:x + w])[0]
+            elif expression_type == "counts":
+                # Get cell area normalized count of marker
+                marker_data = len(np.where(marker[y:y + h, x:x + w] > 0)[0]) / cv.contourArea(cnt)
 
-        contour_mean_values.append(np.array(mean_val_vec))
+            data_vec.append(marker_data)
 
-    sc = Normalizer().fit(np.array(contour_mean_values))
-    contour_mean_values = sc.transform(contour_mean_values)
+        contour_mean_values.append(np.array(data_vec))
 
-    # quantile_transformer = preprocessing.QuantileTransformer(output_distribution='normal', random_state=0)
-    # contour_mean_values = quantile_transformer.fit_transform(np.array(contour_mean_values))
+    if scaling_factor > 0:
+        contour_mean_values = np.array(contour_mean_values) * scaling_factor
+
+    if transformation == "arcsinh":
+        contour_mean_values = arcsinh(np.array(contour_mean_values))
+    elif transformation == "quantiletransform":
+        quantile_transformer = preprocessing.QuantileTransformer(output_distribution='normal', random_state=0)
+        contour_mean_values = quantile_transformer.fit_transform(np.array(contour_mean_values))
+
+    if normalization == "percentile":
+        # Scale data by the 99th percentile
+        contour_mean_values = np.array(contour_mean_values) / np.percentile(np.array(contour_mean_values), 99)
+    elif normalization == "normalizer":
+        # Scale data by Sklearn normalizer
+        sc = Normalizer().fit(np.array(contour_mean_values))
+        contour_mean_values = sc.transform(contour_mean_values)
 
     flat_list = sorted([item for sublist in contour_mean_values for item in sublist])
 

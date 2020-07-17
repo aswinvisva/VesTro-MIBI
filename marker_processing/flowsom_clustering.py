@@ -25,7 +25,7 @@ class ClusteringFlowSOM:
                  point_name,
                  x_labels,
                  clusters=10,
-                 explore_clusters=0,
+                 explore_clusters=10,
                  pretrained=False,
                  show_plots=False,
                  x_n=15,
@@ -41,6 +41,8 @@ class ClusteringFlowSOM:
         :param pretrained: Is the model pretrained
         :param show_plots: Show each of the plots?
         '''
+
+        assert explore_clusters < clusters, "Exploration must be less than number of clusters"
 
         self.data = data
         self.clusters = clusters
@@ -192,16 +194,14 @@ class ClusteringFlowSOM:
         self.model = som
 
         flatten_weights = self.model.get_weights().reshape(self.x_n * self.y_n, self.d)
-        print(flatten_weights.shape)
 
         if not self.pretrained:
             # initialize cluster
             cluster_ = ConsensusCluster(AgglomerativeClustering,
-                                        self.clusters, self.clusters + self.explore_clusters, 3)
+                                        self.clusters - self.explore_clusters, self.clusters + self.explore_clusters, 3)
 
             k = cluster_.get_optimal_number_of_clusters(flatten_weights, verbose=True)
             # fitting SOM weights into clustering algorithm
-            print(k)
             self.cluster = cluster_.cluster_(n_clusters=k).fit(flatten_weights)
             pickle.dump(self.cluster, open("models/som_clustering.p", "wb"))
 

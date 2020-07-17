@@ -32,7 +32,7 @@ Email: aavisva@uwaterloo.ca
 
 def run_complete(size=256,
                  no_environments=16,
-                 point="Point13",
+                 point="Point16",
                  no_phenotypes=25,
                  use_flowsom=True,
                  use_watershed=True,
@@ -68,7 +68,7 @@ def run_complete(size=256,
         acwe(np.array(image), phi0, max_iter=100, time_step=0.1, mu=0, v=0, lambda1=1, lambda2=1, epsilon=1)
         # images = split_image(image, n=size)
 
-    data = mean_normalized_expression(marker_data, contours)
+    data = calculate_protein_expression_single_cell(marker_data, contours)
 
     if not use_flowsom:
         model = ClusteringKMeans(data,
@@ -148,7 +148,6 @@ def run_TNBC_dataset_test(square_side_length=50,
     c = Counter(np_im.flatten())
     keys = c.keys()
     vector_size = max(keys) + 1
-    print(c)
 
     images = split_image(np_im, n=square_side_length)
 
