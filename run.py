@@ -12,7 +12,7 @@ from sklearn.decomposition import PCA
 
 from marker_processing.k_means_clustering import ClusteringKMeans
 from marker_processing.flowsom_clustering import ClusteringFlowSOM
-from marker_processing.stitch_markers import image_stitching
+from utils.stitch_markers import image_stitching, concatenate_multiple_points
 from topic_generation.lda_topic_generation import LDATopicGen
 from image_segmentation.sliding_window_segmentation import split_image
 from image_segmentation.watershed_segmentation import *
@@ -32,8 +32,8 @@ Email: aavisva@uwaterloo.ca
 
 def run_complete(size=256,
                  no_environments=16,
-                 point="Point16",
-                 no_phenotypes=25,
+                 point="multiple",
+                 no_phenotypes=50,
                  use_flowsom=True,
                  use_watershed=True,
                  use_test_data=False,
@@ -43,6 +43,8 @@ def run_complete(size=256,
     """
     Run execution to get segmented image with cell labels
 
+    :param no_environments:
+    :param use_cnnfcluster:
     :param use_flowsom: Use FlowSOM for marker clustering
     :param size: (If using sliding window) Window side length
     :param point: Point number to get data
@@ -59,39 +61,111 @@ def run_complete(size=256,
     if use_test_data:
         image = cv.imread('data/Images/michael-angelo-breast-cancer-cells.jpg')
     else:
-        image, marker_data, marker_names = image_stitching(point_name=point)
+        if point == "multiple":
+            flattened_marker_images, markers_data, markers_names = concatenate_multiple_points()
+        else:
+            image, marker_data, marker_names = image_stitching(point_name=point)
 
     if use_watershed:
-        images, contours = oversegmentation_watershed(image)
+        if point == "multiple":
+            multiple_images = []
+            multiple_contours = []
+
+            for image in flattened_marker_images:
+                images, contours = oversegmentation_watershed(image)
+                multiple_images.append(images)
+                multiple_contours.append(contours)
+        else:
+            images, contours = oversegmentation_watershed(image)
     else:
         phi0 = initialize(1024, 1024, x_center=512, y_center=512, radius=100)
         acwe(np.array(image), phi0, max_iter=100, time_step=0.1, mu=0, v=0, lambda1=1, lambda2=1, epsilon=1)
         # images = split_image(image, n=size)
 
-    data = calculate_protein_expression_single_cell(marker_data, contours)
+    if point == "multiple":
+        points_expression = None
+
+        for i in range(len(multiple_contours)):
+            contours = multiple_contours[i]
+            marker_data = markers_data[i]
+            start_expression = datetime.datetime.now()
+            data = calculate_protein_expression_single_cell(marker_data, contours, plot=False)
+            end_expression = datetime.datetime.now()
+
+            print("Finished calculating expression %s in %s" % (str(i), end_expression - start_expression))
+
+            if points_expression is None:
+                points_expression = data
+            else:
+                points_expression = np.append(points_expression, data, axis=0)
+
+        print("There are %s samples" % points_expression.shape[0])
+
+    else:
+        data = calculate_protein_expression_single_cell(marker_data, contours)
 
     if not use_flowsom:
-        model = ClusteringKMeans(data,
-                                 point,
-                                 marker_names,
-                                 clusters=no_phenotypes,
-                                 pretrained=pretrained,
-                                 show_plots=show_plots)
-        model.elbow_method()
-        model.fit_model()
-        indices, cell_counts = model.generate_embeddings()
+        if point == "multiple":
+            marker_names = markers_names[0]
+
+            model = ClusteringKMeans(points_expression,
+                                     point,
+                                     marker_names,
+                                     clusters=no_phenotypes,
+                                     pretrained=pretrained,
+                                     show_plots=show_plots)
+            model.elbow_method()
+            model.fit_model()
+            indices, cell_counts = model.generate_embeddings()
+        else:
+            model = ClusteringKMeans(data,
+                                     point,
+                                     marker_names,
+                                     clusters=no_phenotypes,
+                                     pretrained=pretrained,
+                                     show_plots=show_plots)
+            model.elbow_method()
+            model.fit_model()
+            indices, cell_counts = model.generate_embeddings()
     else:
-        model = ClusteringFlowSOM(data,
-                                  point,
-                                  marker_names,
-                                  clusters=no_phenotypes,
-                                  pretrained=pretrained,
-                                  show_plots=show_plots)
-        model.fit_model()
-        indices, cell_counts = model.predict()
+        if point == "multiple":
+            marker_names = markers_names[0]
+
+            model = ClusteringFlowSOM(points_expression,
+                                      point,
+                                      marker_names,
+                                      clusters=no_phenotypes,
+                                      pretrained=pretrained,
+                                      show_plots=show_plots)
+            model.fit_model()
+            indices, cell_counts = model.predict()
+        else:
+            model = ClusteringFlowSOM(data,
+                                      point,
+                                      marker_names,
+                                      clusters=no_phenotypes,
+                                      pretrained=pretrained,
+                                      show_plots=show_plots)
+            model.fit_model()
+            indices, cell_counts = model.predict()
 
     if use_watershed:
-        segmented_image, data = label_image_watershed(image, contours, indices, show_plot=show_plots, no_topics=no_phenotypes)
+        if point == "multiple":
+            prev_index = 0
+            for x in range(len(multiple_contours)):
+                contours = multiple_contours[x]
+                i = indices[prev_index:prev_index+len(contours)]
+
+                image = flattened_marker_images[x]
+
+                segmented_image, data = label_image_watershed(image, contours, i,
+                                                              show_plot=show_plots,
+                                                              no_topics=no_phenotypes)
+                prev_index = len(contours)
+        else:
+            segmented_image, data = label_image_watershed(image, contours, indices,
+                                                          show_plot=show_plots,
+                                                          no_topics=no_phenotypes)
     else:
         label_image(image, indices, topics=no_phenotypes, n=size)
 

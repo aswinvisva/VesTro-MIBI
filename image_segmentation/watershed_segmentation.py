@@ -19,7 +19,6 @@ def random_color():
 
 def label_image_watershed(img, contours, indices, no_topics=20, show_plot=True):
     original = np.array(img)
-    print(indices)
     data = np.full((img.shape[0], img.shape[1], 1), -1)
 
     with open('config/cluster_colours.json') as json_file:
@@ -43,8 +42,11 @@ def label_image_watershed(img, contours, indices, no_topics=20, show_plot=True):
 
         patches = [mpatches.Patch(color=legend_color_values[i], label="Cell Type {l}".format(l=i)) for i in
                    range(no_topics)]
-        plt.imshow(img)
-        plt.legend(handles=patches, bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
+        f, axarr = plt.subplots(1, 2)
+        axarr[0].imshow(img)
+        axarr[0].legend(handles=patches, bbox_to_anchor=(-0.3, 1), loc=2, borderaxespad=0.)
+
+        axarr[1].imshow(original)
         plt.show()
     else:
         cv.imshow("Segmented Image", img)

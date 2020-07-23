@@ -28,8 +28,8 @@ class ClusteringFlowSOM:
                  explore_clusters=10,
                  pretrained=False,
                  show_plots=False,
-                 x_n=15,
-                 y_n=15,
+                 x_n=30,
+                 y_n=30,
                  d=34):
         '''
         FlowSOM algorithm for clustering marker distributions
@@ -65,12 +65,18 @@ class ClusteringFlowSOM:
 
         if not self.pretrained:
             self.som_mapping(self.x_n, self.y_n, self.d, sigma=2.5, lr=0.1)
+
             # saving the som in the file som.p
             with open('models/som.p', 'wb') as outfile:
                 pickle.dump(self.model, outfile)
         else:
             with open('models/som.p', 'rb') as infile:
                 self.model = pickle.load(infile)
+
+            with open('models/som_clustering.p', 'rb') as infile:
+                self.cluster = pickle.load(infile)
+
+            self.flatten_weights = self.model.get_weights().reshape(self.x_n * self.y_n, self.d)
 
     def predict_data(self, data):
         # get the prediction of each weight vector on meta clusters (on bestK)
