@@ -12,7 +12,7 @@ from sklearn.decomposition import PCA
 
 from marker_processing.k_means_clustering import ClusteringKMeans
 from marker_processing.flowsom_clustering import ClusteringFlowSOM
-from utils.stitch_markers import image_stitching, concatenate_multiple_points
+from utils.stitch_markers import stitch_markers, concatenate_multiple_points
 from topic_generation.lda_topic_generation import LDATopicGen
 from image_segmentation.sliding_window_segmentation import split_image
 from image_segmentation.watershed_segmentation import *
@@ -64,7 +64,7 @@ def run_complete(size=256,
         if point == "multiple":
             flattened_marker_images, markers_data, markers_names = concatenate_multiple_points()
         else:
-            image, marker_data, marker_names = image_stitching(point_name=point)
+            image, marker_data, marker_names = stitch_markers(point_name=point)
 
     if use_watershed:
         if point == "multiple":

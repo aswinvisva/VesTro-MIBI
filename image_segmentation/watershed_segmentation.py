@@ -55,7 +55,10 @@ def label_image_watershed(img, contours, indices, no_topics=20, show_plot=True):
     return img, data
 
 
-def oversegmentation_watershed(img, show=False):
+def oversegmentation_watershed(img,
+                               show=False,
+                               min_contour_area=35):
+
     imgray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
 
     ret, thresh = cv.threshold(imgray, 15, 255, 0)
@@ -69,12 +72,10 @@ def oversegmentation_watershed(img, show=False):
     images = []
     usable_contours = []
 
-    MIN_CONTOUR_AREA = 125
-
     for cnt in contours:
         contour_area = cv.contourArea(cnt)
 
-        if contour_area < MIN_CONTOUR_AREA:
+        if contour_area < min_contour_area:
             continue
         x, y, w, h = cv.boundingRect(cnt)
         ROI = img[y:y + h, x:x + w]

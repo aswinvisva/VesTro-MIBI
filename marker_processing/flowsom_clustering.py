@@ -192,10 +192,10 @@ class ClusteringFlowSOM:
         seed : int
                for reproducing
         """
-        som = MiniSom(x_n, y_n, d, sigma, lr, neighborhood_function=neighborhood, random_seed=seed) # initialize the map
-        som.pca_weights_init(self.data) # initialize the weights
+        som = MiniSom(x_n, y_n, d, sigma, lr, neighborhood_function=neighborhood, random_seed=seed)  # initialize the map
+        som.pca_weights_init(self.data)  # initialize the weights
         print("Training...")
-        som.train(self.data, 20000)  # random training
+        som.train(self.data, 50000)  # random training
         print("\n...ready!")
         self.model = som
 

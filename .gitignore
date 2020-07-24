@@ -1,0 +1,6 @@
+__pycache__/
+venv/
+.idea/
+annotated_data/
+utils/__pycache__/
+topic_generation/__pycache__/

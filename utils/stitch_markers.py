@@ -19,10 +19,12 @@ def random_color():
     return tuple([random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)])
 
 
-def image_stitching(point_name="Point16",
-                    plot=True,
-                    threshold=5,
-                    linear_scaling_factor=100):
+def stitch_markers(point_name="Point16",
+                   plot=True,
+                   plot_markers=False,
+                   threshold=3,
+                   linear_scaling_factor=100,
+                   remove_noise=False):
 
     # Ignore these markers from analysis
     markers_to_ignore = [
@@ -44,15 +46,21 @@ def image_stitching(point_name="Point16",
 
     # Use these markers for segmentation
     markers_for_segmentation = [
+        # Plaques
         "Abeta42",
+        # Tangles
         "PHFTau",
+        # Microglia
         "CD45",
         "Iba1",
+        # Myelin
         "MOG",
         "MAG",
+        # Astrocytes
         "S100b",
         "GlnSyn",
         "GFAP",
+        # Large Vessels / BBB
         "SMA",
         "CD31",
         "GLUT1",
@@ -73,8 +81,13 @@ def image_stitching(point_name="Point16",
             file_name = os.path.splitext(file)[0]
 
             path = os.path.join(root, file)
-            img = tiff_reader.read(path)
-            # img = image_denoising.knn_denoise(img)
+            img = tiff_reader.read(path, describe=plot_markers)
+
+            if remove_noise:
+                start_denoise = datetime.datetime.now()
+                img = image_denoising.knn_denoise(img)
+                end_denoise = datetime.datetime.now()
+                print("Finished %s in %s" % (file_name, end_denoise - start_denoise))
 
             if file_name not in markers_to_ignore:
                 marker_images.append(img.copy())
@@ -112,7 +125,7 @@ def concatenate_multiple_points(points_upper_bound=48):
 
     for fov in fovs:
         start = datetime.datetime.now()
-        image, marker_data, marker_names = image_stitching(point_name=fov, plot=False)
+        image, marker_data, marker_names = stitch_markers(point_name=fov, plot=False)
         end = datetime.datetime.now()
 
         print("Finished stitching %s in %s" % (fov, str(end - start)))
