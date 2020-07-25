@@ -32,7 +32,7 @@ Email: aavisva@uwaterloo.ca
 
 def run_complete(size=256,
                  no_environments=16,
-                 point="multiple",
+                 point="Point16",
                  no_phenotypes=25,
                  use_flowsom=True,
                  use_cnnfcluster=True,
