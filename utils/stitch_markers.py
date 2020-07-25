@@ -20,7 +20,7 @@ def random_color():
     return tuple([random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)])
 
 
-def stitch_markers(point_name="Point16",
+def stitch_markers(point_name="Point15",
                    plot=True,
                    plot_markers=False,
                    remove_noise=False,
@@ -44,7 +44,10 @@ def stitch_markers(point_name="Point16",
         "C12"
     ]
 
-    image_loc = "data/" + point_name + "/TIFs"
+    image_loc = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                             'data',
+                             point_name,
+                             'TIFs')
 
     marker_names = []
     marker_images = []
@@ -67,16 +70,18 @@ def stitch_markers(point_name="Point16",
                 marker_names.append(file_name)
 
     markers_img = np.array(marker_images)
-    segmentation_mask_path = os.path.join('masks', point_name, segmentation_type + '.tif')
-    mean_img = np.array(Image.open(segmentation_mask_path).convert("RGB"))
+    segmentation_mask_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'masks',
+                                          point_name,
+                                          segmentation_type + '.tif')
+    segmentation_mask = np.array(Image.open(segmentation_mask_path).convert("RGB"))
 
     if plot:
-        cv.imshow("Combined Image", mean_img)
+        cv.imshow("Segmentation Mask", segmentation_mask)
         cv.waitKey(0)
 
-    cv.imwrite(os.path.join("annotated_data/" + point_name, "total.jpg"), mean_img)
+    cv.imwrite(os.path.join("annotated_data/" + point_name, "total.jpg"), segmentation_mask)
 
-    return mean_img, markers_img, marker_names
+    return segmentation_mask, markers_img, marker_names
 
 
 def concatenate_multiple_points(points_upper_bound=48):

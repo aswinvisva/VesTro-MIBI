@@ -32,11 +32,9 @@ Email: aavisva@uwaterloo.ca
 
 def run_complete(size=256,
                  no_environments=16,
-                 point="multiple",
+                 point="Point16",
                  no_phenotypes=25,
                  use_flowsom=True,
-                 use_watershed=True,
-                 use_test_data=False,
                  use_cnnfcluster=True,
                  pretrained=False,
                  show_plots=True):
@@ -49,8 +47,6 @@ def run_complete(size=256,
     :param size: (If using sliding window) Window side length
     :param point: Point number to get data
     :param no_phenotypes: Number of clusters for K-Means
-    :param use_watershed: Should use watershed segmentation?
-    :param use_test_data: Should use online data?
     :param pretrained: Is K-Means model pre-trained?
     :param show_plots: Should show plots?
     :return:
@@ -58,29 +54,21 @@ def run_complete(size=256,
 
     begin_time = datetime.datetime.now()
 
-    if use_test_data:
-        image = cv.imread('data/Images/michael-angelo-breast-cancer-cells.jpg')
+    if point == "multiple":
+        flattened_marker_images, markers_data, markers_names = concatenate_multiple_points()
     else:
-        if point == "multiple":
-            flattened_marker_images, markers_data, markers_names = concatenate_multiple_points()
-        else:
-            image, marker_data, marker_names = stitch_markers(point_name=point)
+        image, marker_data, marker_names = stitch_markers(point_name=point)
 
-    if use_watershed:
-        if point == "multiple":
-            multiple_images = []
-            multiple_contours = []
+    if point == "multiple":
+        multiple_images = []
+        multiple_contours = []
 
-            for image in flattened_marker_images:
-                images, contours = oversegmentation_watershed(image)
-                multiple_images.append(images)
-                multiple_contours.append(contours)
-        else:
+        for image in flattened_marker_images:
             images, contours = oversegmentation_watershed(image)
+            multiple_images.append(images)
+            multiple_contours.append(contours)
     else:
-        phi0 = initialize(1024, 1024, x_center=512, y_center=512, radius=100)
-        acwe(np.array(image), phi0, max_iter=100, time_step=0.1, mu=0, v=0, lambda1=1, lambda2=1, epsilon=1)
-        # images = split_image(image, n=size)
+        images, contours = oversegmentation_watershed(image)
 
     if point == "multiple":
         points_expression = None
@@ -103,6 +91,8 @@ def run_complete(size=256,
 
     else:
         data = calculate_protein_expression_single_cell(marker_data, contours)
+
+        print("There are %s samples" % len(contours))
 
     if not use_flowsom:
         if point == "multiple":
@@ -149,25 +139,22 @@ def run_complete(size=256,
             model.fit_model()
             indices, cell_counts = model.predict()
 
-    if use_watershed:
-        if point == "multiple":
-            prev_index = 0
-            for x in range(len(multiple_contours)):
-                contours = multiple_contours[x]
-                i = indices[prev_index:prev_index+len(contours)]
+    if point == "multiple":
+        prev_index = 0
+        for x in range(len(multiple_contours)):
+            contours = multiple_contours[x]
+            i = indices[prev_index:prev_index + len(contours)]
 
-                image = flattened_marker_images[x]
+            image = flattened_marker_images[x]
 
-                segmented_image, data = label_image_watershed(image, contours, i,
-                                                              show_plot=show_plots,
-                                                              no_topics=no_phenotypes)
-                prev_index = len(contours)
-        else:
-            segmented_image, data = label_image_watershed(image, contours, indices,
+            segmented_image, data = label_image_watershed(image, contours, i,
                                                           show_plot=show_plots,
                                                           no_topics=no_phenotypes)
+            prev_index = len(contours)
     else:
-        label_image(image, indices, topics=no_phenotypes, n=size)
+        segmented_image, data = label_image_watershed(image, contours, indices,
+                                                      show_plot=show_plots,
+                                                      no_topics=no_phenotypes)
 
     end_time = datetime.datetime.now()
 

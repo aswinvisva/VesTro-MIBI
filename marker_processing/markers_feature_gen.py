@@ -40,9 +40,9 @@ def sigmoid(x):
 
 
 def calculate_protein_expression_single_cell(markers_data, contours,
-                                             scaling_factor=100,
+                                             scaling_factor=15,
                                              expression_type="area_normalized_counts",
-                                             transformation="arcsinh",
+                                             transformation="log",
                                              normalization="percentile",
                                              plot=True):
     '''

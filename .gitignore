@@ -4,3 +4,8 @@ venv/
 annotated_data/
 utils/__pycache__/
 topic_generation/__pycache__/
+results/
+masks/
+*.tif
+*.png
+*.pyc
