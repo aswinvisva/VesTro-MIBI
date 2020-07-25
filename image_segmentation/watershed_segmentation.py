@@ -31,11 +31,15 @@ def label_image_watershed(img, contours, indices, no_topics=20, show_plot=True):
         cX = int(M["m10"] / M["m00"])
         cY = int(M["m01"] / M["m00"])
 
-        data[cX][cY] = int(indices[index])
+        data[cY][cX] = int(indices[index])
 
         color = colors[str(indices[index])]
         cv.drawContours(img, [cnt], 0, color, thickness=-1)
         index = index + 1
+
+    print(Counter(data.flatten()))
+
+    print(img[np.where(data > -1)])
 
     if show_plot:
         legend_color_values = [(colors[i][0] / 255, colors[i][1] / 255, colors[i][2] / 255) for i in colors.keys()]

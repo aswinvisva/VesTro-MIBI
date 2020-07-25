@@ -25,7 +25,7 @@ class ClusteringFlowSOM:
                  point_name,
                  x_labels,
                  clusters=10,
-                 explore_clusters=10,
+                 explore_clusters=0,
                  pretrained=False,
                  show_plots=False,
                  x_n=30,

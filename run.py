@@ -32,10 +32,10 @@ Email: aavisva@uwaterloo.ca
 
 def run_complete(size=256,
                  no_environments=16,
-                 point="Point16",
+                 point="multiple",
                  no_phenotypes=25,
                  use_flowsom=True,
-                 use_cnnfcluster=True,
+                 use_cnnfcluster=False,
                  pretrained=False,
                  show_plots=True):
     """
@@ -141,6 +141,9 @@ def run_complete(size=256,
 
     if point == "multiple":
         prev_index = 0
+        complete_segmented_images = []
+        complete_data = []
+
         for x in range(len(multiple_contours)):
             contours = multiple_contours[x]
             i = indices[prev_index:prev_index + len(contours)]
@@ -150,6 +153,8 @@ def run_complete(size=256,
             segmented_image, data = label_image_watershed(image, contours, i,
                                                           show_plot=show_plots,
                                                           no_topics=no_phenotypes)
+            complete_segmented_images.append(segmented_image)
+            complete_data.append(data)
             prev_index = len(contours)
     else:
         segmented_image, data = label_image_watershed(image, contours, indices,
@@ -160,13 +165,39 @@ def run_complete(size=256,
 
     print("Segmentation finished. Time taken:", end_time - begin_time)
 
-    segmented_images = split_image(segmented_image, n=size)
-    split_data = split_image(data, n=size)
+    if point == "multiple":
+        complete_split_segmented_images = []
+        complete_split_data = []
 
-    vec_map = {}
-    bag_of_words_data = bag_of_cells_feature_gen.generate(split_data, vector_size=no_phenotypes)
+        for i in range(len(complete_segmented_images)):
+            segmented_image = complete_segmented_images[i]
+            data = complete_data[i]
+
+            split_segmented_images = split_image(segmented_image, n=size)
+            split_data = split_image(data, n=size)
+
+            complete_split_segmented_images.append(split_segmented_images)
+            complete_split_data.append(split_data)
+    else:
+        segmented_images = split_image(segmented_image, n=size)
+        split_data = split_image(data, n=size)
+
+    if point == "multiple":
+        bag_of_words_data = None
+        for split_data in complete_split_data:
+
+            data = bag_of_cells_feature_gen.generate(split_data, vector_size=no_phenotypes)
+
+            if bag_of_words_data is None:
+                bag_of_words_data = data
+            else:
+                bag_of_words_data = np.append(bag_of_words_data, data, axis=0)
+    else:
+        bag_of_words_data = bag_of_cells_feature_gen.generate(split_data, vector_size=no_phenotypes)
 
     if use_cnnfcluster:
+        vec_map = {}
+
         cnn = CNNFeatureGen(n=size)
 
         for i in range(len(segmented_images)):
@@ -182,15 +213,30 @@ def run_complete(size=256,
         label_image(segmented_image, label_list, n=size, topics=clusters)
 
     else:
-        lda = LDATopicGen(bag_of_words_data, topics=no_environments)
-        topics = lda.fit_predict()
+        if point == "multiple":
+            lda = LDATopicGen(bag_of_words_data, topics=no_environments)
+            topics = lda.fit_predict()
 
-        indices = []
+            print(lda.model.components_)
 
-        for idx, topic in enumerate(topics):
-            indices.append(np.where(topic == topic.max())[0][0])
+            indices = []
 
-        label_image(segmented_image, indices, n=size, topics=no_environments)
+            for idx, topic in enumerate(topics):
+                indices.append(np.where(topic == topic.max())[0][0])
+
+            label_image(segmented_image, indices, n=size, topics=no_environments)
+        else:
+            lda = LDATopicGen(bag_of_words_data, topics=no_environments)
+            topics = lda.fit_predict()
+
+            print(lda.components)
+
+            indices = []
+
+            for idx, topic in enumerate(topics):
+                indices.append(np.where(topic == topic.max())[0][0])
+
+            label_image(segmented_image, indices, n=size, topics=no_environments)
 
     return cell_counts
 
