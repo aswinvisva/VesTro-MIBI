@@ -8,7 +8,7 @@ python -m unittest discover tests
         git add .
         git status
         read -p "Commit description: " desc
-        git commit -m $desc
+        git commit -m "$desc"
         git push origin master
         exit 0
     else

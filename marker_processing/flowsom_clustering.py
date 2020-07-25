@@ -30,7 +30,8 @@ class ClusteringFlowSOM:
                  show_plots=False,
                  x_n=30,
                  y_n=30,
-                 d=34):
+                 d=34,
+                 save=True):
         '''
         FlowSOM algorithm for clustering marker distributions
 
@@ -55,6 +56,7 @@ class ClusteringFlowSOM:
         self.x_n = x_n
         self.y_n = y_n
         self.d = d
+        self.save = save
 
     def fit_model(self):
         '''
@@ -66,9 +68,10 @@ class ClusteringFlowSOM:
         if not self.pretrained:
             self.som_mapping(self.x_n, self.y_n, self.d, sigma=2.5, lr=0.1)
 
-            # saving the som in the file som.p
-            with open('models/som.p', 'wb') as outfile:
-                pickle.dump(self.model, outfile)
+            if self.save:
+                # saving the som in the file som.p
+                with open('models/som.p', 'wb') as outfile:
+                    pickle.dump(self.model, outfile)
         else:
             with open('models/som.p', 'rb') as infile:
                 self.model = pickle.load(infile)
@@ -105,13 +108,14 @@ class ClusteringFlowSOM:
             else:
                 cell_counts.append(0)
 
-        # get discrete colormap
-        cmap = plt.get_cmap('RdBu', np.max(map_class) - np.min(map_class) + 1)
-        # set limits .5 outside true range
-        mat = plt.matshow(map_class, cmap=cmap, vmin=np.min(map_class) - .5, vmax=np.max(map_class) + .5)
-        # tell the colorbar to tick at integers
-        plt.colorbar(mat, ticks=np.arange(np.min(map_class), np.max(map_class) + 1))
-        plt.show()
+        if self.show_plots:
+            # get discrete colormap
+            cmap = plt.get_cmap('RdBu', np.max(map_class) - np.min(map_class) + 1)
+            # set limits .5 outside true range
+            mat = plt.matshow(map_class, cmap=cmap, vmin=np.min(map_class) - .5, vmax=np.max(map_class) + .5)
+            # tell the colorbar to tick at integers
+            plt.colorbar(mat, ticks=np.arange(np.min(map_class), np.max(map_class) + 1))
+            plt.show()
 
         return label_list, cell_counts
 
@@ -138,17 +142,18 @@ class ClusteringFlowSOM:
 
         mmm = df.groupby(['metacluster']).mean()
 
-        norm = matplotlib.colors.Normalize(-1, 1)
-        colors = [[norm(-1.0), "midnightblue"],
-                  [norm(-0.5), "seagreen"],
-                  [norm(0.5), "mediumspringgreen"],
-                  [norm(1.0), "yellow"]]
+        if self.show_plots:
+            norm = matplotlib.colors.Normalize(-1, 1)
+            colors = [[norm(-1.0), "midnightblue"],
+                      [norm(-0.5), "seagreen"],
+                      [norm(0.5), "mediumspringgreen"],
+                      [norm(1.0), "yellow"]]
 
-        cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", colors)
+            cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", colors)
 
-        ax = sns.clustermap(mmm, linewidth=0.5, xticklabels=self.x_labels, cmap=cmap)
-        # plt.savefig(os.path.join('results', 'quantile_scale_85', 'heatmap.png'))
-        plt.show()
+            ax = sns.clustermap(mmm, linewidth=0.5, xticklabels=self.x_labels, cmap=cmap)
+            # plt.savefig(os.path.join('results', 'quantile_scale_85', 'heatmap.png'))
+            plt.show()
 
         for i in range(len(mmm.values)):
             figure(num=None, figsize=(25, 12), facecolor='w', edgecolor='k')
@@ -172,13 +177,14 @@ class ClusteringFlowSOM:
             else:
                 cell_counts.append(0)
 
-        # get discrete colormap
-        cmap = plt.get_cmap('RdBu', np.max(map_class) - np.min(map_class) + 1)
-        # set limits .5 outside true range
-        mat = plt.matshow(map_class, cmap=cmap, vmin=np.min(map_class) - .5, vmax=np.max(map_class) + .5)
-        # tell the colorbar to tick at integers
-        plt.colorbar(mat, ticks=np.arange(np.min(map_class), np.max(map_class) + 1))
-        plt.show()
+        if self.show_plots:
+            # get discrete colormap
+            cmap = plt.get_cmap('RdBu', np.max(map_class) - np.min(map_class) + 1)
+            # set limits .5 outside true range
+            mat = plt.matshow(map_class, cmap=cmap, vmin=np.min(map_class) - .5, vmax=np.max(map_class) + .5)
+            # tell the colorbar to tick at integers
+            plt.colorbar(mat, ticks=np.arange(np.min(map_class), np.max(map_class) + 1))
+            plt.show()
 
         return label_list, cell_counts
 
@@ -222,7 +228,9 @@ class ClusteringFlowSOM:
             k = cluster_.get_optimal_number_of_clusters(flatten_weights, verbose=True)
             # fitting SOM weights into clustering algorithm
             self.cluster = cluster_.cluster_(n_clusters=k).fit(flatten_weights)
-            pickle.dump(self.cluster, open("models/som_clustering.p", "wb"))
+
+            if self.save:
+                pickle.dump(self.cluster, open("models/som_clustering.p", "wb"))
 
         else:
             with open('models/som_clustering.p', 'rb') as infile:
