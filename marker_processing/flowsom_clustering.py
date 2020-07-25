@@ -146,8 +146,21 @@ class ClusteringFlowSOM:
 
         cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", colors)
 
-        ax = sns.heatmap(mmm, linewidth=0.5, xticklabels=self.x_labels, cmap=cmap)
+        ax = sns.clustermap(mmm, linewidth=0.5, xticklabels=self.x_labels, cmap=cmap)
+        # plt.savefig(os.path.join('results', 'quantile_scale_85', 'heatmap.png'))
         plt.show()
+
+        for i in range(len(mmm.values)):
+            figure(num=None, figsize=(25, 12), facecolor='w', edgecolor='k')
+            plt.bar(range(len(self.x_labels)), mmm.to_numpy()[i])
+            plt.xticks(range(len(self.x_labels)), self.x_labels, rotation='vertical')
+            plt.title("Metacluster %s" % str(i))
+            plt.xlabel('Markers')
+            plt.ylabel('Mean Normalized Expression')
+            # plt.savefig(os.path.join('results', 'quantile_scale_85', 'metacluster_%s_histogram.png' % str(i)))
+            plt.draw()
+            # plt.pause(0.001)
+            plt.close()
 
         c = Counter(label_list)
 

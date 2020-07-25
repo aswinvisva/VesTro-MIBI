@@ -57,9 +57,12 @@ def label_image_watershed(img, contours, indices, no_topics=20, show_plot=True):
 
 def oversegmentation_watershed(img,
                                show=False,
-                               min_contour_area=35):
+                               min_contour_area=0.1):
 
-    imgray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
+    if img.shape[2] == 3:
+        imgray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
+    else:
+        imgray = img
 
     ret, thresh = cv.threshold(imgray, 15, 255, 0)
 
@@ -84,7 +87,7 @@ def oversegmentation_watershed(img,
 
     if show:
         copy = img.copy()
-        cv.imshow("Segmented Cells", cv.drawContours(copy, usable_contours, -1, (255, 255, 255), 3))
+        cv.imshow("Segmented Cells", cv.drawContours(copy, usable_contours, -1, (0, 255, 0), 3))
         cv.waitKey(0)
         del copy
 
