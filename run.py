@@ -7,11 +7,13 @@ import cv2 as cv
 import numpy as np
 import matplotlib.pyplot as plt
 from PIL import Image
+from tensorflow.keras.applications.resnet import preprocess_input
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
 
 from marker_processing.k_means_clustering import ClusteringKMeans
 from marker_processing.flowsom_clustering import ClusteringFlowSOM
+from topic_generation.cnn_lda import CNNLDA
 from utils.stitch_markers import stitch_markers, concatenate_multiple_points
 from topic_generation.lda_topic_generation import LDATopicGen
 from image_segmentation.sliding_window_segmentation import split_image
@@ -23,6 +25,7 @@ from feature_extraction.cnn_feature_gen import CNNFeatureGen
 from marker_processing.markers_feature_gen import *
 from topic_generation.cnnfcluster import CNNFCluster
 from topic_generation.lda_topic_generation import LDATopicGen
+from topic_generation.lda import LDA, lda_learning
 
 '''
 Author: Aswin Visva
@@ -31,9 +34,9 @@ Email: aavisva@uwaterloo.ca
 
 
 def run_complete(size=256,
-                 no_environments=16,
+                 no_environments=20,
                  point="multiple",
-                 no_phenotypes=25,
+                 no_phenotypes=10,
                  use_flowsom=True,
                  use_cnnfcluster=False,
                  pretrained=False,
@@ -125,6 +128,7 @@ def run_complete(size=256,
                                       point,
                                       marker_names,
                                       clusters=no_phenotypes,
+                                      explore_clusters=0,
                                       pretrained=pretrained,
                                       show_plots=show_plots)
             model.fit_model()
@@ -176,7 +180,7 @@ def run_complete(size=256,
             split_segmented_images = split_image(segmented_image, n=size)
             split_data = split_image(data, n=size)
 
-            complete_split_segmented_images.append(split_segmented_images)
+            complete_split_segmented_images.extend(split_segmented_images)
             complete_split_data.append(split_data)
     else:
         segmented_images = split_image(segmented_image, n=size)
@@ -214,22 +218,32 @@ def run_complete(size=256,
 
     else:
         if point == "multiple":
-            lda = LDATopicGen(bag_of_words_data, topics=no_environments)
-            topics = lda.fit_predict()
+            print(np.array(complete_split_segmented_images).shape)
+            X = []
 
-            print(lda.model.components_)
+            for img in complete_split_segmented_images:
+                processed = preprocess_input(img)
+                X.append(processed)
 
-            indices = []
+            X = np.array(X).reshape((len(complete_split_segmented_images), size, size, 3))
 
-            for idx, topic in enumerate(topics):
-                indices.append(np.where(topic == topic.max())[0][0])
+            cnnlda = CNNLDA(n=size)
+            cnnlda.fit(X, bag_of_words_data)
 
-            label_image(segmented_image, indices, n=size, topics=no_environments)
+            # lda = LDATopicGen(bag_of_words_data, topics=no_environments)
+            # topics = lda.fit_predict()
+            # lda.plot()
+            #
+            # indices = []
+            #
+            # for idx, topic in enumerate(topics):
+            #     indices.append(np.where(topic == topic.max())[0][0])
+            #
+            # label_image(segmented_image, indices, n=size, topics=no_environments)
         else:
             lda = LDATopicGen(bag_of_words_data, topics=no_environments)
             topics = lda.fit_predict()
-
-            print(lda.components)
+            lda.plot()
 
             indices = []
 
@@ -272,4 +286,4 @@ def run_TNBC_dataset_test(square_side_length=50,
 
 
 if __name__ == '__main__':
-    counts = run_complete(use_flowsom=True, show_plots=True)
+    counts = run_complete(use_flowsom=True, show_plots=False)
