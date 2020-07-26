@@ -34,7 +34,7 @@ Email: aavisva@uwaterloo.ca
 
 
 def run_complete(size=256,
-                 no_environments=20,
+                 no_environments=10,
                  point="multiple",
                  no_phenotypes=10,
                  use_flowsom=True,
@@ -58,26 +58,26 @@ def run_complete(size=256,
     begin_time = datetime.datetime.now()
 
     if point == "multiple":
-        flattened_marker_images, markers_data, markers_names = concatenate_multiple_points()
+        marker_segmentation_masks, markers_data, markers_names = concatenate_multiple_points()
     else:
-        image, marker_data, marker_names = stitch_markers(point_name=point)
+        segmentation_mask, marker_data, marker_names = stitch_markers(point_name=point)
 
     if point == "multiple":
-        multiple_images = []
-        multiple_contours = []
+        contour_images_multiple_points = []
+        contour_data_multiple_points = []
 
-        for image in flattened_marker_images:
-            images, contours = oversegmentation_watershed(image)
-            multiple_images.append(images)
-            multiple_contours.append(contours)
+        for segmentation_mask in marker_segmentation_masks:
+            contour_images, contours = oversegmentation_watershed(segmentation_mask)
+            contour_images_multiple_points.append(contour_images)
+            contour_data_multiple_points.append(contours)
     else:
-        images, contours = oversegmentation_watershed(image)
+        contour_images, contours = oversegmentation_watershed(segmentation_mask)
 
     if point == "multiple":
         points_expression = None
 
-        for i in range(len(multiple_contours)):
-            contours = multiple_contours[i]
+        for i in range(len(contour_data_multiple_points)):
+            contours = contour_data_multiple_points[i]
             marker_data = markers_data[i]
             start_expression = datetime.datetime.now()
             data = calculate_protein_expression_single_cell(marker_data, contours, plot=False)
@@ -145,23 +145,23 @@ def run_complete(size=256,
 
     if point == "multiple":
         prev_index = 0
-        complete_segmented_images = []
+        instance_segmentation_masks_multiple_markers = []
         complete_data = []
 
-        for x in range(len(multiple_contours)):
-            contours = multiple_contours[x]
+        for x in range(len(contour_data_multiple_points)):
+            contours = contour_data_multiple_points[x]
             i = indices[prev_index:prev_index + len(contours)]
 
-            image = flattened_marker_images[x]
+            segmentation_mask = marker_segmentation_masks[x]
 
-            segmented_image, data = label_image_watershed(image, contours, i,
+            segmented_image, data = label_image_watershed(segmentation_mask, contours, i,
                                                           show_plot=show_plots,
                                                           no_topics=no_phenotypes)
-            complete_segmented_images.append(segmented_image)
+            instance_segmentation_masks_multiple_markers.append(segmented_image)
             complete_data.append(data)
             prev_index = len(contours)
     else:
-        segmented_image, data = label_image_watershed(image, contours, indices,
+        segmented_image, data = label_image_watershed(segmentation_mask, contours, indices,
                                                       show_plot=show_plots,
                                                       no_topics=no_phenotypes)
 
@@ -170,17 +170,17 @@ def run_complete(size=256,
     print("Segmentation finished. Time taken:", end_time - begin_time)
 
     if point == "multiple":
-        complete_split_segmented_images = []
+        split_marker_segmentation_masks = []
         complete_split_data = []
 
-        for i in range(len(complete_segmented_images)):
-            segmented_image = complete_segmented_images[i]
+        for i in range(len(instance_segmentation_masks_multiple_markers)):
+            segmented_image = instance_segmentation_masks_multiple_markers[i]
             data = complete_data[i]
 
             split_segmented_images = split_image(segmented_image, n=size)
             split_data = split_image(data, n=size)
 
-            complete_split_segmented_images.extend(split_segmented_images)
+            split_marker_segmentation_masks.extend(split_segmented_images)
             complete_split_data.append(split_data)
     else:
         segmented_images = split_image(segmented_image, n=size)
@@ -207,8 +207,6 @@ def run_complete(size=256,
         for i in range(len(segmented_images)):
             img = segmented_images[i]
             print("Data", bag_of_words_data[i])
-            cv.imshow("Image", img)
-            cv.waitKey(0)
             v = cnn.generate(img)
             vec_map[str(bag_of_words_data[i].tolist())] = v
 
@@ -218,16 +216,16 @@ def run_complete(size=256,
 
     else:
         if point == "multiple":
-            print(np.array(complete_split_segmented_images).shape)
+            print(np.array(split_marker_segmentation_masks).shape)
             X = []
 
-            for img in complete_split_segmented_images:
+            for img in split_marker_segmentation_masks:
                 processed = preprocess_input(img)
                 X.append(processed)
 
-            X = np.array(X).reshape((len(complete_split_segmented_images), size, size, 3))
+            X = np.array(X).reshape((len(split_marker_segmentation_masks), size, size, 3))
 
-            cnnlda = CNNLDA(n=size)
+            cnnlda = CNNLDA(K=no_environments, n=size)
             cnnlda.fit(X, bag_of_words_data)
 
             # lda = LDATopicGen(bag_of_words_data, topics=no_environments)

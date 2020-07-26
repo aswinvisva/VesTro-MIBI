@@ -17,8 +17,8 @@ def random_color():
     return tuple([random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)])
 
 
-def label_image_watershed(img, contours, indices, no_topics=20, show_plot=True):
-    original = np.array(img)
+def label_image_watershed(original, contours, indices, no_topics=20, show_plot=True):
+    img = original.copy()
     data = np.full((img.shape[0], img.shape[1], 1), -1)
 
     with open('config/cluster_colours.json') as json_file:
