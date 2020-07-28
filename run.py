@@ -14,6 +14,7 @@ from sklearn.decomposition import PCA
 from marker_processing.k_means_clustering import ClusteringKMeans
 from marker_processing.flowsom_clustering import ClusteringFlowSOM
 from topic_generation.cnn_lda import CNNLDA
+from utils.construct_microenvironments import construct_microenvironments_from_contours
 from utils.stitch_markers import stitch_markers, concatenate_multiple_points
 from topic_generation.lda_topic_generation import LDATopicGen
 from image_segmentation.sliding_window_segmentation import split_image
@@ -34,7 +35,7 @@ Email: aavisva@uwaterloo.ca
 
 
 def run_complete(size=256,
-                 no_environments=10,
+                 no_environments=5,
                  point="multiple",
                  no_phenotypes=10,
                  use_flowsom=True,
@@ -68,6 +69,7 @@ def run_complete(size=256,
 
         for segmentation_mask in marker_segmentation_masks:
             contour_images, contours = oversegmentation_watershed(segmentation_mask)
+            plot_vessel_areas(contours, segmentation_mask)
             contour_images_multiple_points.append(contour_images)
             contour_data_multiple_points.append(contours)
     else:
@@ -216,7 +218,6 @@ def run_complete(size=256,
 
     else:
         if point == "multiple":
-            print(np.array(split_marker_segmentation_masks).shape)
             X = []
 
             for img in split_marker_segmentation_masks:
@@ -225,8 +226,10 @@ def run_complete(size=256,
 
             X = np.array(X).reshape((len(split_marker_segmentation_masks), size, size, 3))
 
-            cnnlda = CNNLDA(K=no_environments, n=size)
+            cnnlda = CNNLDA(K=no_environments, n=size, phenotypes=no_phenotypes)
             cnnlda.fit(X, bag_of_words_data)
+            cnnlda.plot()
+            cnnlda.view_microenvironments()
 
             # lda = LDATopicGen(bag_of_words_data, topics=no_environments)
             # topics = lda.fit_predict()

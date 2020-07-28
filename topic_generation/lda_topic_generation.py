@@ -18,14 +18,13 @@ class LDATopicGen:
         self.model = None
 
     def fit_predict(self):
-        '''
-        TODO: Fit the model to the encoded features
-        '''
-
         self.model = LatentDirichletAllocation(n_components=self.components,
                                                random_state=0)
 
         topics = self.model.fit_transform(self.data)
+
+        print("LDA Perplexity Score %s" % self.model.perplexity(self.data))
+        print("LDA Log Likelihood Score %s" % self.model.score(self.data))
 
         return topics
 

@@ -6,6 +6,7 @@ import numpy as np
 import cv2 as cv
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
+import scipy.stats as stats
 
 '''
 Author: Aswin Visva
@@ -55,10 +56,27 @@ def label_image_watershed(original, contours, indices, no_topics=20, show_plot=T
     return img, data
 
 
+def plot_vessel_areas(contours, img):
+    areas = []
+
+    for cnt in contours:
+        x, y, w, h = cv.boundingRect(cnt)
+        ROI = img[y:y + h, x:x + w]
+        contour_area = cv.contourArea(cnt)
+        areas.append(contour_area)
+
+        # print(contour_area)
+        # cv.imshow("ASD", ROI)
+        # cv.waitKey(0)
+
+    areas = sorted(areas)
+    plt.hist(areas, bins=50)
+    plt.show()
+
+
 def oversegmentation_watershed(img,
                                show=False,
                                min_contour_area=0.1):
-
     if img.shape[2] == 3:
         imgray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
     else:
