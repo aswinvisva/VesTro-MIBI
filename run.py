@@ -37,7 +37,7 @@ Email: aavisva@uwaterloo.ca
 def run_complete(size=256,
                  no_environments=5,
                  point="multiple",
-                 no_phenotypes=10,
+                 no_phenotypes=12,
                  use_flowsom=True,
                  use_cnnfcluster=False,
                  pretrained=False,
@@ -69,7 +69,7 @@ def run_complete(size=256,
 
         for segmentation_mask in marker_segmentation_masks:
             contour_images, contours = oversegmentation_watershed(segmentation_mask)
-            plot_vessel_areas(contours, segmentation_mask)
+            # plot_vessel_areas(contours, segmentation_mask)
             contour_images_multiple_points.append(contour_images)
             contour_data_multiple_points.append(contours)
     else:

@@ -68,10 +68,19 @@ def calculate_protein_expression_single_cell(markers_data, contours,
 
             if expression_type == "mean":
                 # Get mean intensity of marker
-                marker_data = cv.mean(marker[y:y + h, x:x + w])[0]
+
+                mask = np.zeros(marker.shape, np.uint8)
+                cv.drawContours(mask, [cnt], -1, (255, 255, 255), 1)
+                marker_data = cv.mean(marker, mask=mask)
+
             elif expression_type == "area_normalized_counts":
+
+                mask = np.zeros(marker.shape, np.uint8)
+                cv.drawContours(mask, [cnt], -1, (255, 255, 255), cv.FILLED)
+                result = cv.bitwise_and(marker, mask)
+
                 # Get cell area normalized count of marker
-                marker_data = np.sum(marker[y:y + h, x:x + w]) / cv.contourArea(cnt)
+                marker_data = cv.countNonZero(result) / cv.contourArea(cnt)
 
             data_vec.append(marker_data)
 

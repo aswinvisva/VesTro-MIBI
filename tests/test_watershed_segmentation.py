@@ -12,7 +12,7 @@ class TestWatershedSegmentation(unittest.TestCase):
 
         images, usable_contours = watershed_segmentation.oversegmentation_watershed(image, show=False)
 
-        self.assertAlmostEqual(len(usable_contours), 66)
+        self.assertAlmostEqual(len(usable_contours), 64)
         self.assertEqual(len(images), len(usable_contours))
 
 

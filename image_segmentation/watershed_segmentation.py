@@ -65,10 +65,6 @@ def plot_vessel_areas(contours, img):
         contour_area = cv.contourArea(cnt)
         areas.append(contour_area)
 
-        # print(contour_area)
-        # cv.imshow("ASD", ROI)
-        # cv.waitKey(0)
-
     areas = sorted(areas)
     plt.hist(areas, bins=50)
     plt.show()
@@ -93,13 +89,26 @@ def oversegmentation_watershed(img,
     images = []
     usable_contours = []
 
-    for cnt in contours:
+    for i, cnt in enumerate(contours):
         contour_area = cv.contourArea(cnt)
-
-        if contour_area < min_contour_area:
-            continue
         x, y, w, h = cv.boundingRect(cnt)
         ROI = img[y:y + h, x:x + w]
+
+        mean = hierarchy[0, i, 3]
+
+        if contour_area < min_contour_area:
+            if show:
+                cv.imshow("Removed Vessel", ROI)
+                cv.waitKey(0)
+            continue
+
+        # Remove contours which are not a part of the segmentation mask
+        if mean != -1:
+            if show:
+                cv.imshow("Removed Vessel", ROI)
+                cv.waitKey(0)
+            continue
+
         images.append(ROI)
         usable_contours.append(cnt)
 
