@@ -25,7 +25,6 @@ matplotlib==2.2.5
 MiniSom==2.2.6
 networkx==2.2
 numpy==1.16.6
-opencv-contrib-python==3.3.0.10
 opencv-python==3.3.0.10
 packaging==20.4
 pandas==0.24.2
