@@ -1,0 +1,211 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Utils &#8212; MIBI Microenvironment Identification  documentation</title>
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="Marker Processing" href="marker_processing.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="utils">
+<h1>Utils<a class="headerlink" href="#utils" title="Permalink to this headline">¶</a></h1>
+<p>This package contains various modules for helpful functions used throughout project.</p>
+<div class="section" id="construct-microenvironments">
+<h2>Construct Microenvironments<a class="headerlink" href="#construct-microenvironments" title="Permalink to this headline">¶</a></h2>
+<p>This module contains functions for constructing microenvironment images from segmentation masks.</p>
+<span class="target" id="module-utils.construct_microenvironments"></span><dl class="function">
+<dt id="utils.construct_microenvironments.construct_partitioned_microenvironments_from_contours">
+<code class="descclassname">utils.construct_microenvironments.</code><code class="descname">construct_partitioned_microenvironments_from_contours</code><span class="sig-paren">(</span><em>contours</em>, <em>img</em>, <em>r=256</em><span class="sig-paren">)</span><a class="headerlink" href="#utils.construct_microenvironments.construct_partitioned_microenvironments_from_contours" title="Permalink to this definition">¶</a></dt>
+<dd><p>Construct Microenvironments from Segmented Cell Events by partitioning the segmentation mask into images of size rxr</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>contours</strong> – Spatial information of segmented cell events</li>
+<li><strong>img</strong> – Original segmentation mask</li>
+<li><strong>r</strong> – Dimensions of microenvironments</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">Vector containing partitioned images</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="mibi-reader">
+<h2>MIBI Reader<a class="headerlink" href="#mibi-reader" title="Permalink to this headline">¶</a></h2>
+<p>This module contains functions for reading the MIBI data.</p>
+<span class="target" id="module-utils.mibi_reader"></span><dl class="function">
+<dt id="utils.mibi_reader.concatenate_multiple_points">
+<code class="descclassname">utils.mibi_reader.</code><code class="descname">concatenate_multiple_points</code><span class="sig-paren">(</span><em>points_upper_bound=48</em><span class="sig-paren">)</span><a class="headerlink" href="#utils.mibi_reader.concatenate_multiple_points" title="Permalink to this definition">¶</a></dt>
+<dd><p>Concatenate all the point data</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>points_upper_bound</strong> – Point number upper bound</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">Marker data and segmentation mask as numpy arrays</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="utils.mibi_reader.read">
+<code class="descclassname">utils.mibi_reader.</code><code class="descname">read</code><span class="sig-paren">(</span><em>point_name='Point15'</em>, <em>plot=True</em>, <em>plot_markers=False</em>, <em>remove_noise=False</em>, <em>segmentation_type='allvessels'</em><span class="sig-paren">)</span><a class="headerlink" href="#utils.mibi_reader.read" title="Permalink to this definition">¶</a></dt>
+<dd><p>Read the MIBI data from a single point</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>point_name</strong> – Name of point to read</li>
+<li><strong>plot</strong> – Should show a preview of the segmentation mask?</li>
+<li><strong>plot_markers</strong> – Should output a description of the marker data?</li>
+<li><strong>remove_noise</strong> – Should perform noise removal?</li>
+<li><strong>segmentation_type</strong> – Type of segmentation mask i.e ‘allvessels’ etc.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">Marker data and segmentation mask as numpy arrays</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="tiff-reader">
+<h2>TIFF Reader<a class="headerlink" href="#tiff-reader" title="Permalink to this headline">¶</a></h2>
+<p>This module contains functions for reading the TIFF Files.</p>
+<span class="target" id="module-utils.tiff_reader"></span><dl class="function">
+<dt id="utils.tiff_reader.read">
+<code class="descclassname">utils.tiff_reader.</code><code class="descname">read</code><span class="sig-paren">(</span><em>path</em>, <em>describe=False</em><span class="sig-paren">)</span><a class="headerlink" href="#utils.tiff_reader.read" title="Permalink to this definition">¶</a></dt>
+<dd><p>Read a Tiff file</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>path</strong> – Path to file</li>
+<li><strong>describe</strong> – Should describe file?</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"></p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">MIBI Microenvironment Identification</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="marker_processing.html">Marker Processing</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Utils</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#construct-microenvironments">Construct Microenvironments</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#mibi-reader">MIBI Reader</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#tiff-reader">TIFF Reader</a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="marker_processing.html" title="previous chapter">Marker Processing</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2020, Dr. John-Paul Oliveria, Aswin Visva.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.8.5</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="_sources/utils.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

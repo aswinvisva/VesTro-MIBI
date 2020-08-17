@@ -7,6 +7,8 @@ import cv2 as cv
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import scipy.stats as stats
+import seaborn as sns
+import pandas as pd
 
 '''
 Author: Aswin Visva
@@ -56,18 +58,36 @@ def label_image_watershed(original, contours, indices, no_topics=20, show_plot=T
     return img, data
 
 
-def plot_vessel_areas(contours, img):
+def plot_vessel_areas(points_contours, points_img):
+    brain_regions = [(1, 16), (17, 32), (33, 48)]
+    region_data = []
+    current_point = 1
+    current_region = 0
     areas = []
 
-    for cnt in contours:
-        x, y, w, h = cv.boundingRect(cnt)
-        ROI = img[y:y + h, x:x + w]
-        contour_area = cv.contourArea(cnt)
-        areas.append(contour_area)
+    for idx, contours in enumerate(points_contours):
+        img = points_img[idx]
 
-    areas = sorted(areas)
-    plt.hist(areas, bins=50)
-    plt.show()
+        for cnt in contours:
+            x, y, w, h = cv.boundingRect(cnt)
+            ROI = img[y:y + h, x:x + w]
+            contour_area = cv.contourArea(cnt)
+            areas.append(contour_area)
+
+        current_point += 1
+
+        if not (brain_regions[current_region][0] <= current_point <= brain_regions[current_region][1]):
+            current_region += 1
+            region_data.append(sorted(areas))
+            areas = []
+
+    for i, area in enumerate(region_data):
+        area = sorted(area)
+        plt.hist(area, bins=200)
+        plt.title("Points %s to %s" % (str(brain_regions[i][0]), str(brain_regions[i][1])))
+        plt.xlabel("Pixel Area")
+        plt.ylabel("Count")
+        plt.show()
 
 
 def oversegmentation_watershed(img,

@@ -6,6 +6,14 @@ import cv2 as cv
 
 
 def read(path, describe=False):
+    '''
+    Read a Tiff file
+
+    :param path: Path to file
+    :param describe: Should describe file?
+    :return:
+    '''
+
     with TiffFile(path) as tif:
         img = tif.asarray()
 

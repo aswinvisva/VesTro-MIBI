@@ -10,7 +10,15 @@ Email: aavisva@uwaterloo.ca
 '''
 
 
-def construct_microenvironments_from_contours(contours, img, r=256):
+def construct_partitioned_microenvironments_from_contours(contours, img, r=256):
+    '''
+    Construct Microenvironments from Segmented Cell Events by partitioning the segmentation mask into images of size rxr
+
+    :param contours: Spatial information of segmented cell events
+    :param img: Original segmentation mask
+    :param r: Dimensions of microenvironments
+    :return: Vector containing partitioned images
+    '''
     microenvironments = []
 
     height, width, _ = img.shape

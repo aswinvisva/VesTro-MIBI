@@ -1,0 +1,6 @@
+Marker Processing
+==================
+
+This module involves the handling of marker data, specifically performing operations such as calculating protein
+expression as well as using FlowSOM for clustering.
+

@@ -1,0 +1,204 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Marker Processing &#8212; MIBI Microenvironment Identification  documentation</title>
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="MIBI Microenvironment Identification documentation" href="index.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="marker-processing">
+<h1>Marker Processing<a class="headerlink" href="#marker-processing" title="Permalink to this headline">¶</a></h1>
+<p>This package involves the handling of marker data, specifically performing operations such as calculating protein
+expression as well as using FlowSOM for clustering.</p>
+<div class="section" id="feature-generation">
+<h2>Feature Generation<a class="headerlink" href="#feature-generation" title="Permalink to this headline">¶</a></h2>
+<p>This module takes the MIBI data as well as the segmented cell data, and computes the protein expression
+with various transformation and normalization techniques.</p>
+<span class="target" id="module-marker_processing.markers_feature_gen"></span><dl class="function">
+<dt id="marker_processing.markers_feature_gen.arcsinh">
+<code class="descclassname">marker_processing.markers_feature_gen.</code><code class="descname">arcsinh</code><span class="sig-paren">(</span><em>data</em>, <em>cofactor=5</em><span class="sig-paren">)</span><a class="headerlink" href="#marker_processing.markers_feature_gen.arcsinh" title="Permalink to this definition">¶</a></dt>
+<dd><p>Inverse hyperbolic sine transform</p>
+<dl class="docutils">
+<dt>data <span class="classifier-delimiter">:</span> <span class="classifier">array-like, shape=[n_samples, n_features]</span></dt>
+<dd>Input data</dd>
+<dt>cofactor <span class="classifier-delimiter">:</span> <span class="classifier">float or None, optional (default: 5)</span></dt>
+<dd>Factor by which to divide data before arcsinh transform</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="marker_processing.markers_feature_gen.calculate_protein_expression_single_cell">
+<code class="descclassname">marker_processing.markers_feature_gen.</code><code class="descname">calculate_protein_expression_single_cell</code><span class="sig-paren">(</span><em>markers_data</em>, <em>contours</em>, <em>scaling_factor=15</em>, <em>expression_type='area_normalized_counts'</em>, <em>transformation='log'</em>, <em>normalization='percentile'</em>, <em>plot=True</em><span class="sig-paren">)</span><a class="headerlink" href="#marker_processing.markers_feature_gen.calculate_protein_expression_single_cell" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get normalized expression of markers in given cells</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>plot</strong> – </li>
+<li><strong>scaling_factor</strong> – Scaling factor by which to scale the data</li>
+<li><strong>normalization</strong> – Method to scale data</li>
+<li><strong>transformation</strong> – Transformation of expression vector</li>
+<li><strong>expression_type</strong> – Method of determining protein expression</li>
+<li><strong>markers_data</strong> – Pixel data for each marker</li>
+<li><strong>contours</strong> – Contours of cells in image</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"></p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="flowsom-class">
+<h2>FlowSOM Class<a class="headerlink" href="#flowsom-class" title="Permalink to this headline">¶</a></h2>
+<p>This class uses FlowSOM clustering for protein expression data for the various segmented cells, and returns
+a list containing the cell cluster labels for each segmented cell event.</p>
+<dl class="class">
+<dt id="marker_processing.flowsom_clustering.ClusteringFlowSOM">
+<em class="property">class </em><code class="descclassname">marker_processing.flowsom_clustering.</code><code class="descname">ClusteringFlowSOM</code><span class="sig-paren">(</span><em>data</em>, <em>point_name</em>, <em>x_labels</em>, <em>clusters=10</em>, <em>explore_clusters=0</em>, <em>pretrained=False</em>, <em>show_plots=False</em>, <em>x_n=30</em>, <em>y_n=30</em>, <em>d=34</em>, <em>save=True</em><span class="sig-paren">)</span><a class="headerlink" href="#marker_processing.flowsom_clustering.ClusteringFlowSOM" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="method">
+<dt id="marker_processing.flowsom_clustering.ClusteringFlowSOM.fit_model">
+<code class="descname">fit_model</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#marker_processing.flowsom_clustering.ClusteringFlowSOM.fit_model" title="Permalink to this definition">¶</a></dt>
+<dd><p>Fit model and save if not pretrained</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="marker_processing.flowsom_clustering.ClusteringFlowSOM.som_mapping">
+<code class="descname">som_mapping</code><span class="sig-paren">(</span><em>x_n</em>, <em>y_n</em>, <em>d</em>, <em>sigma</em>, <em>lr</em>, <em>neighborhood='gaussian'</em>, <em>seed=10</em><span class="sig-paren">)</span><a class="headerlink" href="#marker_processing.flowsom_clustering.ClusteringFlowSOM.som_mapping" title="Permalink to this definition">¶</a></dt>
+<dd><p>Perform SOM on transform data</p>
+<dl class="docutils">
+<dt>x_n <span class="classifier-delimiter">:</span> <span class="classifier">int</span></dt>
+<dd>the dimension of expected map</dd>
+<dt>y_n <span class="classifier-delimiter">:</span> <span class="classifier">int</span></dt>
+<dd>the dimension of expected map</dd>
+<dt>d <span class="classifier-delimiter">:</span> <span class="classifier">int</span></dt>
+<dd>vector length of input df</dd>
+<dt>sigma <span class="classifier-delimiter">:</span> <span class="classifier">float</span></dt>
+<dd>the standard deviation of initialized weights</dd>
+<dt>lr <span class="classifier-delimiter">:</span> <span class="classifier">float</span></dt>
+<dd>learning rate</dd>
+<dt>neighborhood <span class="classifier-delimiter">:</span> <span class="classifier">string</span></dt>
+<dd>e.g. ‘gaussian’, the initialized weights’ distribution</dd>
+<dt>seed <span class="classifier-delimiter">:</span> <span class="classifier">int</span></dt>
+<dd>for reproducing</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">MIBI Microenvironment Identification</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Marker Processing</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#feature-generation">Feature Generation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#flowsom-class">FlowSOM Class</a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="index.html" title="previous chapter">MIBI Microenvironment Identification documentation</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2020, Dr. John-Paul Oliveria, Aswin Visva.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.8.5</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="_sources/marker_processing.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

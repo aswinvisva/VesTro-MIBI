@@ -5,13 +5,13 @@ import numpy as np
 
 from image_segmentation import watershed_segmentation
 from image_segmentation.sliding_window_segmentation import split_image
-from utils.stitch_markers import stitch_markers
+from utils.mibi_reader import read
 
 
 class TestSplitImage(unittest.TestCase):
 
     def test_split(self):
-        image, marker_data, marker_names = stitch_markers(point_name="Point16", plot=False)
+        image, marker_data, marker_names = read(point_name="Point16", plot=False)
 
         segmented_images = split_image(image, n=256)
 

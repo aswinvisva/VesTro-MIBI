@@ -20,11 +20,22 @@ def random_color():
     return tuple([random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)])
 
 
-def stitch_markers(point_name="Point15",
-                   plot=True,
-                   plot_markers=False,
-                   remove_noise=False,
-                   segmentation_type='allvessels'):
+def read(point_name="Point15",
+         plot=True,
+         plot_markers=False,
+         remove_noise=False,
+         segmentation_type='allvessels'):
+
+    '''
+    Read the MIBI data from a single point
+
+    :param point_name: Name of point to read
+    :param plot: Should show a preview of the segmentation mask?
+    :param plot_markers: Should output a description of the marker data?
+    :param remove_noise: Should perform noise removal?
+    :param segmentation_type: Type of segmentation mask i.e 'allvessels' etc.
+    :return: Marker data and segmentation mask as numpy arrays
+    '''
 
     # Ignore these markers from analysis
     markers_to_ignore = [
@@ -85,6 +96,13 @@ def stitch_markers(point_name="Point15",
 
 
 def concatenate_multiple_points(points_upper_bound=48):
+    '''
+    Concatenate all the point data
+
+    :param points_upper_bound: Point number upper bound
+    :return: Marker data and segmentation mask as numpy arrays
+    '''
+
     fovs = ["Point" + str(i + 1) for i in range(points_upper_bound)]
 
     flattened_marker_images = []
@@ -93,7 +111,7 @@ def concatenate_multiple_points(points_upper_bound=48):
 
     for fov in fovs:
         start = datetime.datetime.now()
-        image, marker_data, marker_names = stitch_markers(point_name=fov, plot=False)
+        image, marker_data, marker_names = read(point_name=fov, plot=False)
         end = datetime.datetime.now()
 
         print("Finished stitching %s in %s" % (fov, str(end - start)))

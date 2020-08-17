@@ -14,8 +14,8 @@ from sklearn.decomposition import PCA
 from marker_processing.k_means_clustering import ClusteringKMeans
 from marker_processing.flowsom_clustering import ClusteringFlowSOM
 from topic_generation.cnn_lda import CNNLDA
-from utils.construct_microenvironments import construct_microenvironments_from_contours
-from utils.stitch_markers import stitch_markers, concatenate_multiple_points
+from utils.construct_microenvironments import construct_partitioned_microenvironments_from_contours
+from utils.mibi_reader import read, concatenate_multiple_points
 from topic_generation.lda_topic_generation import LDATopicGen
 from image_segmentation.sliding_window_segmentation import split_image
 from image_segmentation.watershed_segmentation import *
@@ -61,7 +61,7 @@ def run_complete(size=256,
     if point == "multiple":
         marker_segmentation_masks, markers_data, markers_names = concatenate_multiple_points()
     else:
-        segmentation_mask, marker_data, marker_names = stitch_markers(point_name=point)
+        segmentation_mask, marker_data, marker_names = read(point_name=point)
 
     if point == "multiple":
         contour_images_multiple_points = []
@@ -69,9 +69,11 @@ def run_complete(size=256,
 
         for segmentation_mask in marker_segmentation_masks:
             contour_images, contours = oversegmentation_watershed(segmentation_mask)
-            # plot_vessel_areas(contours, segmentation_mask)
             contour_images_multiple_points.append(contour_images)
             contour_data_multiple_points.append(contours)
+
+        if show_plots:
+            plot_vessel_areas(contour_data_multiple_points, marker_segmentation_masks)
     else:
         contour_images, contours = oversegmentation_watershed(segmentation_mask)
 
@@ -221,8 +223,8 @@ def run_complete(size=256,
             X = []
 
             for img in split_marker_segmentation_masks:
-                processed = preprocess_input(img)
-                X.append(processed)
+                # img = preprocess_input(img)
+                X.append(img)
 
             X = np.array(X).reshape((len(split_marker_segmentation_masks), size, size, 3))
 
