@@ -43,7 +43,7 @@ release = u''
 extensions = [
     'sphinx.ext.autodoc',
 ]
-autodoc_mock_imports = ['_tkinter', 'seaborn']
+autodoc_mock_imports = ['_tkinter', 'seaborn', 'utils', 'marker_processing']
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']

@@ -1,5 +1,5 @@
 Utils
-==================
+==========
 
 This package contains various modules for helpful functions used throughout project.
 

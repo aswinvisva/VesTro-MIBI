@@ -39,97 +39,17 @@
 <div class="section" id="construct-microenvironments">
 <h2>Construct Microenvironments<a class="headerlink" href="#construct-microenvironments" title="Permalink to this headline">¶</a></h2>
 <p>This module contains functions for constructing microenvironment images from segmentation masks.</p>
-<span class="target" id="module-utils.construct_microenvironments"></span><dl class="function">
-<dt id="utils.construct_microenvironments.construct_partitioned_microenvironments_from_contours">
-<code class="descclassname">utils.construct_microenvironments.</code><code class="descname">construct_partitioned_microenvironments_from_contours</code><span class="sig-paren">(</span><em>contours</em>, <em>img</em>, <em>r=256</em><span class="sig-paren">)</span><a class="headerlink" href="#utils.construct_microenvironments.construct_partitioned_microenvironments_from_contours" title="Permalink to this definition">¶</a></dt>
-<dd><p>Construct Microenvironments from Segmented Cell Events by partitioning the segmentation mask into images of size rxr</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>contours</strong> – Spatial information of segmented cell events</li>
-<li><strong>img</strong> – Original segmentation mask</li>
-<li><strong>r</strong> – Dimensions of microenvironments</li>
-</ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">Vector containing partitioned images</p>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
+<span class="target" id="module-utils.construct_microenvironments"></span><p>Used by autodoc_mock_imports.</p>
 </div>
 <div class="section" id="mibi-reader">
 <h2>MIBI Reader<a class="headerlink" href="#mibi-reader" title="Permalink to this headline">¶</a></h2>
 <p>This module contains functions for reading the MIBI data.</p>
-<span class="target" id="module-utils.mibi_reader"></span><dl class="function">
-<dt id="utils.mibi_reader.concatenate_multiple_points">
-<code class="descclassname">utils.mibi_reader.</code><code class="descname">concatenate_multiple_points</code><span class="sig-paren">(</span><em>points_upper_bound=48</em><span class="sig-paren">)</span><a class="headerlink" href="#utils.mibi_reader.concatenate_multiple_points" title="Permalink to this definition">¶</a></dt>
-<dd><p>Concatenate all the point data</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>points_upper_bound</strong> – Point number upper bound</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">Marker data and segmentation mask as numpy arrays</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="function">
-<dt id="utils.mibi_reader.read">
-<code class="descclassname">utils.mibi_reader.</code><code class="descname">read</code><span class="sig-paren">(</span><em>point_name='Point15'</em>, <em>plot=True</em>, <em>plot_markers=False</em>, <em>remove_noise=False</em>, <em>segmentation_type='allvessels'</em><span class="sig-paren">)</span><a class="headerlink" href="#utils.mibi_reader.read" title="Permalink to this definition">¶</a></dt>
-<dd><p>Read the MIBI data from a single point</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>point_name</strong> – Name of point to read</li>
-<li><strong>plot</strong> – Should show a preview of the segmentation mask?</li>
-<li><strong>plot_markers</strong> – Should output a description of the marker data?</li>
-<li><strong>remove_noise</strong> – Should perform noise removal?</li>
-<li><strong>segmentation_type</strong> – Type of segmentation mask i.e ‘allvessels’ etc.</li>
-</ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">Marker data and segmentation mask as numpy arrays</p>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
+<span class="target" id="module-utils.mibi_reader"></span><p>Used by autodoc_mock_imports.</p>
 </div>
 <div class="section" id="tiff-reader">
 <h2>TIFF Reader<a class="headerlink" href="#tiff-reader" title="Permalink to this headline">¶</a></h2>
 <p>This module contains functions for reading the TIFF Files.</p>
-<span class="target" id="module-utils.tiff_reader"></span><dl class="function">
-<dt id="utils.tiff_reader.read">
-<code class="descclassname">utils.tiff_reader.</code><code class="descname">read</code><span class="sig-paren">(</span><em>path</em>, <em>describe=False</em><span class="sig-paren">)</span><a class="headerlink" href="#utils.tiff_reader.read" title="Permalink to this definition">¶</a></dt>
-<dd><p>Read a Tiff file</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>path</strong> – Path to file</li>
-<li><strong>describe</strong> – Should describe file?</li>
-</ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"></p>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
+<span class="target" id="module-utils.tiff_reader"></span><p>Used by autodoc_mock_imports.</p>
 </div>
 </div>
 
