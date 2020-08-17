@@ -12,7 +12,6 @@ enum34==1.1.6
 fcsparser==0.2.1
 FlowCytometryTools==0.5.0
 FlowSom==0.1.1
-futures==3.3.0
 idna==2.6
 imagecodecs-lite==2019.12.3
 imagesize==1.2.0
