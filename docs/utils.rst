@@ -12,7 +12,7 @@ This module contains functions for constructing microenvironment images from seg
    :members:
 
 MIBI Reader
-###########################
+############
 
 This module contains functions for reading the MIBI data.
 
