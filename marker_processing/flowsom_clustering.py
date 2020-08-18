@@ -1,11 +1,8 @@
-import json
-import os
 import pickle
 from collections import Counter
 
 import matplotlib
 import numpy as np
-from matplotlib import gridspec
 import seaborn as sns
 
 from marker_processing.consensus_clustering import ConsensusCluster
@@ -13,9 +10,7 @@ from sklearn.cluster import *
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.pyplot import figure
-from flowsom import *
 from minisom import MiniSom
-from marker_processing.k_means_clustering import ClusteringKMeans
 
 
 class ClusteringFlowSOM:
