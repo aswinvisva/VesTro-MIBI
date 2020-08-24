@@ -3,7 +3,7 @@ import os
 
 import numpy as np
 
-from image_segmentation import watershed_segmentation
+from image_segmentation import extract_cell_events
 from image_segmentation.sliding_window_segmentation import split_image
 from utils.mibi_reader import read
 

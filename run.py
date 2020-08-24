@@ -14,11 +14,12 @@ from sklearn.decomposition import PCA
 from marker_processing.k_means_clustering import ClusteringKMeans
 from marker_processing.flowsom_clustering import ClusteringFlowSOM
 from topic_generation.cnn_lda import CNNLDA
-from utils.construct_microenvironments import construct_partitioned_microenvironments_from_contours
-from utils.mibi_reader import read, concatenate_multiple_points
+from utils.construct_microenvironments import construct_partitioned_microenvironments_from_contours, \
+    construct_vessel_relative_area_microenvironments_from_contours
+from utils.mibi_reader import read, get_all_point_data
 from topic_generation.lda_topic_generation import LDATopicGen
 from image_segmentation.sliding_window_segmentation import split_image
-from image_segmentation.watershed_segmentation import *
+from image_segmentation.extract_cell_events import *
 from image_segmentation.acwe_segmentation import *
 from image_segmentation.sliding_window_segmentation import *
 from feature_extraction import bag_of_cells_feature_gen
@@ -34,7 +35,7 @@ Email: aavisva@uwaterloo.ca
 '''
 
 
-def run_complete(size=256,
+def run_complete(size=512,
                  no_environments=5,
                  point="multiple",
                  no_phenotypes=12,
@@ -59,7 +60,7 @@ def run_complete(size=256,
     begin_time = datetime.datetime.now()
 
     if point == "multiple":
-        marker_segmentation_masks, markers_data, markers_names = concatenate_multiple_points()
+        marker_segmentation_masks, markers_data, markers_names = get_all_point_data()
     else:
         segmentation_mask, marker_data, marker_names = read(point_name=point)
 
@@ -68,20 +69,21 @@ def run_complete(size=256,
         contour_data_multiple_points = []
 
         for segmentation_mask in marker_segmentation_masks:
-            contour_images, contours = oversegmentation_watershed(segmentation_mask)
+            contour_images, contours = extract_cell_contours(segmentation_mask)
             contour_images_multiple_points.append(contour_images)
             contour_data_multiple_points.append(contours)
 
         if show_plots:
             plot_vessel_areas(contour_data_multiple_points, marker_segmentation_masks)
     else:
-        contour_images, contours = oversegmentation_watershed(segmentation_mask)
+        contour_images, contours = extract_cell_contours(segmentation_mask)
 
     if point == "multiple":
         points_expression = None
 
         for i in range(len(contour_data_multiple_points)):
             contours = contour_data_multiple_points[i]
+            # construct_vessel_relative_area_microenvironments_from_contours(contours, marker_segmentation_masks[i])
             marker_data = markers_data[i]
             start_expression = datetime.datetime.now()
             data = calculate_protein_expression_single_cell(marker_data, contours, plot=False)
@@ -288,5 +290,75 @@ def run_TNBC_dataset_test(square_side_length=50,
     label_image(np_color_im, indices, topics=no_topics, n=square_side_length)
 
 
+def show_vessel_areas():
+    '''
+    Create visualizations of vessel areas
+
+    :return: None
+    '''
+
+    masks = [
+             'astrocytes',
+             'BBB',
+             'largevessels',
+             'microglia',
+             'myelin',
+             'plaques',
+             'tangles',
+             'allvessels'
+             ]
+
+    total_areas = [[], [], []]
+
+    brain_regions = [(1, 16),
+                     (17, 32),
+                     (33, 48)]
+
+    for segmentation_type in masks:
+        current_point = 1
+        current_region = 0
+
+        marker_segmentation_masks, markers_data, markers_names = get_all_point_data(segmentation_type=segmentation_type)
+
+        contour_images_multiple_points = []
+        contour_data_multiple_points = []
+
+        for segmentation_mask in marker_segmentation_masks:
+            contour_images, contours = extract_cell_contours(segmentation_mask, show=False)
+            contour_images_multiple_points.append(contour_images)
+            contour_data_multiple_points.append(contours)
+
+        vessel_areas = plot_vessel_areas(contour_data_multiple_points, marker_segmentation_masks,
+                                         segmentation_type=segmentation_type)
+
+        for point_vessel_areas in vessel_areas:
+            current_point += 1
+
+            if not (brain_regions[current_region][0] <= current_point <= brain_regions[current_region][1]):
+                current_region += 1
+
+            if current_region < len(total_areas):
+                total_areas[current_region].extend(sorted(point_vessel_areas))
+
+    colors = ['blue', 'green', 'purple', 'tan', 'pink', 'red']
+
+    fig = plt.figure(1, figsize=(9, 6))
+    plt.title("All Objects Across Brain Regions")
+
+    # Create an axes instance
+    ax = fig.add_subplot(111)
+
+    # Create the boxplot
+    bp = ax.boxplot(total_areas, showfliers=False, patch_artist=True)
+
+    for w, region in enumerate(brain_regions):
+        patch = bp['boxes'][w]
+        patch.set(facecolor=colors[w])
+
+    plt.show()
+
+
 if __name__ == '__main__':
-    counts = run_complete(use_flowsom=True, show_plots=False)
+    show_vessel_areas()
+
+    # counts = run_complete(use_flowsom=True, show_plots=True)

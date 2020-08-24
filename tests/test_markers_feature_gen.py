@@ -3,7 +3,7 @@ import os
 
 import numpy as np
 
-from image_segmentation.watershed_segmentation import oversegmentation_watershed
+from image_segmentation.extract_cell_events import extract_cell_contours
 from marker_processing.markers_feature_gen import calculate_protein_expression_single_cell
 from utils.mibi_reader import read
 
@@ -12,7 +12,7 @@ class TestMarkersFeatureGen(unittest.TestCase):
 
     def test_calculate_protein_expression(self):
         image, marker_data, marker_names = read(point_name="Point16", plot=False)
-        images, contours = oversegmentation_watershed(image, show=False)
+        images, contours = extract_cell_contours(image, show=False)
 
         data = calculate_protein_expression_single_cell(marker_data, contours, plot=False)
 

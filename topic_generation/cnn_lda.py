@@ -136,7 +136,7 @@ class CNNLDA:
         self.X = X
         self.y = y
 
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25)
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3)
 
         self.X_train = X_train
         self.y_train = y_train

@@ -20,7 +20,7 @@ class TestStitchMarkersMethods(unittest.TestCase):
         self.assertIsNotNone(marker_names)
 
     def test_concatenate_multiple_markers(self):
-        flattened_marker_images, markers_data, markers_names = mibi_reader.concatenate_multiple_points()
+        flattened_marker_images, markers_data, markers_names = mibi_reader.get_all_point_data()
 
         self.assertEqual(len(flattened_marker_images), len(markers_data))
         self.assertEqual(len(flattened_marker_images), len(markers_names))

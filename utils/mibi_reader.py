@@ -25,7 +25,6 @@ def read(point_name="Point15",
          plot_markers=False,
          remove_noise=False,
          segmentation_type='allvessels'):
-
     '''
     Read the MIBI data from a single point
 
@@ -84,7 +83,12 @@ def read(point_name="Point15",
     segmentation_mask_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'masks',
                                           point_name,
                                           segmentation_type + '.tif')
-    segmentation_mask = np.array(Image.open(segmentation_mask_path).convert("RGB"))
+
+    try:
+        segmentation_mask = np.array(Image.open(segmentation_mask_path).convert("RGB"))
+    except FileNotFoundError:
+        # If there is no segmentation mask, return a blank image
+        segmentation_mask = np.zeros((1024, 1024, 3), np.uint8)
 
     if plot:
         cv.imshow("Segmentation Mask", segmentation_mask)
@@ -95,10 +99,12 @@ def read(point_name="Point15",
     return segmentation_mask, markers_img, marker_names
 
 
-def concatenate_multiple_points(points_upper_bound=48):
+def get_all_point_data(points_upper_bound=48,
+                       segmentation_type='allvessels'):
     '''
     Concatenate all the point data
 
+    :param segmentation_type:
     :param points_upper_bound: Point number upper bound
     :return: Marker data and segmentation mask as numpy arrays
     '''
@@ -111,7 +117,7 @@ def concatenate_multiple_points(points_upper_bound=48):
 
     for fov in fovs:
         start = datetime.datetime.now()
-        image, marker_data, marker_names = read(point_name=fov, plot=False)
+        image, marker_data, marker_names = read(point_name=fov, plot=False, segmentation_type=segmentation_type)
         end = datetime.datetime.now()
 
         print("Finished stitching %s in %s" % (fov, str(end - start)))

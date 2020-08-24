@@ -58,41 +58,76 @@ def label_image_watershed(original, contours, indices, no_topics=20, show_plot=T
     return img, data
 
 
-def plot_vessel_areas(points_contours, points_img):
+def plot_vessel_areas(points_contours, points_img, save_csv=True, segmentation_type='allvessels'):
     brain_regions = [(1, 16), (17, 32), (33, 48)]
     region_data = []
     current_point = 1
     current_region = 0
     areas = []
+    per_point_areas = []
+    total_per_point_areas = []
+
+    total_point_vessel_areas = []
 
     for idx, contours in enumerate(points_contours):
         img = points_img[idx]
+        current_per_point_area = []
 
         for cnt in contours:
             x, y, w, h = cv.boundingRect(cnt)
             ROI = img[y:y + h, x:x + w]
             contour_area = cv.contourArea(cnt)
             areas.append(contour_area)
+            current_per_point_area.append(contour_area)
 
         current_point += 1
+        per_point_areas.append(current_per_point_area)
+        total_point_vessel_areas.append(current_per_point_area)
 
         if not (brain_regions[current_region][0] <= current_point <= brain_regions[current_region][1]):
             current_region += 1
             region_data.append(sorted(areas))
+            total_per_point_areas.append(per_point_areas)
             areas = []
+            per_point_areas = []
 
-    for i, area in enumerate(region_data):
-        area = sorted(area)
-        plt.hist(area, bins=200)
-        plt.title("Points %s to %s" % (str(brain_regions[i][0]), str(brain_regions[i][1])))
-        plt.xlabel("Pixel Area")
-        plt.ylabel("Count")
-        plt.show()
+    if save_csv:
+        area = pd.DataFrame(total_point_vessel_areas)
+        area.to_csv('vessel_areas.csv')
+
+    # for i, area in enumerate(region_data):
+    #     area = sorted(area)
+    #     plt.hist(area, bins=200)
+    #     plt.title("Points %s to %s" % (str(brain_regions[i][0]), str(brain_regions[i][1])))
+    #     plt.xlabel("Pixel Area")
+    #     plt.ylabel("Count")
+    #     plt.show()
+
+    colors = ['blue', 'green', 'purple', 'tan', 'pink', 'red']
+
+    fig = plt.figure(1, figsize=(9, 6))
+    plt.title("%s Mask Points 1 to 48" % segmentation_type)
+
+    # Create an axes instance
+    ax = fig.add_subplot(111)
+
+    # Create the boxplot
+    bp = ax.boxplot(total_point_vessel_areas, showfliers=False, patch_artist=True)
+
+    for w, region in enumerate(brain_regions):
+        patches = bp['boxes'][region[0]-1:region[1]]
+
+        for patch in patches:
+            patch.set(facecolor=colors[w])
+
+    plt.show()
+
+    return total_point_vessel_areas
 
 
-def oversegmentation_watershed(img,
-                               show=False,
-                               min_contour_area=0.1):
+def extract_cell_contours(img,
+                          show=False,
+                          min_contour_area=0.1):
     if img.shape[2] == 3:
         imgray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
     else:
