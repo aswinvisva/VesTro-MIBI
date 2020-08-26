@@ -58,7 +58,10 @@ def label_image_watershed(original, contours, indices, no_topics=20, show_plot=T
     return img, data
 
 
-def plot_vessel_areas(points_contours, points_img, save_csv=True, segmentation_type='allvessels'):
+def plot_vessel_areas(points_contours, points_img,
+                      save_csv=False,
+                      segmentation_type='allvessels',
+                      show_outliers=False):
     brain_regions = [(1, 16), (17, 32), (33, 48)]
     region_data = []
     current_point = 1
@@ -112,7 +115,7 @@ def plot_vessel_areas(points_contours, points_img, save_csv=True, segmentation_t
     ax = fig.add_subplot(111)
 
     # Create the boxplot
-    bp = ax.boxplot(total_point_vessel_areas, showfliers=False, patch_artist=True)
+    bp = ax.boxplot(total_point_vessel_areas, showfliers=show_outliers, patch_artist=True)
 
     for w, region in enumerate(brain_regions):
         patches = bp['boxes'][region[0]-1:region[1]]
@@ -127,7 +130,7 @@ def plot_vessel_areas(points_contours, points_img, save_csv=True, segmentation_t
 
 def extract_cell_contours(img,
                           show=False,
-                          min_contour_area=0.1):
+                          min_contour_area=1):
     if img.shape[2] == 3:
         imgray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
     else:
