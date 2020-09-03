@@ -130,19 +130,13 @@ def plot_vessel_areas(points_contours, points_img,
 
 def extract_cell_contours(img,
                           show=False,
-                          min_contour_area=1):
+                          min_contour_area=100):
     if img.shape[2] == 3:
         imgray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
     else:
         imgray = img
 
-    ret, thresh = cv.threshold(imgray, 15, 255, 0)
-
-    if show:
-        cv.imshow("Threshold Image", thresh)
-        cv.waitKey(0)
-
-    im2, contours, hierarchy = cv.findContours(thresh, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
+    im2, contours, hierarchy = cv.findContours(imgray, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
 
     images = []
     usable_contours = []
@@ -150,6 +144,7 @@ def extract_cell_contours(img,
     for i, cnt in enumerate(contours):
         contour_area = cv.contourArea(cnt)
         x, y, w, h = cv.boundingRect(cnt)
+
         ROI = img[y:y + h, x:x + w]
 
         mean = hierarchy[0, i, 3]
@@ -166,6 +161,12 @@ def extract_cell_contours(img,
                 cv.imshow("Removed Vessel", ROI)
                 cv.waitKey(0)
             continue
+
+        if show:
+            print("(x1: %s, x2: %s, y1: %s, y2: %s), w: %s, h: %s" % (x, x + w, y, y + h, w, h))
+
+            cv.imshow("Vessel", ROI)
+            cv.waitKey(0)
 
         images.append(ROI)
         usable_contours.append(cnt)

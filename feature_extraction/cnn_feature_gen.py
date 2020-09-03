@@ -1,10 +1,5 @@
 import numpy as np
-import pandas as pd
 import tensorflow as tf
-from tensorflow.keras.applications.xception import Xception
-from tensorflow.keras.layers import Flatten
-from tensorflow.keras.layers import Dense
-from tensorflow.keras.layers import Dropout
 from tensorflow.keras.models import Model
 from tensorflow.keras.applications.resnet import ResNet50
 from tensorflow.keras.applications.resnet import preprocess_input
@@ -32,10 +27,11 @@ class CNNFeatureGen:
         self.model = Model(inputs=resnet50.input, outputs=resnet50.output)
         self.model.summary()
 
-    def generate(self, data_loader, show=False):
+    def generate(self, images, show=False):
         y = []
 
-        for img in data_loader.get_roi():
+        for img in images:
+            img = np.array(img)
             img = cv.resize(img, (self.n, self.n))
             img = preprocess_input(img)
 

@@ -6,6 +6,7 @@ utils/__pycache__/
 topic_generation/__pycache__/
 results/
 masks/
+trained_models/
 *.tif
 *.png
 *.pyc

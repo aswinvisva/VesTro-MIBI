@@ -5,7 +5,7 @@ import matplotlib
 import numpy as np
 import seaborn as sns
 
-from marker_processing.consensus_clustering import ConsensusCluster
+from models.consensus_clustering import ConsensusCluster
 from sklearn.cluster import *
 import pandas as pd
 import matplotlib.pyplot as plt

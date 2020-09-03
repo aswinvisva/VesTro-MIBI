@@ -6,13 +6,15 @@ import os
 import cv2 as cv
 import numpy as np
 import matplotlib.pyplot as plt
+import torch
 from PIL import Image
-from tensorflow.keras.applications.resnet import preprocess_input
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
 
-from marker_processing.k_means_clustering import ClusteringKMeans
-from marker_processing.flowsom_clustering import ClusteringFlowSOM
+from feature_extraction.sift_feature_gen import SIFTFeatureGen
+from models.clustering_helper import ClusteringHelper
+from models.flowsom_clustering import ClusteringFlowSOM
+from models.vessel_net import VesselNet
 from topic_generation.cnn_lda import CNNLDA
 from utils.construct_microenvironments import construct_partitioned_microenvironments_from_contours, \
     construct_vessel_relative_area_microenvironments_from_contours
@@ -24,11 +26,11 @@ from image_segmentation.acwe_segmentation import *
 from image_segmentation.sliding_window_segmentation import *
 from feature_extraction import bag_of_cells_feature_gen
 from feature_extraction.cnn_feature_gen import CNNFeatureGen
-from marker_processing.markers_feature_gen import *
+from feature_extraction.markers_feature_gen import *
 from topic_generation.cnnfcluster import CNNFCluster
 from topic_generation.lda_topic_generation import LDATopicGen
 from topic_generation.lda import LDA, lda_learning
-from utils.cnn_dataloader import VesselDataset
+from utils.cnn_dataloader import VesselDataset, preprocess_input
 
 '''
 Author: Aswin Visva
@@ -36,7 +38,8 @@ Email: aavisva@uwaterloo.ca
 '''
 
 
-def extract_vessel_heterogeneity():
+def extract_vessel_heterogeneity(n=56,
+                                 feature_extraction_method="vesselnet"):
     '''
     Extract vessel heterogeneity
     :return:
@@ -44,48 +47,109 @@ def extract_vessel_heterogeneity():
 
     marker_segmentation_masks, markers_data, markers_names = get_all_point_data()
 
-    contour_images_multiple_points = []
     contour_data_multiple_points = []
+    contour_images_multiple_points = []
 
     for segmentation_mask in marker_segmentation_masks:
-        contour_images, contours = extract_cell_contours(segmentation_mask)
-        contour_images_multiple_points.append(contour_images)
+        contour_images, contours = extract_cell_contours(segmentation_mask, show=False)
         contour_data_multiple_points.append(contours)
+        contour_images_multiple_points.append(contour_images)
 
-    points_expression = None
+    # points_expression = []
+    # points_expression_images = []
+    #
+    # for i in range(len(contour_data_multiple_points)):
+    #     contours = contour_data_multiple_points[i]
+    #     marker_data = markers_data[i]
+    #     start_expression = datetime.datetime.now()
+    #     data, expression_images = calculate_microenvironment_marker_expression_single_vessel(marker_data, contours,
+    #                                                                                          plot=False)
+    #     end_expression = datetime.datetime.now()
+    #
+    #     print("Finished calculating expression %s in %s" % (str(i), end_expression - start_expression))
+    #
+    #     points_expression.append(data)
+    #     points_expression_images.append(expression_images)
+    #
+    # points_expression_images = np.array(points_expression_images)
+    # points_expression = np.array(points_expression)
 
-    for i in range(len(contour_data_multiple_points)):
-        contours = contour_data_multiple_points[i]
-        marker_data = markers_data[i]
-        start_expression = datetime.datetime.now()
-        data = calculate_protein_expression_single_cell(marker_data, contours, plot=False)
-        end_expression = datetime.datetime.now()
+    if feature_extraction_method == "vesselnet":
+        data_loader = VesselDataset(contour_data_multiple_points, markers_data, batch_size=16, n=n)
 
-        print("Finished calculating expression %s in %s" % (str(i), end_expression - start_expression))
+        # vn = VesselNet(n=n)
+        # vn.fit(data_loader, epochs=400)
+        # torch.save(vn.state_dict(), "trained_models/vessel_net.pth")
 
-        if points_expression is None:
-            points_expression = data
-        else:
-            points_expression = np.append(points_expression, data, axis=0)
+        vn = VesselNet(n=n)
+        vn.load_state_dict(torch.load("trained_models/vessel_net.pth"))
+        vn.to(torch.device("cuda"))
 
-    print("There are %s samples" % points_expression.shape[0])
+        encoder_output = []
 
-    data_loader = VesselDataset(contour_data_multiple_points, marker_segmentation_masks)
-    # data_loader.show_roi()
+        for i in range(len(contour_data_multiple_points)):
+            for x in range(len(contour_data_multiple_points[i])):
+                contours = [contour_data_multiple_points[i][x]]
+                marker_data = markers_data[i]
+                _, expression_images = calculate_microenvironment_marker_expression_single_vessel(marker_data, contours,
+                                                                                                  plot=False)
 
-    resnet50 = CNNFeatureGen()
-    spatial_info = resnet50.generate(data_loader)
+                expression_image = preprocess_input(expression_images, n)
+                expression_image = torch.unsqueeze(expression_image, 0)
 
-    print(spatial_info.shape)
+                reconstructed_img, output = vn.forward(expression_image)
 
-    x_train = []
+                y_pred_numpy = reconstructed_img.cpu().data.numpy()
+                y_true_numpy = expression_image.cpu().data.numpy()
 
-    for i in range(len(points_expression)):
-        x_train.append(np.concatenate((points_expression[i], spatial_info[i]), axis=0))
+                row_i = np.random.choice(y_pred_numpy.shape[0], 1)
+                random_pic = y_pred_numpy[row_i, :, :, :]
+                random_pic = random_pic.reshape(34, n, n)
 
-    x_train = np.array(x_train)
+                true = y_true_numpy[row_i, :, :, :]
+                true = true.reshape(34, n, n)
 
-    print(x_train.shape)
+                for i in range(len(random_pic)):
+                    cv.imshow("Predicted", random_pic[i] * 255)
+                    cv.imshow("True", true[i] * 255)
+                    cv.waitKey(0)
+
+                output = output.cpu().data.numpy()
+                encoder_output.append(output.reshape(2048))
+    elif feature_extraction_method == "sift":
+        flat_list = [item for sublist in contour_images_multiple_points for item in sublist]
+
+        sift = SIFTFeatureGen()
+        encoder_output = sift.generate(flat_list)
+    elif feature_extraction_method == "resnet":
+        flat_list = [item for sublist in contour_images_multiple_points for item in sublist]
+
+        cnn = CNNFeatureGen()
+        encoder_output = cnn.generate(flat_list)
+
+    km = ClusteringHelper(encoder_output, n_clusters=7, metric="cosine", method="kmeans")
+    indices, frequency = km.fit_predict()
+
+    print(len(indices))
+
+    indices = [[i, indices[i]] for i in range(len(indices))]
+    values = set(map(lambda x: x[1], indices))
+
+    grouped_indices = [[y[0] for y in indices if y[1] == x] for x in values]
+
+    k = 10
+
+    sampled_indices = []
+
+    for cluster in grouped_indices:
+        sampled_indices.append(random.choices(cluster, k=k))
+
+    flat_list = [item for sublist in contour_images_multiple_points for item in sublist]
+
+    for i, cluster in enumerate(sampled_indices):
+        for idx in cluster:
+            cv.imshow("Cluster %s" % i, flat_list[idx])
+            cv.waitKey(0)
 
 
 def run_complete(size=512,
@@ -139,7 +203,7 @@ def run_complete(size=512,
             # construct_vessel_relative_area_microenvironments_from_contours(contours, marker_segmentation_masks[i])
             marker_data = markers_data[i]
             start_expression = datetime.datetime.now()
-            data = calculate_protein_expression_single_cell(marker_data, contours, plot=False)
+            data = calculate_marker_composition_single_vessel(marker_data, contours, plot=False)
             end_expression = datetime.datetime.now()
 
             print("Finished calculating expression %s in %s" % (str(i), end_expression - start_expression))
@@ -152,7 +216,7 @@ def run_complete(size=512,
         print("There are %s samples" % points_expression.shape[0])
 
     else:
-        data = calculate_protein_expression_single_cell(marker_data, contours)
+        data = calculate_marker_composition_single_vessel(marker_data, contours)
 
         print("There are %s samples" % len(contours))
 
@@ -160,7 +224,7 @@ def run_complete(size=512,
         if point == "multiple":
             marker_names = markers_names[0]
 
-            model = ClusteringKMeans(points_expression,
+            model = ClusteringHelper(points_expression,
                                      point,
                                      marker_names,
                                      clusters=no_phenotypes,
@@ -170,7 +234,7 @@ def run_complete(size=512,
             model.fit_model()
             indices, cell_counts = model.generate_embeddings()
         else:
-            model = ClusteringKMeans(data,
+            model = ClusteringHelper(data,
                                      point,
                                      marker_names,
                                      clusters=no_phenotypes,
@@ -361,6 +425,12 @@ def show_vessel_areas(show_outliers=False):
         'allvessels'
     ]
 
+    region_names = [
+        "MFG",
+        "HIP",
+        "CAUD"
+    ]
+
     total_areas = [[], [], []]
 
     brain_regions = [(1, 16),
@@ -397,13 +467,13 @@ def show_vessel_areas(show_outliers=False):
     colors = ['blue', 'green', 'purple', 'tan', 'pink', 'red']
 
     fig = plt.figure(1, figsize=(9, 6))
-    plt.title("All Objects Across Brain Regions")
+    plt.title("All Objects Across Brain Regions - All Vessels")
 
     # Create an axes instance
     ax = fig.add_subplot(111)
 
     # Create the boxplot
-    bp = ax.boxplot(total_areas, showfliers=show_outliers, patch_artist=True)
+    bp = ax.boxplot(total_areas, showfliers=show_outliers, patch_artist=True, labels=region_names)
 
     for w, region in enumerate(brain_regions):
         patch = bp['boxes'][w]
@@ -415,6 +485,6 @@ def show_vessel_areas(show_outliers=False):
 if __name__ == '__main__':
     extract_vessel_heterogeneity()
 
-    # show_vessel_areas(show_outliers=True)
+    # show_vessel_areas(show_outliers=False)
 
     # counts = run_complete(use_flowsom=True, show_plots=True)

@@ -12,7 +12,7 @@ class TestWatershedSegmentation(unittest.TestCase):
 
         images, usable_contours = extract_cell_events.extract_cell_contours(image, show=False)
 
-        self.assertAlmostEqual(len(usable_contours), 64)
+        self.assertAlmostEqual(len(usable_contours), 36)
         self.assertEqual(len(images), len(usable_contours))
 
 
