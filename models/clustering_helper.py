@@ -3,6 +3,7 @@ import pickle
 from collections import Counter
 
 from sklearn.cluster import KMeans, DBSCAN, OPTICS
+from scipy.cluster.hierarchy import linkage, leaves_list
 import matplotlib.pyplot as plt
 from matplotlib.pyplot import figure
 
@@ -72,6 +73,8 @@ class ClusteringHelper:
             elif self.method == "optics":
                 self.model = OPTICS(metric=self.metric)
                 self.model.fit(self.data)
+            elif self.method == "hierarichal":
+                self.model = linkage(self.data, metric=self.metric)
 
             if not self.save:
                 pickle.dump(self.model, open("trained_models/%s_model.pkl" % self.method, "wb"))
@@ -86,7 +89,10 @@ class ClusteringHelper:
         :return: None
         '''
 
-        labels = self.model.labels_.tolist()
+        if not self.method == "hierarichal":
+            labels = self.model.labels_.tolist()
+        else:
+            labels = leaves_list(self.model).tolist()
 
         print(labels)
 

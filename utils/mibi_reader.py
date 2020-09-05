@@ -124,6 +124,5 @@ def get_all_point_data(points_upper_bound=48,
 
         flattened_marker_images.append(image)
         markers_data.append(marker_data)
-        markers_names.append(marker_names)
 
-    return flattened_marker_images, markers_data, markers_names
+    return flattened_marker_images, markers_data, marker_names

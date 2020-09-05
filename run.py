@@ -14,7 +14,7 @@ from sklearn.decomposition import PCA
 from feature_extraction.sift_feature_gen import SIFTFeatureGen
 from models.clustering_helper import ClusteringHelper
 from models.flowsom_clustering import ClusteringFlowSOM
-from models.vessel_net import VesselNet
+from models.vessel_net import VesselNet, vis_tensor
 from topic_generation.cnn_lda import CNNLDA
 from utils.construct_microenvironments import construct_partitioned_microenvironments_from_contours, \
     construct_vessel_relative_area_microenvironments_from_contours
@@ -38,6 +38,118 @@ Email: aavisva@uwaterloo.ca
 '''
 
 
+def pixel_expansion_plots(n_expansions=10, interval=0.05):
+
+    marker_segmentation_masks, markers_data, markers_names = get_all_point_data()
+
+    contour_data_multiple_points = []
+    contour_images_multiple_points = []
+    n_points = 48
+
+    for segmentation_mask in marker_segmentation_masks:
+        contour_images, contours = extract_cell_contours(segmentation_mask, show=False)
+        contour_data_multiple_points.append(contours)
+        contour_images_multiple_points.append(contour_images)
+
+    expansion_data = []
+    current_interval = 1 + interval
+
+    for x in range(n_expansions):
+        current_expansion_data = []
+
+        for i in range(len(contour_data_multiple_points)):
+            contours = contour_data_multiple_points[i]
+            # construct_vessel_relative_area_microenvironments_from_contours(contours, marker_segmentation_masks[i])
+            marker_data = markers_data[i]
+            start_expression = datetime.datetime.now()
+            data, _ = calculate_microenvironment_marker_expression_single_vessel(marker_data, contours,
+                                                                                 plot=False,
+                                                                                 expansion_coefficient=current_interval,
+                                                                                 prev_expansion_coefficient=current_interval - interval)
+            end_expression = datetime.datetime.now()
+
+            print("Finished calculating expression %s in %s" % (str(i), end_expression - start_expression))
+
+            current_expansion_data.append(data)
+
+        expansion_data.append(current_expansion_data)
+
+        current_interval += interval
+
+    brain_regions = [(1, 16), (17, 32), (33, 48)]
+
+    marker_clusters = {
+        "Nucleus": ["HH3"],
+        "Microglia": ["CD45", "HLADR", "Iba1"],
+        "Disease": ["CD47", "ABeta42", "polyubiK48", "PHFTau", "8OHGuanosine"],
+        "Vessels": ["SMA", "CD31", "CollagenIV", "TrkA", "GLUT1", "Desmin", "vWF", "CD105"],
+        "Astrocytes": ["S100beta", "GluSyn", "Cx30", "EAAT2", "CD44", "GFAP", "Cx43"],
+        "Synapse": ["CD56", "Synaptophysin", "VAMP2", "PSD95"],
+        "Oligodendrocytes": ["MOG", "MAG"],
+        "Neurons": ["Calretinin", "Parvalbumin", "MAP2", "Gephrin"]
+    }
+
+    colors = {
+        "Nucleus": "b",
+        "Microglia": "g",
+        "Disease": "r",
+        "Vessels": "c",
+        "Astrocytes": "m",
+        "Synapse": "y",
+        "Oligodendrocytes": "k",
+        "Neurons": "w"
+    }
+
+    # Change in Marker Expression w.r.t pixel expansion per brain region
+    for region in brain_regions:
+        x = np.arange(n_expansions)
+        for marker, marker_name in enumerate(markers_names):
+            y = []
+
+            for key in marker_clusters.keys():
+                if marker_name in marker_clusters[key]:
+                    color = colors[key]
+                    break
+
+            for i in range(n_expansions):
+                current = []
+                for point_data in expansion_data[i][region[0] - 1: region[1] - 1]:
+                    for vessel in point_data:
+                        current.append(vessel[marker])
+
+                average_expression = sum(current) / len(current)
+                y.append(average_expression)
+            plt.plot(x, y, color=color)
+        plt.savefig("results/region_%s.png" % str(region[0]))
+        plt.clf()
+
+    # Change in Marker Expression w.r.t pixel expansion per point
+    for point in range(n_points):
+        print("Point %s" % str(point+1))
+        x = np.arange(n_expansions)
+
+        for marker, marker_name in enumerate(markers_names):
+            y = []
+
+            for key in marker_clusters.keys():
+                if marker_name in marker_clusters[key]:
+                    color = colors[key]
+                    break
+
+            for i in range(n_expansions):
+                current = []
+                point_data = expansion_data[i][point]
+
+                for vessel in point_data:
+                    current.append(vessel[marker])
+
+                average_expression = sum(current) / len(current)
+                y.append(average_expression)
+            plt.plot(x, y, color=color)
+        plt.savefig("results/point_%s.png" % str(point))
+        plt.clf()
+
+
 def extract_vessel_heterogeneity(n=56,
                                  feature_extraction_method="vesselnet"):
     '''
@@ -55,35 +167,18 @@ def extract_vessel_heterogeneity(n=56,
         contour_data_multiple_points.append(contours)
         contour_images_multiple_points.append(contour_images)
 
-    # points_expression = []
-    # points_expression_images = []
-    #
-    # for i in range(len(contour_data_multiple_points)):
-    #     contours = contour_data_multiple_points[i]
-    #     marker_data = markers_data[i]
-    #     start_expression = datetime.datetime.now()
-    #     data, expression_images = calculate_microenvironment_marker_expression_single_vessel(marker_data, contours,
-    #                                                                                          plot=False)
-    #     end_expression = datetime.datetime.now()
-    #
-    #     print("Finished calculating expression %s in %s" % (str(i), end_expression - start_expression))
-    #
-    #     points_expression.append(data)
-    #     points_expression_images.append(expression_images)
-    #
-    # points_expression_images = np.array(points_expression_images)
-    # points_expression = np.array(points_expression)
-
     if feature_extraction_method == "vesselnet":
         data_loader = VesselDataset(contour_data_multiple_points, markers_data, batch_size=16, n=n)
 
         # vn = VesselNet(n=n)
-        # vn.fit(data_loader, epochs=400)
-        # torch.save(vn.state_dict(), "trained_models/vessel_net.pth")
+        # vn.fit(data_loader, epochs=150)
+        # vn.visualize_filters()
+        # torch.save(vn.state_dict(), "trained_models/vessel_net_100.pth")
 
         vn = VesselNet(n=n)
-        vn.load_state_dict(torch.load("trained_models/vessel_net.pth"))
+        vn.load_state_dict(torch.load("trained_models/vessel_net_100.pth"))
         vn.to(torch.device("cuda"))
+        # vn.visualize_filters()
 
         encoder_output = []
 
@@ -109,10 +204,10 @@ def extract_vessel_heterogeneity(n=56,
                 true = y_true_numpy[row_i, :, :, :]
                 true = true.reshape(34, n, n)
 
-                for i in range(len(random_pic)):
-                    cv.imshow("Predicted", random_pic[i] * 255)
-                    cv.imshow("True", true[i] * 255)
-                    cv.waitKey(0)
+                # for w in range(len(random_pic)):
+                #     cv.imshow("Predicted", random_pic[w] * 255)
+                #     cv.imshow("True", true[w] * 255)
+                #     cv.waitKey(0)
 
                 output = output.cpu().data.numpy()
                 encoder_output.append(output.reshape(2048))
@@ -133,7 +228,7 @@ def extract_vessel_heterogeneity(n=56,
     print(len(indices))
 
     indices = [[i, indices[i]] for i in range(len(indices))]
-    values = set(map(lambda x: x[1], indices))
+    values = set(map(lambda y: y[1], indices))
 
     grouped_indices = [[y[0] for y in indices if y[1] == x] for x in values]
 
@@ -483,7 +578,9 @@ def show_vessel_areas(show_outliers=False):
 
 
 if __name__ == '__main__':
-    extract_vessel_heterogeneity()
+    pixel_expansion_plots()
+
+    # extract_vessel_heterogeneity()
 
     # show_vessel_areas(show_outliers=False)
 

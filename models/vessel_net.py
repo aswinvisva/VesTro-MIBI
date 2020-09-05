@@ -6,6 +6,23 @@ import torch
 import torch.nn as nn
 import cv2 as cv
 from torchvision.utils import save_image
+from torch.utils.tensorboard import SummaryWriter
+import matplotlib.pyplot as plt
+from torchvision import utils
+
+
+def vis_tensor(tensor, ch=0, allkernels=False, nrow=8, padding=1):
+    n, c, w, h = tensor.shape
+
+    if allkernels:
+        tensor = tensor.view(n * c, -1, w, h)
+    elif c != 3:
+        tensor = tensor[:, ch, :, :].unsqueeze(dim=1)
+
+    rows = np.min((tensor.shape[0] // nrow + 1, 64))
+    grid = utils.make_grid(tensor, nrow=nrow, normalize=True, padding=padding)
+    plt.figure(figsize=(nrow, rows))
+    plt.imshow(grid.numpy().transpose((1, 2, 0)))
 
 
 class VesselNet(nn.Module):
@@ -15,21 +32,22 @@ class VesselNet(nn.Module):
         self.n = n
         self.criterion = nn.BCELoss()
         self.device = torch.device("cuda")
+        self.writer = SummaryWriter()
 
         self.encoder = nn.Sequential(
-            nn.Conv2d(34, 64, 1),
-            nn.Conv2d(64, 64, 1),
+            nn.Conv2d(34, 64, 5),
+            nn.Conv2d(64, 64, 5),
             nn.MaxPool2d(2),
-            nn.Conv2d(64, 128, 1),
-            nn.Conv2d(128, 128, 1),
+            nn.Conv2d(64, 128, 3),
+            nn.Conv2d(128, 128, 3),
             nn.MaxPool2d(2),
-            nn.Conv2d(128, 256, 1),
-            nn.Conv2d(256, 256, 1),
+            nn.Conv2d(128, 256, 3),
+            nn.Conv2d(256, 256, 3),
             nn.MaxPool2d(2)
         )
 
         self.fc = nn.Sequential(
-            nn.Linear(int(n / 8 * n / 8 * 256), 2048),
+            nn.Linear(2304, 2048),
             nn.ReLU()
         )
 
@@ -47,7 +65,7 @@ class VesselNet(nn.Module):
     def forward(self, x):
         x = self.encoder(x)
 
-        x = x.view(-1, int(self.n / 8 * self.n / 8 * 256))
+        x = x.view(-1, 2304)
 
         encoder_output = self.fc(x)
         w = encoder_output.view(-1, 512, 2, 2)
@@ -96,3 +114,31 @@ class VesselNet(nn.Module):
                     cv.imshow("Predicted", random_pic[i] * 255)
                     cv.imshow("True", true[i] * 255)
                     cv.waitKey(0)
+
+    def visualize_filters(self, channels=34):
+
+        print("Visualizing encoder features")
+        for layer in range(len(self.encoder)):
+            for ch in range(channels):
+                try:
+                    f = self.encoder[layer].weight.data.cpu().clone()
+                    vis_tensor(f, ch=ch, allkernels=False)
+
+                    plt.axis('off')
+                    plt.ioff()
+                    plt.show()
+                except torch.nn.modules.module.ModuleAttributeError:
+                    pass
+
+        print("Visualizing decoder features")
+        for layer in range(len(self.decoder)):
+            for ch in range(channels):
+                try:
+                    f = self.decoder[layer].weight.data.cpu().clone()
+                    vis_tensor(f, ch=ch, allkernels=False)
+
+                    plt.axis('off')
+                    plt.ioff()
+                    plt.show()
+                except torch.nn.modules.module.ModuleAttributeError:
+                    pass
