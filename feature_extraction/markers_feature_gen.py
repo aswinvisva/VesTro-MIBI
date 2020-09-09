@@ -45,12 +45,27 @@ def dilate_mask(mask, kernel_size=10):
     return dilated
 
 
-def expand_vessel_region(cnt, scale=1.15):
+def expand_vessel_region(cnt, pixel_expansion=5):
     M = cv.moments(cnt)
     cx = int(M['m10'] / M['m00'])
     cy = int(M['m01'] / M['m00'])
 
     cnt_norm = cnt - [cx, cy]
+
+    left = tuple(cnt_norm[cnt_norm[:, :, 0].argmin()][0])
+    right = tuple(cnt_norm[cnt_norm[:, :, 0].argmax()][0])
+    top = tuple(cnt_norm[cnt_norm[:, :, 1].argmin()][0])
+    bottom = tuple(cnt_norm[cnt_norm[:, :, 1].argmax()][0])
+
+    origin = np.array([0, 0])
+
+    max_dist = max(np.linalg.norm(left - origin),
+                   np.linalg.norm(right - origin),
+                   np.linalg.norm(top - origin),
+                   np.linalg.norm(bottom - origin))
+
+    scale = 1 + (pixel_expansion / max_dist)
+
     cnt_scaled = cnt_norm * scale
     cnt_scaled = cnt_scaled + [cx, cy]
     cnt_scaled = cnt_scaled.astype(np.int32)
@@ -60,17 +75,19 @@ def expand_vessel_region(cnt, scale=1.15):
 
 def calculate_microenvironment_marker_expression_single_vessel(markers_data, contours,
                                                                scaling_factor=15,
-                                                               expansion_coefficient=1.1,
-                                                               prev_expansion_coefficient=1,
+                                                               pixel_expansion_amount=5,
+                                                               prev_pixel_expansion_amount=0,
                                                                expression_type="area_normalized_counts",
                                                                transformation="arcsinh",
                                                                normalization="percentile",
-                                                               plot=True):
+                                                               plot=True,
+                                                               expansion_image=None):
     '''
     Get normalized expression of markers in given cells
 
-    :param prev_expansion_coefficient:
-    :param expansion_coefficient:
+    :param expansion_image:
+    :param prev_pixel_expansion_amount:
+    :param pixel_expansion_amount:
     :param plot:
     :param scaling_factor: Scaling factor by which to scale the data
     :param normalization: Method to scale data
@@ -88,13 +105,13 @@ def calculate_microenvironment_marker_expression_single_vessel(markers_data, con
         data_vec = []
         expression_image = []
 
+        expanded_cnt = expand_vessel_region(cnt, pixel_expansion=pixel_expansion_amount)
+
+        if prev_pixel_expansion_amount != 0:
+            cnt = expand_vessel_region(cnt, pixel_expansion=prev_pixel_expansion_amount)
+
         for marker in markers_data:
             x, y, w, h = cv.boundingRect(cnt)
-
-            expanded_cnt = expand_vessel_region(cnt, scale=expansion_coefficient)
-
-            if prev_expansion_coefficient != 1:
-                cnt = expand_vessel_region(cnt, scale=prev_expansion_coefficient)
 
             mask = np.zeros(marker.shape, np.uint8)
 
@@ -113,15 +130,19 @@ def calculate_microenvironment_marker_expression_single_vessel(markers_data, con
             expression_image.append(roi_result)
 
             if plot:
-                cv.imshow("mask", mask)
-                cv.imshow("mask_expanded", mask_expanded)
-                cv.imshow("result", result*255)
-                cv.imshow("roi_result", roi_result*255)
-                cv.waitKey(0)
+                if idx == 5:
+                    cv.imshow("mask", mask)
+                    cv.imshow("mask_expanded", mask_expanded)
+                    cv.imshow("result_mask", result_mask)
+                    cv.imshow("roi_result", roi_result * 255)
+                    cv.waitKey(0)
+
+            if expansion_image is not None:
+                cv.drawContours(expansion_image, [expanded_cnt], -1, (255, 255, 255), 1)
 
             if expression_type == "mean":
                 # Get mean intensity of marker
-                marker_data = cv.mean(result)
+                marker_data = cv.mean(result)[0]
 
             elif expression_type == "area_normalized_counts":
                 # Get cell area normalized count of marker

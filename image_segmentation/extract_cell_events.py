@@ -130,7 +130,7 @@ def plot_vessel_areas(points_contours, points_img,
 
 def extract_cell_contours(img,
                           show=False,
-                          min_contour_area=100):
+                          min_contour_area=10):
     if img.shape[2] == 3:
         imgray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
     else:

@@ -4,6 +4,7 @@ from collections import Counter
 import os
 
 import cv2 as cv
+import matplotlib
 import numpy as np
 import matplotlib.pyplot as plt
 import torch
@@ -38,8 +39,7 @@ Email: aavisva@uwaterloo.ca
 '''
 
 
-def pixel_expansion_plots(n_expansions=10, interval=0.05):
-
+def pixel_expansion_plots(n_expansions=10, interval=10):
     marker_segmentation_masks, markers_data, markers_names = get_all_point_data()
 
     contour_data_multiple_points = []
@@ -52,7 +52,8 @@ def pixel_expansion_plots(n_expansions=10, interval=0.05):
         contour_images_multiple_points.append(contour_images)
 
     expansion_data = []
-    current_interval = 1 + interval
+    current_interval = interval
+    expansion_image = np.zeros(markers_data[0][0].shape, np.uint8)
 
     for x in range(n_expansions):
         current_expansion_data = []
@@ -62,19 +63,35 @@ def pixel_expansion_plots(n_expansions=10, interval=0.05):
             # construct_vessel_relative_area_microenvironments_from_contours(contours, marker_segmentation_masks[i])
             marker_data = markers_data[i]
             start_expression = datetime.datetime.now()
-            data, _ = calculate_microenvironment_marker_expression_single_vessel(marker_data, contours,
-                                                                                 plot=False,
-                                                                                 expansion_coefficient=current_interval,
-                                                                                 prev_expansion_coefficient=current_interval - interval)
+
+            if i != 2:
+                data, _ = calculate_microenvironment_marker_expression_single_vessel(marker_data, contours,
+                                                                                     expression_type="mean",
+                                                                                     plot=False,
+                                                                                     pixel_expansion_amount=current_interval,
+                                                                                     prev_pixel_expansion_amount=current_interval - interval)
+            else:
+                data, _ = calculate_microenvironment_marker_expression_single_vessel(marker_data, contours,
+                                                                                     expression_type="mean",
+                                                                                     plot=False,
+                                                                                     pixel_expansion_amount=current_interval,
+                                                                                     prev_pixel_expansion_amount=current_interval - interval,
+                                                                                     expansion_image=expansion_image)
+
             end_expression = datetime.datetime.now()
 
             print("Finished calculating expression %s in %s" % (str(i), end_expression - start_expression))
+            print(
+                "Current interval %s, previous interval %s" % (str(current_interval), str(current_interval - interval)))
 
             current_expansion_data.append(data)
 
         expansion_data.append(current_expansion_data)
 
         current_interval += interval
+
+    cv.imshow("ASD", expansion_image)
+    cv.waitKey(0)
 
     brain_regions = [(1, 16), (17, 32), (33, 48)]
 
@@ -97,15 +114,24 @@ def pixel_expansion_plots(n_expansions=10, interval=0.05):
         "Astrocytes": "m",
         "Synapse": "y",
         "Oligodendrocytes": "k",
-        "Neurons": "w"
+        "Neurons": "#ffbb33"
     }
 
+    region_names = [
+        "MFG",
+        "HIP",
+        "CAUD"
+    ]
+
     # Change in Marker Expression w.r.t pixel expansion per brain region
-    for region in brain_regions:
+    for idx, region in enumerate(brain_regions):
+        for key in marker_clusters.keys():
+            plt.plot([], [], color=colors[key], label=key)
+
         x = np.arange(n_expansions)
         for marker, marker_name in enumerate(markers_names):
             y = []
-
+            color = None
             for key in marker_clusters.keys():
                 if marker_name in marker_clusters[key]:
                     color = colors[key]
@@ -120,16 +146,24 @@ def pixel_expansion_plots(n_expansions=10, interval=0.05):
                 average_expression = sum(current) / len(current)
                 y.append(average_expression)
             plt.plot(x, y, color=color)
-        plt.savefig("results/region_%s.png" % str(region[0]))
+        plt.xlabel("Pixel Expansion #")
+        plt.ylabel("Mean Pixel Expression")
+        plt.title("Brain Region - %s" % str(region_names[idx]))
+        plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+        plt.savefig("results/region_%s.png" % str(region_names[idx]), bbox_inches='tight')
         plt.clf()
 
     # Change in Marker Expression w.r.t pixel expansion per point
     for point in range(n_points):
-        print("Point %s" % str(point+1))
+        for key in marker_clusters.keys():
+            plt.plot([], [], color=colors[key], label=key)
+
+        print("Point %s" % str(point + 1))
         x = np.arange(n_expansions)
 
         for marker, marker_name in enumerate(markers_names):
             y = []
+            color = None
 
             for key in marker_clusters.keys():
                 if marker_name in marker_clusters[key]:
@@ -146,7 +180,11 @@ def pixel_expansion_plots(n_expansions=10, interval=0.05):
                 average_expression = sum(current) / len(current)
                 y.append(average_expression)
             plt.plot(x, y, color=color)
-        plt.savefig("results/point_%s.png" % str(point))
+        plt.xlabel("Pixel Expansion #")
+        plt.ylabel("Mean Pixel Expression")
+        plt.title("Point %s" % str(point + 1))
+        plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+        plt.savefig("results/point_%s.png" % str(point + 1), bbox_inches='tight')
         plt.clf()
 
 
@@ -181,13 +219,15 @@ def extract_vessel_heterogeneity(n=56,
         # vn.visualize_filters()
 
         encoder_output = []
+        marker_expressions = []
 
         for i in range(len(contour_data_multiple_points)):
             for x in range(len(contour_data_multiple_points[i])):
                 contours = [contour_data_multiple_points[i][x]]
                 marker_data = markers_data[i]
-                _, expression_images = calculate_microenvironment_marker_expression_single_vessel(marker_data, contours,
-                                                                                                  plot=False)
+                expression, expression_images = calculate_microenvironment_marker_expression_single_vessel(marker_data,
+                                                                                                           contours,
+                                                                                                           plot=False)
 
                 expression_image = preprocess_input(expression_images, n)
                 expression_image = torch.unsqueeze(expression_image, 0)
@@ -211,6 +251,8 @@ def extract_vessel_heterogeneity(n=56,
 
                 output = output.cpu().data.numpy()
                 encoder_output.append(output.reshape(2048))
+                marker_expressions.append(expression[0])
+
     elif feature_extraction_method == "sift":
         flat_list = [item for sublist in contour_images_multiple_points for item in sublist]
 
@@ -222,7 +264,7 @@ def extract_vessel_heterogeneity(n=56,
         cnn = CNNFeatureGen()
         encoder_output = cnn.generate(flat_list)
 
-    km = ClusteringHelper(encoder_output, n_clusters=7, metric="cosine", method="kmeans")
+    km = ClusteringHelper(encoder_output, n_clusters=10, metric="cosine", method="kmeans")
     indices, frequency = km.fit_predict()
 
     print(len(indices))
@@ -231,6 +273,22 @@ def extract_vessel_heterogeneity(n=56,
     values = set(map(lambda y: y[1], indices))
 
     grouped_indices = [[y[0] for y in indices if y[1] == x] for x in values]
+
+    marker_expressions_grouped = []
+
+    for i, cluster in enumerate(grouped_indices):
+        temp = []
+        for idx in cluster:
+            temp.append(marker_expressions[idx])
+
+        average = np.mean(temp, axis=0)
+
+        marker_expressions_grouped.append(average)
+
+    marker_expressions_grouped = np.array(marker_expressions_grouped)
+    print(marker_expressions_grouped.shape)
+
+    km.plot(x=marker_expressions_grouped, labels=markers_names)
 
     k = 10
 

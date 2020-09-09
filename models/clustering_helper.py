@@ -2,10 +2,13 @@ import os
 import pickle
 from collections import Counter
 
+import matplotlib
 from sklearn.cluster import KMeans, DBSCAN, OPTICS
 from scipy.cluster.hierarchy import linkage, leaves_list
 import matplotlib.pyplot as plt
 from matplotlib.pyplot import figure
+import seaborn as sns
+import numpy as np
 
 '''
 Author: Aswin Visva
@@ -136,4 +139,27 @@ class ClusteringHelper:
         plt.ylabel('Distortion')
         plt.title('The Elbow Method showing the optimal k')
 
+        plt.show()
+
+    def plot(self, x=None, labels=None):
+
+        norm = matplotlib.colors.Normalize(-1, 1)
+        colors = [[norm(-1.0), "midnightblue"],
+                  [norm(-0.5), "seagreen"],
+                  [norm(0.5), "mediumspringgreen"],
+                  [norm(1.0), "yellow"]]
+
+        cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", colors)
+
+        if x is None:
+            ax = sns.clustermap(self.model.cluster_centers_,
+                                linewidth=0.5,
+                                cmap=cmap
+                                )
+        else:
+            ax = sns.clustermap(x,
+                                linewidth=0.5,
+                                cmap=cmap,
+                                xticklabels=labels
+                                )
         plt.show()

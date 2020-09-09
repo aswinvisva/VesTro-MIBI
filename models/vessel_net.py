@@ -1,6 +1,7 @@
 import datetime
 import random
 
+import matplotlib
 import numpy as np
 import torch
 import torch.nn as nn
@@ -9,6 +10,7 @@ from torchvision.utils import save_image
 from torch.utils.tensorboard import SummaryWriter
 import matplotlib.pyplot as plt
 from torchvision import utils
+import seaborn as sns
 
 
 def vis_tensor(tensor, ch=0, allkernels=False, nrow=8, padding=1):
