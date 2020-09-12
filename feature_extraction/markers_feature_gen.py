@@ -45,6 +45,19 @@ def dilate_mask(mask, kernel_size=10):
     return dilated
 
 
+def expand_vessel_region_distance_transform(cnt, shape, pixel_expansion=5):
+    inverted = np.ones(shape, np.uint8)
+    cv.drawContours(inverted, [cnt], -1, (0, 0, 0), cv.FILLED)
+
+    dist = cv.distanceTransform(inverted, cv.DIST_L2, cv.DIST_MASK_PRECISE)
+    ring = cv.inRange(dist, 0, pixel_expansion)  # take all pixels at distance between 9.5px and 10.5px
+    im2, contours, hierarchy = cv.findContours(ring, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
+
+    contours.sort(key=lambda x: cv.contourArea(x), reverse=True)
+
+    return contours[0]
+
+
 def expand_vessel_region(cnt, pixel_expansion=5):
     M = cv.moments(cnt)
     cx = int(M['m10'] / M['m00'])
@@ -74,7 +87,7 @@ def expand_vessel_region(cnt, pixel_expansion=5):
 
 
 def calculate_microenvironment_marker_expression_single_vessel(markers_data, contours,
-                                                               scaling_factor=15,
+                                                               scaling_factor=10,
                                                                pixel_expansion_amount=5,
                                                                prev_pixel_expansion_amount=0,
                                                                expression_type="area_normalized_counts",
@@ -101,14 +114,16 @@ def calculate_microenvironment_marker_expression_single_vessel(markers_data, con
     contour_mean_values = []
     expression_images = []
 
+    img_shape = markers_data[0].shape
+
     for idx, cnt in enumerate(contours):
         data_vec = []
         expression_image = []
 
-        expanded_cnt = expand_vessel_region(cnt, pixel_expansion=pixel_expansion_amount)
+        expanded_cnt = expand_vessel_region_distance_transform(cnt, img_shape, pixel_expansion=pixel_expansion_amount)
 
         if prev_pixel_expansion_amount != 0:
-            cnt = expand_vessel_region(cnt, pixel_expansion=prev_pixel_expansion_amount)
+            cnt = expand_vessel_region_distance_transform(cnt, img_shape, pixel_expansion=prev_pixel_expansion_amount)
 
         for marker in markers_data:
             x, y, w, h = cv.boundingRect(cnt)
@@ -198,7 +213,7 @@ def calculate_microenvironment_marker_expression_single_vessel(markers_data, con
 
 
 def calculate_marker_composition_single_vessel(markers_data, contours,
-                                               scaling_factor=15,
+                                               scaling_factor=10,
                                                expression_type="area_normalized_counts",
                                                transformation="log",
                                                normalization="percentile",
@@ -229,7 +244,9 @@ def calculate_marker_composition_single_vessel(markers_data, contours,
 
                 mask = np.zeros(marker.shape, np.uint8)
                 cv.drawContours(mask, [cnt], -1, (255, 255, 255), 1)
-                marker_data = cv.mean(marker, mask=mask)
+                result = cv.bitwise_and(marker, mask)
+
+                marker_data = cv.mean(result)[0]
 
             elif expression_type == "area_normalized_counts":
 
