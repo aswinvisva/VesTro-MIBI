@@ -16,6 +16,55 @@ Email: aavisva@uwaterloo.ca
 '''
 
 
+def overlapping_regions(contours, img_shape, expansion_amount=10):
+    visited = np.zeros((len(contours), len(contours)))
+
+    for idx1 in range(len(contours)):
+        for idx2 in range(len(contours)):
+            if idx1 == idx2:
+                continue
+
+            if visited[idx1][idx2] == 1:
+                continue
+
+            blank_img = np.zeros(img_shape)
+
+            cnt1 = expand_vessel_region(contours[idx1], expansion_amount)
+            cnt2 = expand_vessel_region(contours[idx2], expansion_amount)
+
+            img1 = cv.drawContours(blank_img.copy(), [cnt1], -1, (255, 255, 255), -1)
+            img2 = cv.drawContours(blank_img.copy(), [cnt2], -1, (255, 255, 255), -1)
+
+            intersection = np.logical_and(img1, img2).astype(np.uint8)
+
+            visited[idx1][idx2] = 1
+            visited[idx2][idx1] = 1
+
+            if intersection.any():
+                boundary = np.logical_xor(img1, img2).astype(np.uint8)
+
+                print("Contour area 1 %s" % cv.contourArea(contours[idx1]))
+                print("Contour area 2 %s" % cv.contourArea(contours[idx2]))
+
+                dist = cv.distanceTransform(intersection, cv.DIST_L2, cv.DIST_MASK_PRECISE)
+                plt.imshow(dist)
+                plt.colorbar()
+                plt.show()                
+                cv.imshow("ASD", intersection*255)
+                cv.imshow("ASD1", boundary*255)
+                cv.imshow("1", img1)
+                cv.imshow("2", img2)
+
+                cv.waitKey(0)
+                im2, c, hierarchy = cv.findContours(intersection, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
+                print("Intersection!")
+
+                if len(c) > 1:
+                    print("Multiple intersections!")
+            else:
+                continue
+
+
 def arcsinh(data, cofactor=5):
     """Inverse hyperbolic sine transform
 
@@ -87,14 +136,15 @@ def expand_vessel_region(cnt, pixel_expansion=5):
 
 
 def calculate_microenvironment_marker_expression_single_vessel(markers_data, contours,
-                                                               scaling_factor=10,
+                                                               scaling_factor=100,
                                                                pixel_expansion_amount=5,
                                                                prev_pixel_expansion_amount=0,
                                                                expression_type="area_normalized_counts",
                                                                transformation="arcsinh",
                                                                normalization="percentile",
                                                                plot=True,
-                                                               expansion_image=None):
+                                                               expansion_image=None,
+                                                               n_markers=34):
     '''
     Get normalized expression of markers in given cells
 
@@ -115,6 +165,7 @@ def calculate_microenvironment_marker_expression_single_vessel(markers_data, con
     expression_images = []
 
     img_shape = markers_data[0].shape
+    overlapping_regions(contours, img_shape, expansion_amount=pixel_expansion_amount)
 
     for idx, cnt in enumerate(contours):
         data_vec = []
@@ -191,8 +242,11 @@ def calculate_microenvironment_marker_expression_single_vessel(markers_data, con
         contour_mean_values = arcsinh(np.array(contour_mean_values))
 
     if normalization == "percentile":
-        # Scale data by the 99th percentile
-        contour_mean_values = np.array(contour_mean_values) / np.percentile(np.array(contour_mean_values), 99)
+        try:
+            contour_mean_values = np.array(contour_mean_values) / np.percentile(np.array(contour_mean_values), 99)
+        except IndexError:
+            print("Caught Exception!", len(contour_mean_values), n_markers)
+            contour_mean_values = np.zeros((1, n_markers))
     elif normalization == "normalizer":
         # Scale data by Sklearn normalizer
         sc = Normalizer().fit(np.array(contour_mean_values))
@@ -207,20 +261,26 @@ def calculate_microenvironment_marker_expression_single_vessel(markers_data, con
         plt.title('PDF of Marker Expression')
         plt.show()
 
-    expression_images = np.array(expression_images)
+    # expression_images = np.asarray(expression_images)
 
     return contour_mean_values, expression_images
 
 
 def calculate_marker_composition_single_vessel(markers_data, contours,
-                                               scaling_factor=10,
+                                               scaling_factor=100,
                                                expression_type="area_normalized_counts",
                                                transformation="log",
                                                normalization="percentile",
-                                               plot=True):
+                                               plot=True,
+                                               n_markers=34,
+                                               vessel_id_plot=True,
+                                               vessel_id_label="Point1"):
     '''
     Get normalized expression of markers in given cells
 
+    :param vessel_id_label:
+    :param n_markers:
+    :param vessel_id_plot:
     :param plot:
     :param scaling_factor: Scaling factor by which to scale the data
     :param normalization: Method to scale data
@@ -233,8 +293,18 @@ def calculate_marker_composition_single_vessel(markers_data, contours,
 
     contour_mean_values = []
 
+    if vessel_id_plot:
+        vessel_id_img = np.zeros(markers_data[0].shape)
+
     for idx, cnt in enumerate(contours):
         data_vec = []
+
+        if vessel_id_plot:
+            M = cv.moments(cnt)
+            cX = int(M["m10"] / M["m00"])
+            cY = int(M["m01"] / M["m00"])
+            cv.drawContours(vessel_id_img, [cnt], -1, (255, 255, 255), 1)
+            cv.putText(vessel_id_img, str(idx), (cX, cY), cv.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
 
         for marker in markers_data:
             x, y, w, h = cv.boundingRect(cnt)
@@ -281,7 +351,11 @@ def calculate_marker_composition_single_vessel(markers_data, contours,
 
     if normalization == "percentile":
         # Scale data by the 99th percentile
-        contour_mean_values = np.array(contour_mean_values) / np.percentile(np.array(contour_mean_values), 99)
+        try:
+            contour_mean_values = np.array(contour_mean_values) / np.percentile(np.array(contour_mean_values), 99)
+        except IndexError:
+            print("Caught Exception!", len(contour_mean_values), n_markers)
+            contour_mean_values = np.zeros((1, n_markers))
     elif normalization == "normalizer":
         # Scale data by Sklearn normalizer
         sc = Normalizer().fit(np.array(contour_mean_values))
@@ -295,5 +369,8 @@ def calculate_marker_composition_single_vessel(markers_data, contours,
         plt.ylabel('Probability')
         plt.title('PDF of Marker Expression')
         plt.show()
+
+    if vessel_id_plot:
+        cv.imwrite("vessel_id_plot_%s.png" % vessel_id_label, vessel_id_img)
 
     return contour_mean_values

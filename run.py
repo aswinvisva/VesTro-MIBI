@@ -39,69 +39,281 @@ Email: aavisva@uwaterloo.ca
 '''
 
 
-def pixel_expansion_plots(n_expansions=10, interval=5):
-    n_expansions += 1  # Intuitively, 5 expansions means 5 expansions excluding the original composition of the
-    # vessel, but we mean 5 expansions including the original composition - thus 4 expansions. Therefore lets add 1
-    # so we are on the same page.
+def mkdir_p(mypath):
+    '''Creates a directory. equivalent to using mkdir -p on the command line'''
 
-    marker_segmentation_masks, markers_data, markers_names = get_all_point_data()
+    from errno import EEXIST
+    from os import makedirs, path
 
-    contour_data_multiple_points = []
-    contour_images_multiple_points = []
+    try:
+        makedirs(mypath)
+    except OSError as exc:  # Python >2.5
+        if exc.errno == EEXIST and path.isdir(mypath):
+            pass
+        else:
+            raise
+
+
+def vessel_region_plots(n_expansions, interval, markers_names, expansion_data):
+    marker_clusters = {
+        "Nucleus": ["HH3"],
+        "Microglia": ["CD45", "HLADR", "Iba1"],
+        "Disease": ["CD47", "ABeta42", "polyubiK48", "PHFTau", "8OHGuanosine"],
+        "Vessels": ["SMA", "CD31", "CollagenIV", "TrkA", "GLUT1", "Desmin", "vWF", "CD105"],
+        "Astrocytes": ["S100b", "GlnSyn", "Cx30", "EAAT2", "CD44", "GFAP", "Cx43"],
+        "Synapse": ["CD56", "Synaptophysin", "VAMP2", "PSD95"],
+        "Oligodendrocytes": ["MOG", "MAG"],
+        "Neurons": ["Calretinin", "Parvalbumin", "MAP2", "Gephyrin"]
+    }
+
+    colors = {
+        "Nucleus": "b",
+        "Microglia": "g",
+        "Disease": "r",
+        "Vessels": "c",
+        "Astrocytes": "m",
+        "Synapse": "y",
+        "Oligodendrocytes": "k",
+        "Neurons": "#ffbb33"
+    }
+
+    points = [1, 7, 26, 30, 43, 48]
+
+    pixel_expansions = np.array(range(0, n_expansions)) * interval
+    pixel_expansions = pixel_expansions.tolist()
+
+    # Change in Marker Expression w.r.t pixel expansion per vessel (All bins)
+    for point in points:
+        output_dir = "results/point_%s_vessels_%s_interval_%s_expansions_allbins" % (
+        str(point), str(interval), str(n_expansions - 1))
+        mkdir_p(output_dir)
+
+        n_vessels = len(expansion_data[0][point - 1])
+
+        for vessel in range(n_vessels):
+            for key in marker_clusters.keys():
+                plt.plot([], [], color=colors[key], label=key)
+
+            for marker, marker_name in enumerate(markers_names):
+                y = []
+                color = None
+
+                for key in marker_clusters.keys():
+                    if marker_name in marker_clusters[key]:
+                        color = colors[key]
+                        break
+
+                for i in range(n_expansions):
+                    vessel_data = expansion_data[i][point - 1][vessel]
+                    y.append(vessel_data[marker])
+
+                plt.plot(pixel_expansions, y, color=color)
+            plt.xticks(pixel_expansions, fontsize=7, rotation=90)
+            plt.xlabel("# of Pixels Expanded")
+            plt.ylabel("Mean Pixel Expression")
+            plt.title("Vessel ID: %s, Point %s All Bins" % (str(vessel), str(point)))
+            plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+            plt.savefig(output_dir + '/vessel_%s_allbins.png' % str(vessel), bbox_inches='tight')
+            plt.clf()
+
+    # Change in Marker Expression w.r.t pixel expansion per vessel (Average bins)
+    for point in points:
+        output_dir = "results/point_%s_vessels_%s_interval_%s_expansions_averagebins" % (
+        str(point), str(interval), str(n_expansions - 1))
+        mkdir_p(output_dir)
+
+        n_vessels = len(expansion_data[0][point - 1])
+
+        for vessel in range(n_vessels):
+            for key in marker_clusters.keys():
+                plt.plot([], [], color=colors[key], label=key)
+
+            for key in marker_clusters.keys():
+                color = colors[key]
+                y_tot = []
+                for marker, marker_name in enumerate(markers_names):
+                    if marker_name not in marker_clusters[key]:
+                        continue
+
+                    y = []
+
+                    for i in range(n_expansions):
+                        vessel_data = expansion_data[i][point - 1][vessel]
+                        y.append(vessel_data[marker])
+
+                    y_tot.append(y)
+
+                plt.plot(pixel_expansions, np.mean(np.array(y_tot), axis=0), color=color)
+            plt.xticks(pixel_expansions, fontsize=7, rotation=90)
+            plt.xlabel("# of Pixels Expanded")
+            plt.ylabel("Mean Pixel Expression")
+            plt.title("Vessel ID: %s, Point %s Average Bins" % (str(vessel), str(point)))
+            plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+            plt.savefig(output_dir + '/vessel_%s_averagebins.png' % str(vessel), bbox_inches='tight')
+            plt.clf()
+
+    # Change in Marker Expression w.r.t pixel expansion per vessel (One plot per bin)
+    for point in points:
+        output_dir = "results/point_%s_vessels_%s_interval_%s_expansions_perbin" % (
+        str(point), str(interval), str(n_expansions - 1))
+        mkdir_p(output_dir)
+
+        n_vessels = len(expansion_data[0][point - 1])
+
+        for vessel in range(n_vessels):
+            for key in marker_clusters.keys():
+
+                for marker, marker_name in enumerate(markers_names):
+                    if marker_name not in marker_clusters[key]:
+                        continue
+
+                    y = []
+
+                    for i in range(n_expansions):
+                        vessel_data = expansion_data[i][point - 1][vessel]
+                        y.append(vessel_data[marker])
+
+                    plt.plot(pixel_expansions, y, label=marker_name)
+                plt.xticks(pixel_expansions, fontsize=7, rotation=90)
+                plt.xlabel("# of Pixels Expanded")
+                plt.ylabel("Mean Pixel Expression")
+                plt.title("Vessel ID: %s, Point %s %s" % (str(vessel), str(point), key))
+                plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+                plt.savefig(output_dir + '/vessel_%s_%s.png' % (str(vessel), key), bbox_inches='tight')
+                plt.clf()
+
+
+def point_region_plots(n_expansions, interval, markers_names, expansion_data):
     n_points = 48
 
-    for segmentation_mask in marker_segmentation_masks:
-        contour_images, contours = extract_cell_contours(segmentation_mask, show=False)
-        contour_data_multiple_points.append(contours)
-        contour_images_multiple_points.append(contour_images)
+    marker_clusters = {
+        "Nucleus": ["HH3"],
+        "Microglia": ["CD45", "HLADR", "Iba1"],
+        "Disease": ["CD47", "ABeta42", "polyubiK48", "PHFTau", "8OHGuanosine"],
+        "Vessels": ["SMA", "CD31", "CollagenIV", "TrkA", "GLUT1", "Desmin", "vWF", "CD105"],
+        "Astrocytes": ["S100b", "GlnSyn", "Cx30", "EAAT2", "CD44", "GFAP", "Cx43"],
+        "Synapse": ["CD56", "Synaptophysin", "VAMP2", "PSD95"],
+        "Oligodendrocytes": ["MOG", "MAG"],
+        "Neurons": ["Calretinin", "Parvalbumin", "MAP2", "Gephyrin"]
+    }
 
-    expansion_data = []
-    current_interval = interval
-    expansion_image = np.zeros(markers_data[0][0].shape, np.uint8)
+    colors = {
+        "Nucleus": "b",
+        "Microglia": "g",
+        "Disease": "r",
+        "Vessels": "c",
+        "Astrocytes": "m",
+        "Synapse": "y",
+        "Oligodendrocytes": "k",
+        "Neurons": "#ffbb33"
+    }
 
-    for x in range(n_expansions):
-        current_expansion_data = []
+    pixel_expansions = np.array(range(0, n_expansions)) * interval
+    pixel_expansions = pixel_expansions.tolist()
 
-        for i in range(len(contour_data_multiple_points)):
-            contours = contour_data_multiple_points[i]
-            # construct_vessel_relative_area_microenvironments_from_contours(contours, marker_segmentation_masks[i])
-            marker_data = markers_data[i]
-            start_expression = datetime.datetime.now()
+    # Points Plots
 
-            if x == 0:
-                data = calculate_marker_composition_single_vessel(marker_data, contours,
-                                                                  expression_type="mean",
-                                                                  plot=False)
-            else:
-                if i != 2:
-                    data, _ = calculate_microenvironment_marker_expression_single_vessel(marker_data, contours,
-                                                                                         expression_type="mean",
-                                                                                         plot=False,
-                                                                                         pixel_expansion_amount=current_interval,
-                                                                                         prev_pixel_expansion_amount=current_interval - interval)
-                else:
-                    data, _ = calculate_microenvironment_marker_expression_single_vessel(marker_data, contours,
-                                                                                         expression_type="mean",
-                                                                                         plot=False,
-                                                                                         pixel_expansion_amount=current_interval,
-                                                                                         prev_pixel_expansion_amount=current_interval - interval,
-                                                                                         expansion_image=expansion_image)
+    output_dir = "results/points_%s_interval_%s_expansions" % (str(interval), str(n_expansions - 1))
+    mkdir_p(output_dir)
 
-            end_expression = datetime.datetime.now()
+    # Change in Marker Expression w.r.t pixel expansion per point (All bins)
+    for point in range(n_points):
+        for key in marker_clusters.keys():
+            plt.plot([], [], color=colors[key], label=key)
 
-            print("Finished calculating expression %s in %s" % (str(i), end_expression - start_expression))
-            print(
-                "Current interval %s, previous interval %s" % (str(current_interval), str(current_interval - interval)))
+        for marker, marker_name in enumerate(markers_names):
+            y = []
+            color = None
 
-            current_expansion_data.append(data)
+            for key in marker_clusters.keys():
+                if marker_name in marker_clusters[key]:
+                    color = colors[key]
+                    break
 
-        expansion_data.append(current_expansion_data)
+            for i in range(n_expansions):
+                current = []
+                point_data = expansion_data[i][point]
 
-        current_interval += interval
+                for vessel in point_data:
+                    current.append(vessel[marker])
 
-    cv.imshow("Expansion Rings", expansion_image)
-    cv.waitKey(0)
+                average_expression = sum(current) / len(current)
+                y.append(average_expression)
+            plt.plot(pixel_expansions, y, color=color)
+        plt.xticks(pixel_expansions, fontsize=7, rotation=90)
+        plt.xlabel("# of Pixels Expanded")
+        plt.ylabel("Mean Pixel Expression")
+        plt.title("Point %s" % str(point + 1))
+        plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+        plt.savefig(output_dir + '/point_%s_allbins.png' % str(point + 1), bbox_inches='tight')
+        plt.clf()
 
+    # Change in Marker Expression w.r.t pixel expansion per point (Average bins)
+    for point in range(n_points):
+        for key in marker_clusters.keys():
+            plt.plot([], [], color=colors[key], label=key)
+
+        for key in marker_clusters.keys():
+            color = colors[key]
+            y_tot = []
+            for marker, marker_name in enumerate(markers_names):
+                if marker_name not in marker_clusters[key]:
+                    continue
+
+                y = []
+
+                for i in range(n_expansions):
+                    current = []
+                    point_data = expansion_data[i][point]
+
+                    for vessel in point_data:
+                        current.append(vessel[marker])
+
+                    average_expression = sum(current) / len(current)
+                    y.append(average_expression)
+                y_tot.append(y)
+
+            plt.plot(pixel_expansions, np.mean(np.array(y_tot), axis=0), color=color)
+        plt.xticks(pixel_expansions, fontsize=7, rotation=90)
+        plt.xlabel("# of Pixels Expanded")
+        plt.ylabel("Mean Pixel Expression")
+        plt.title("Point %s" % str(point + 1))
+        plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+        plt.savefig(output_dir + '/point_%s_averagebins.png' % str(point + 1), bbox_inches='tight')
+        plt.clf()
+
+    # Change in Marker Expression w.r.t pixel expansion per point (One bin per plot)
+    for point in range(n_points):
+
+        for key in marker_clusters.keys():
+
+            for marker, marker_name in enumerate(markers_names):
+                if marker_name not in marker_clusters[key]:
+                    continue
+
+                y = []
+
+                for i in range(n_expansions):
+                    current = []
+                    point_data = expansion_data[i][point]
+
+                    for vessel in point_data:
+                        current.append(vessel[marker])
+
+                    average_expression = sum(current) / len(current)
+                    y.append(average_expression)
+
+                plt.plot(pixel_expansions, y, label=marker_name)
+            plt.xticks(pixel_expansions, fontsize=7, rotation=90)
+            plt.xlabel("# of Pixels Expanded")
+            plt.ylabel("Mean Pixel Expression")
+            plt.title("Point %s" % str(point + 1))
+            plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+            plt.savefig(output_dir + '/point_%s_%s.png' % (str(point + 1), str(key)), bbox_inches='tight')
+            plt.clf()
+
+
+def brain_region_plots(n_expansions, interval, markers_names, expansion_data):
     brain_regions = [(1, 16), (17, 32), (33, 48)]
 
     marker_clusters = {
@@ -109,10 +321,10 @@ def pixel_expansion_plots(n_expansions=10, interval=5):
         "Microglia": ["CD45", "HLADR", "Iba1"],
         "Disease": ["CD47", "ABeta42", "polyubiK48", "PHFTau", "8OHGuanosine"],
         "Vessels": ["SMA", "CD31", "CollagenIV", "TrkA", "GLUT1", "Desmin", "vWF", "CD105"],
-        "Astrocytes": ["S100beta", "GluSyn", "Cx30", "EAAT2", "CD44", "GFAP", "Cx43"],
+        "Astrocytes": ["S100b", "GlnSyn", "Cx30", "EAAT2", "CD44", "GFAP", "Cx43"],
         "Synapse": ["CD56", "Synaptophysin", "VAMP2", "PSD95"],
         "Oligodendrocytes": ["MOG", "MAG"],
-        "Neurons": ["Calretinin", "Parvalbumin", "MAP2", "Gephrin"]
+        "Neurons": ["Calretinin", "Parvalbumin", "MAP2", "Gephyrin"]
     }
 
     colors = {
@@ -134,6 +346,9 @@ def pixel_expansion_plots(n_expansions=10, interval=5):
 
     pixel_expansions = np.array(range(0, n_expansions)) * interval
     pixel_expansions = pixel_expansions.tolist()
+
+    output_dir = "results/brain_regions_%s_interval_%s_expansions" % (str(interval), str(n_expansions - 1))
+    mkdir_p(output_dir)
 
     # Brain Region Plots
 
@@ -161,20 +376,18 @@ def pixel_expansion_plots(n_expansions=10, interval=5):
                 y.append(average_expression)
             plt.plot(pixel_expansions, y, color=color)
 
-        plt.xticks(pixel_expansions)
+        plt.xticks(pixel_expansions, fontsize=7, rotation=90)
         plt.xlabel("# of Pixels Expanded")
         plt.ylabel("Mean Pixel Expression")
-        plt.title("Brain Region - %s" % str(region_names[idx]))
+        plt.title("Brain Region - %s - All Bins" % str(region_names[idx]))
         plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
-        plt.savefig("results/region_%s_allbins.png" % str(region_names[idx]), bbox_inches='tight')
+        plt.savefig(output_dir + '/region_%s_allbins.png' % str(region_names[idx]), bbox_inches='tight')
         plt.clf()
 
     # Change in Marker Expression w.r.t pixel expansion per brain region (Bins averaged into one line)
     for idx, region in enumerate(brain_regions):
         for key in marker_clusters.keys():
             plt.plot([], [], color=colors[key], label=key)
-
-        x = np.arange(n_expansions)
 
         for key in marker_clusters.keys():
             color = colors[key]
@@ -196,12 +409,12 @@ def pixel_expansion_plots(n_expansions=10, interval=5):
                 y_tot.append(y)
 
             plt.plot(pixel_expansions, np.mean(np.array(y_tot), axis=0), color=color)
-        plt.xticks(pixel_expansions)
+        plt.xticks(pixel_expansions, fontsize=7, rotation=90)
         plt.xlabel("# of Pixels Expanded")
         plt.ylabel("Mean Pixel Expression")
-        plt.title("Brain Region - %s" % str(region_names[idx]))
+        plt.title("Brain Region - %s - Average Bins" % str(region_names[idx]))
         plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
-        plt.savefig("results/region_%s_averagebins.png" % str(region_names[idx]), bbox_inches='tight')
+        plt.savefig(output_dir + '/region_%s_averagebins.png' % str(region_names[idx]), bbox_inches='tight')
         plt.clf()
 
     # Change in Marker Expression w.r.t pixel expansion per brain region (One bin per plot)
@@ -225,50 +438,89 @@ def pixel_expansion_plots(n_expansions=10, interval=5):
                     y.append(average_expression)
 
                 plt.plot(pixel_expansions, y, label=marker_name)
-            plt.xticks(pixel_expansions)
+            plt.xticks(pixel_expansions, fontsize=7, rotation=90)
             plt.xlabel("# of Pixels Expanded")
             plt.ylabel("Mean Pixel Expression")
-            plt.title("Brain Region - %s" % str(region_names[idx]))
+            plt.title("Brain Region - %s - %s" % (str(region_names[idx]), str(key)))
             plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
-            plt.savefig("results/region_%s_%s.png" % (str(region_names[idx]), str(key)), bbox_inches='tight')
+            plt.savefig(output_dir + '/region_%s_%s.png' % (str(region_names[idx]), str(key)), bbox_inches='tight')
             plt.clf()
 
-    # Points Plots
 
-    # Change in Marker Expression w.r.t pixel expansion per point
-    for point in range(n_points):
-        for key in marker_clusters.keys():
-            plt.plot([], [], color=colors[key], label=key)
+def pixel_expansion_plots(n_expansions=20, interval=10, mask="allvessels"):
+    n_expansions += 1  # Intuitively, 5 expansions means 5 expansions excluding the original composition of the
+    # vessel, but we mean 5 expansions including the original composition - thus 4 expansions. Therefore lets add 1
+    # so we are on the same page.
+    expansions = [5, 10, 15, 20]
 
-        print("Point %s" % str(point + 1))
-        x = np.arange(n_expansions)
+    marker_segmentation_masks, markers_data, markers_names = get_all_point_data(segmentation_type=mask)
 
-        for marker, marker_name in enumerate(markers_names):
-            y = []
-            color = None
+    contour_data_multiple_points = []
+    contour_images_multiple_points = []
 
-            for key in marker_clusters.keys():
-                if marker_name in marker_clusters[key]:
-                    color = colors[key]
-                    break
+    for segmentation_mask in marker_segmentation_masks:
+        contour_images, contours = extract_cell_contours(segmentation_mask, show=False)
+        contour_data_multiple_points.append(contours)
+        contour_images_multiple_points.append(contour_images)
 
-            for i in range(n_expansions):
-                current = []
-                point_data = expansion_data[i][point]
+    expansion_data = []
+    current_interval = interval
+    expansion_image = np.zeros(markers_data[0][0].shape, np.uint8)
 
-                for vessel in point_data:
-                    current.append(vessel[marker])
+    for x in range(n_expansions):
+        current_expansion_data = []
 
-                average_expression = sum(current) / len(current)
-                y.append(average_expression)
-            plt.plot(pixel_expansions, y, color=color)
-        plt.xticks(pixel_expansions)
-        plt.xlabel("# of Pixels Expanded")
-        plt.ylabel("Mean Pixel Expression")
-        plt.title("Point %s" % str(point + 1))
-        plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
-        plt.savefig("results/point_%s.png" % str(point + 1), bbox_inches='tight')
-        plt.clf()
+        for i in range(len(contour_data_multiple_points)):
+            contours = contour_data_multiple_points[i]
+            # construct_vessel_relative_area_microenvironments_from_contours(contours, marker_segmentation_masks[i])
+            marker_data = markers_data[i]
+            start_expression = datetime.datetime.now()
+
+            if x == 0:
+                data = calculate_marker_composition_single_vessel(marker_data, contours,
+                                                                  expression_type="mean",
+                                                                  plot=False,
+                                                                  vessel_id_plot=True,
+                                                                  vessel_id_label="Point_%s" % str(i+1))
+            else:
+                if i != 0:
+                    data, _ = calculate_microenvironment_marker_expression_single_vessel(marker_data, contours,
+                                                                                         expression_type="mean",
+                                                                                         plot=False,
+                                                                                         pixel_expansion_amount=current_interval,
+                                                                                         prev_pixel_expansion_amount=current_interval - interval,
+                                                                                         n_markers=len(markers_names))
+                else:
+                    data, _ = calculate_microenvironment_marker_expression_single_vessel(marker_data, contours,
+                                                                                         expression_type="mean",
+                                                                                         plot=False,
+                                                                                         pixel_expansion_amount=current_interval,
+                                                                                         prev_pixel_expansion_amount=current_interval - interval,
+                                                                                         expansion_image=expansion_image,
+                                                                                         n_markers=len(markers_names))
+
+                    if x + 1 in expansions:
+                        cv.imwrite("results/expansion_plot_%s_interval_%s_expansion.png" % (str(interval),
+                                                                                            str(x + 1)),
+                                   expansion_image)
+
+            end_expression = datetime.datetime.now()
+
+            print("Finished calculating expression %s in %s" % (str(i), end_expression - start_expression))
+            print(
+                "Current interval %s, previous interval %s" % (str(current_interval), str(current_interval - interval)))
+
+            current_expansion_data.append(data)
+
+        expansion_data.append(current_expansion_data)
+
+        current_interval += interval
+
+    for x in expansions:
+        # brain_region_plots(x + 1, interval, markers_names, expansion_data)
+        # point_region_plots(x + 1, interval, markers_names, expansion_data)
+        # vessel_region_plots(x + 1, interval, markers_names, expansion_data)
+        pass
 
 
 def extract_vessel_heterogeneity(n=56,

@@ -130,12 +130,13 @@ def plot_vessel_areas(points_contours, points_img,
 
 def extract_cell_contours(img,
                           show=False,
-                          min_contour_area=10):
+                          min_contour_area=30):
     if img.shape[2] == 3:
         imgray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
     else:
         imgray = img
 
+    imgray = cv.blur(imgray, (7, 7))
     im2, contours, hierarchy = cv.findContours(imgray, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
 
     images = []
