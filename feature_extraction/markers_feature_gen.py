@@ -1,4 +1,5 @@
 import math
+import random
 from collections import Counter
 
 import numpy as np
@@ -16,53 +17,32 @@ Email: aavisva@uwaterloo.ca
 '''
 
 
-def overlapping_regions(contours, img_shape, expansion_amount=10):
-    visited = np.zeros((len(contours), len(contours)))
+def get_assigned_regions(contours, img_shape):
+    vessel_img = np.zeros(img_shape)
+    dist_mats = []
+    sub_masks = []
+    regions = []
 
-    for idx1 in range(len(contours)):
-        for idx2 in range(len(contours)):
-            if idx1 == idx2:
-                continue
+    for i in range(len(contours)):
+        sub_mask = np.ones(img_shape, np.uint8)
+        cv.drawContours(sub_mask, contours, i, (0, 0, 0), cv.FILLED)
+        dist = cv.distanceTransform(sub_mask, cv.DIST_L2, cv.DIST_MASK_PRECISE)
+        dist_mats.append(dist)
+        sub_masks.append(sub_mask)
+        vessel_img[np.where(sub_mask == 0)] = i
 
-            if visited[idx1][idx2] == 1:
-                continue
+    for i in range(len(contours)):
+        region = np.ones(img_shape, dtype=bool)
+        for j in range(len(contours)):
+            if i != j:
+                region = region & (dist_mats[i] < dist_mats[j])
 
-            blank_img = np.zeros(img_shape)
+        regions.append(region)
 
-            cnt1 = expand_vessel_region(contours[idx1], expansion_amount)
-            cnt2 = expand_vessel_region(contours[idx2], expansion_amount)
+    del dist_mats
+    del sub_masks
 
-            img1 = cv.drawContours(blank_img.copy(), [cnt1], -1, (255, 255, 255), -1)
-            img2 = cv.drawContours(blank_img.copy(), [cnt2], -1, (255, 255, 255), -1)
-
-            intersection = np.logical_and(img1, img2).astype(np.uint8)
-
-            visited[idx1][idx2] = 1
-            visited[idx2][idx1] = 1
-
-            if intersection.any():
-                boundary = np.logical_xor(img1, img2).astype(np.uint8)
-
-                print("Contour area 1 %s" % cv.contourArea(contours[idx1]))
-                print("Contour area 2 %s" % cv.contourArea(contours[idx2]))
-
-                dist = cv.distanceTransform(intersection, cv.DIST_L2, cv.DIST_MASK_PRECISE)
-                plt.imshow(dist)
-                plt.colorbar()
-                plt.show()                
-                cv.imshow("ASD", intersection*255)
-                cv.imshow("ASD1", boundary*255)
-                cv.imshow("1", img1)
-                cv.imshow("2", img2)
-
-                cv.waitKey(0)
-                im2, c, hierarchy = cv.findContours(intersection, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
-                print("Intersection!")
-
-                if len(c) > 1:
-                    print("Multiple intersections!")
-            else:
-                continue
+    return regions
 
 
 def arcsinh(data, cofactor=5):
@@ -135,6 +115,38 @@ def expand_vessel_region(cnt, pixel_expansion=5):
     return cnt_scaled
 
 
+def expansion_ring_plots(contours,
+                         expansion_image,
+                         pixel_expansion_amount=5,
+                         prev_pixel_expansion_amount=0):
+
+    img_shape = expansion_image.shape
+    regions = get_assigned_regions(contours, img_shape)
+
+    pix_val = random.randint(50, 255)
+
+    for idx, cnt in enumerate(contours):
+        expanded_cnt = expand_vessel_region_distance_transform(cnt, img_shape, pixel_expansion=pixel_expansion_amount)
+
+        if prev_pixel_expansion_amount != 0:
+            cnt = expand_vessel_region_distance_transform(cnt, img_shape, pixel_expansion=prev_pixel_expansion_amount)
+
+        mask = np.zeros(img_shape, np.uint8)
+
+        cv.drawContours(mask, [cnt], -1, (255, 255, 255), cv.FILLED)
+
+        mask_expanded = np.zeros(img_shape, np.uint8)
+
+        cv.drawContours(mask_expanded, [expanded_cnt], -1, (255, 255, 255), cv.FILLED)
+
+        result_mask = mask_expanded - mask
+        result_mask = cv.bitwise_and(result_mask, regions[idx].astype(np.uint8))
+
+        _, temp_contours, _ = cv.findContours(regions[idx].astype(np.uint8), cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
+        cv.drawContours(expansion_image, temp_contours, 0, (255, 255, 255), 1)
+        expansion_image[np.where(result_mask != 0)] = pix_val
+
+
 def calculate_microenvironment_marker_expression_single_vessel(markers_data, contours,
                                                                scaling_factor=100,
                                                                pixel_expansion_amount=5,
@@ -148,6 +160,7 @@ def calculate_microenvironment_marker_expression_single_vessel(markers_data, con
     '''
     Get normalized expression of markers in given cells
 
+    :param n_markers:
     :param expansion_image:
     :param prev_pixel_expansion_amount:
     :param pixel_expansion_amount:
@@ -165,7 +178,10 @@ def calculate_microenvironment_marker_expression_single_vessel(markers_data, con
     expression_images = []
 
     img_shape = markers_data[0].shape
-    overlapping_regions(contours, img_shape, expansion_amount=pixel_expansion_amount)
+    regions = get_assigned_regions(contours, img_shape)
+
+    if expansion_image is not None:
+        pix_val = random.randint(50, 255)
 
     for idx, cnt in enumerate(contours):
         data_vec = []
@@ -188,6 +204,7 @@ def calculate_microenvironment_marker_expression_single_vessel(markers_data, con
             cv.drawContours(mask_expanded, [expanded_cnt], -1, (255, 255, 255), cv.FILLED)
 
             result_mask = mask_expanded - mask
+            result_mask = cv.bitwise_and(result_mask, regions[idx].astype(np.uint8))
 
             result = cv.bitwise_and(marker, result_mask)
 
@@ -197,14 +214,12 @@ def calculate_microenvironment_marker_expression_single_vessel(markers_data, con
 
             if plot:
                 if idx == 5:
+                    cv.imshow("ASD", regions[idx].astype(np.uint8) * 255)
                     cv.imshow("mask", mask)
                     cv.imshow("mask_expanded", mask_expanded)
-                    cv.imshow("result_mask", result_mask)
+                    cv.imshow("result_mask", result_mask*255)
                     cv.imshow("roi_result", roi_result * 255)
                     cv.waitKey(0)
-
-            if expansion_image is not None:
-                cv.drawContours(expansion_image, [expanded_cnt], -1, (255, 255, 255), 1)
 
             if expression_type == "mean":
                 # Get mean intensity of marker
@@ -219,6 +234,10 @@ def calculate_microenvironment_marker_expression_single_vessel(markers_data, con
                 marker_data = cv.countNonZero(result)
 
             data_vec.append(marker_data)
+            if expansion_image is not None:
+                _, temp_contours, _ = cv.findContours(regions[idx].astype(np.uint8), cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
+                cv.drawContours(expansion_image, temp_contours, 0, (255, 255, 255), 1)
+                expansion_image[np.where(result_mask != 0)] = pix_val
 
         contour_mean_values.append(np.array(data_vec))
         expression_images.append(expression_image)
@@ -292,6 +311,7 @@ def calculate_marker_composition_single_vessel(markers_data, contours,
     '''
 
     contour_mean_values = []
+    img_shape = markers_data[0].shape
 
     if vessel_id_plot:
         vessel_id_img = np.zeros(markers_data[0].shape)
