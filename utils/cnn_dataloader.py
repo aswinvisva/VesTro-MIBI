@@ -10,7 +10,7 @@ import skimage as sk
 from skimage import transform
 from skimage import util
 
-from feature_extraction.markers_feature_gen import calculate_microenvironment_marker_expression_single_vessel
+from feature_extraction.markers_feature_gen import calculate_microenvironment_marker_expression
 
 device = torch.device("cuda")
 
@@ -102,8 +102,8 @@ class VesselDataset(Dataset):
     def __getitem__(self, index):
         contours = [self.contours[index]]
         marker_data = self.data[self.contours_lookup_dict[index]]
-        data, expression_image = calculate_microenvironment_marker_expression_single_vessel(marker_data, contours,
-                                                                                            plot=False)
+        data, expression_image = calculate_microenvironment_marker_expression(marker_data, contours,
+                                                                              plot=False)
 
         expression_image = preprocess_input(expression_image, self.n)
 

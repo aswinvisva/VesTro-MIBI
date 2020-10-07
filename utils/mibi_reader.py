@@ -54,6 +54,17 @@ def read(point_name="Point15",
         "C12"
     ]
 
+    marker_clusters = {
+        "Nucleus": ["HH3"],
+        "Microglia": ["CD45", "HLADR", "Iba1"],
+        "Disease": ["CD47", "ABeta42", "polyubiK48", "PHFTau", "8OHGuanosine"],
+        "Vessels": ["SMA", "CD31", "CollagenIV", "TrkA", "GLUT1", "Desmin", "vWF", "CD105"],
+        "Astrocytes": ["S100b", "GlnSyn", "Cx30", "EAAT2", "CD44", "GFAP", "Cx43"],
+        "Synapse": ["CD56", "Synaptophysin", "VAMP2", "PSD95"],
+        "Oligodendrocytes": ["MOG", "MAG"],
+        "Neurons": ["Calretinin", "Parvalbumin", "MAP2", "Gephyrin"]
+    }
+
     image_loc = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                              'data',
                              point_name,
@@ -62,11 +73,13 @@ def read(point_name="Point15",
     marker_names = []
     marker_images = []
 
-    for root, dirs, files in os.walk(image_loc):
-        for file in files:
-            file_name = os.path.splitext(file)[0]
+    for key in marker_clusters.keys():
+        for marker in marker_clusters[key]:
+            path = os.path.join(image_loc, "%s.tif" % marker)
 
-            path = os.path.join(root, file)
+            file_name = marker
+
+            # path = os.path.join(root, file)
             img = tiff_reader.read(path, describe=plot_markers)
 
             if remove_noise:

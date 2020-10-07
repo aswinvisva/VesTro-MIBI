@@ -1,15 +1,20 @@
+import datetime
 import math
+import os
 import random
 from collections import Counter
 
 import numpy as np
 import cv2 as cv
+import sklearn
 from scipy.special import softmax
 from scipy.stats import boxcox
 from sklearn import preprocessing
-from sklearn.preprocessing import StandardScaler, Normalizer
+from sklearn.preprocessing import StandardScaler, Normalizer, normalize
 import scipy.stats as stats
 import matplotlib.pyplot as plt
+
+from utils.utils_functions import mkdir_p
 
 '''
 Author: Aswin Visva
@@ -74,51 +79,132 @@ def dilate_mask(mask, kernel_size=10):
     return dilated
 
 
-def expand_vessel_region_distance_transform(cnt, shape, pixel_expansion=5):
+def contract_vessel_region(cnt, shape, pixel_expansion=5):
+    pixel_expansion = abs(pixel_expansion)
+    zeros = np.zeros(shape, np.uint8)
+    cv.drawContours(zeros, [cnt], -1, (255, 255, 255), cv.FILLED)
+
+    dist = cv.distanceTransform(zeros, cv.DIST_L2, cv.DIST_MASK_PRECISE)
+
+    ring = cv.inRange(dist, 0, pixel_expansion)  # take all pixels at distance between 0 px and pixel_expansion px
+    ring = (ring / 255).astype(np.uint8)
+
+    return ring
+
+
+def expand_vessel_region(cnt, shape, pixel_expansion=5):
     inverted = np.ones(shape, np.uint8)
     cv.drawContours(inverted, [cnt], -1, (0, 0, 0), cv.FILLED)
 
     dist = cv.distanceTransform(inverted, cv.DIST_L2, cv.DIST_MASK_PRECISE)
-    ring = cv.inRange(dist, 0, pixel_expansion)  # take all pixels at distance between 9.5px and 10.5px
-    im2, contours, hierarchy = cv.findContours(ring, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
+    ring = cv.inRange(dist, 0, pixel_expansion)  # take all pixels at distance between 0 px and pixel_expansion px
+    ring = (ring / 255).astype(np.uint8)
 
-    contours.sort(key=lambda x: cv.contourArea(x), reverse=True)
-
-    return contours[0]
+    return ring
 
 
-def expand_vessel_region(cnt, pixel_expansion=5):
-    M = cv.moments(cnt)
-    cx = int(M['m10'] / M['m00'])
-    cy = int(M['m01'] / M['m00'])
+def normalize_expression_data(expression_data,
+                              transformation="arcsinh",
+                              normalization="percentile",
+                              scaling_factor=100,
+                              n_markers=34):
+    """
+    Normalize expression vectors
 
-    cnt_norm = cnt - [cx, cy]
+    :param expression_data:
+    :param transformation:
+    :param normalization:
+    :param scaling_factor:
+    :param n_markers:
+    :return:
+    """
 
-    left = tuple(cnt_norm[cnt_norm[:, :, 0].argmin()][0])
-    right = tuple(cnt_norm[cnt_norm[:, :, 0].argmax()][0])
-    top = tuple(cnt_norm[cnt_norm[:, :, 1].argmin()][0])
-    bottom = tuple(cnt_norm[cnt_norm[:, :, 1].argmax()][0])
+    if scaling_factor > 0:
+        expression_data = np.array(expression_data) * scaling_factor
 
-    origin = np.array([0, 0])
+    if transformation == "quantiletransform":
+        quantile_transformer = preprocessing.QuantileTransformer(output_distribution='normal', random_state=0,
+                                                                 n_quantiles=100)
+        expression_data = quantile_transformer.fit_transform(np.array(expression_data))
 
-    max_dist = max(np.linalg.norm(left - origin),
-                   np.linalg.norm(right - origin),
-                   np.linalg.norm(top - origin),
-                   np.linalg.norm(bottom - origin))
+        # expression_data += abs(np.min(expression_data))
+    elif transformation == "boxcox":
+        expression_data, _ = boxcox(expression_data)
 
-    scale = 1 + (pixel_expansion / max_dist)
+    elif transformation == "sqrt":
+        expression_data = np.sqrt(expression_data)
 
-    cnt_scaled = cnt_norm * scale
-    cnt_scaled = cnt_scaled + [cx, cy]
-    cnt_scaled = cnt_scaled.astype(np.int32)
+    elif transformation == "log":
+        expression_data = np.log(expression_data + 1)
 
-    return cnt_scaled
+    elif transformation == "arcsinh":
+        # Apply arcsinh transformation
+        expression_data = arcsinh(np.array(expression_data))
+
+    if normalization == "percentile":
+        try:
+            expression_data = np.array(expression_data) / np.percentile(np.array(expression_data),
+                                                                        99,
+                                                                        axis=0)
+            expression_data = np.nan_to_num(expression_data)
+
+        except IndexError:
+            print("Caught Exception!", len(expression_data), n_markers)
+            expression_data = np.zeros((1, n_markers))
+
+    elif normalization == "normalizer":
+        # Scale data by Sklearn normalizer
+        sc = Normalizer().fit(np.array(expression_data))
+        expression_data = sc.transform(expression_data)
+
+    return expression_data
+
+
+def preprocess_marker_data(data,
+                           mask,
+                           expression_type="area_normalized_counts"):
+    """
+    Take raw marker counts and return processed expression vectors
+
+    :param data:
+    :param mask:
+    :param expression_type:
+    :return:
+    """
+
+    assert expression_type in ["mean", "area_normalized_counts", "counts"], "Unrecognized expression type!"
+
+    if expression_type == "mean":
+        # Get mean intensity of marker
+        marker_data = cv.mean(data)[0]
+
+    elif expression_type == "area_normalized_counts":
+        # Get cell area normalized count of marker
+        if cv.countNonZero(data) != 0:
+            marker_data = np.sum(data, axis=None) / cv.countNonZero(mask)
+        else:
+            marker_data = 0
+
+    elif expression_type == "counts":
+        # Get cell area normalized count of marker
+        marker_data = cv.countNonZero(data)
+
+    return marker_data
 
 
 def expansion_ring_plots(contours,
                          expansion_image,
                          pixel_expansion_amount=5,
                          prev_pixel_expansion_amount=0):
+    """
+    Draw rings on vessel mask
+
+    :param contours:
+    :param expansion_image:
+    :param pixel_expansion_amount:
+    :param prev_pixel_expansion_amount:
+    :return:
+    """
 
     img_shape = expansion_image.shape
     regions = get_assigned_regions(contours, img_shape)
@@ -126,18 +212,19 @@ def expansion_ring_plots(contours,
     pix_val = random.randint(50, 255)
 
     for idx, cnt in enumerate(contours):
-        expanded_cnt = expand_vessel_region_distance_transform(cnt, img_shape, pixel_expansion=pixel_expansion_amount)
+
+        if pixel_expansion_amount < 0:
+            mask_expanded = contract_vessel_region(cnt, img_shape, pixel_expansion=pixel_expansion_amount)
+        else:
+            mask_expanded = expand_vessel_region(cnt, img_shape, pixel_expansion=pixel_expansion_amount)
 
         if prev_pixel_expansion_amount != 0:
-            cnt = expand_vessel_region_distance_transform(cnt, img_shape, pixel_expansion=prev_pixel_expansion_amount)
-
-        mask = np.zeros(img_shape, np.uint8)
-
-        cv.drawContours(mask, [cnt], -1, (255, 255, 255), cv.FILLED)
-
-        mask_expanded = np.zeros(img_shape, np.uint8)
-
-        cv.drawContours(mask_expanded, [expanded_cnt], -1, (255, 255, 255), cv.FILLED)
+            if prev_pixel_expansion_amount < 0:
+                mask = contract_vessel_region(cnt, img_shape, pixel_expansion=prev_pixel_expansion_amount)
+            else:
+                mask = expand_vessel_region(cnt, img_shape, pixel_expansion=prev_pixel_expansion_amount)
+        else:
+            mask = np.zeros(img_shape, np.uint8)
 
         result_mask = mask_expanded - mask
         result_mask = cv.bitwise_and(result_mask, regions[idx].astype(np.uint8))
@@ -147,23 +234,25 @@ def expansion_ring_plots(contours,
         expansion_image[np.where(result_mask != 0)] = pix_val
 
 
-def calculate_microenvironment_marker_expression_single_vessel(markers_data, contours,
-                                                               scaling_factor=100,
-                                                               pixel_expansion_amount=5,
-                                                               prev_pixel_expansion_amount=0,
-                                                               expression_type="area_normalized_counts",
-                                                               transformation="arcsinh",
-                                                               normalization="percentile",
-                                                               plot=True,
-                                                               expansion_image=None,
-                                                               n_markers=34):
-    '''
+def calculate_microenvironment_marker_expression(markers_data, contours,
+                                                 scaling_factor=100,
+                                                 pixel_expansion_upper_bound=5,
+                                                 pixel_expansion_lower_bound=0,
+                                                 expression_type="area_normalized_counts",
+                                                 transformation="arcsinh",
+                                                 normalization="percentile",
+                                                 plot=False,
+                                                 n_markers=34,
+                                                 plot_vesselnonvessel_mask=True,
+                                                 vesselnonvessel_label="Point1"):
+    """
     Get normalized expression of markers in given cells
 
+    :param vesselnonvessel_label:
+    :param plot_vesselnonvessel_mask:
     :param n_markers:
-    :param expansion_image:
-    :param prev_pixel_expansion_amount:
-    :param pixel_expansion_amount:
+    :param pixel_expansion_lower_bound:
+    :param pixel_expansion_upper_bound:
     :param plot:
     :param scaling_factor: Scaling factor by which to scale the data
     :param normalization: Method to scale data
@@ -172,104 +261,104 @@ def calculate_microenvironment_marker_expression_single_vessel(markers_data, con
     :param markers_data: Pixel data for each marker
     :param contours: Contours of cells in image
     :return:
-    '''
+    """
 
     contour_mean_values = []
+    dark_space_values = []
+    vessel_space_values = []
     expression_images = []
 
     img_shape = markers_data[0].shape
     regions = get_assigned_regions(contours, img_shape)
 
-    if expansion_image is not None:
-        pix_val = random.randint(50, 255)
+    stopped_vessels = 0
+
+    if plot_vesselnonvessel_mask:
+        example_img = np.zeros(img_shape, np.uint8)
+        example_img = cv.cvtColor(example_img, cv.COLOR_GRAY2BGR)
 
     for idx, cnt in enumerate(contours):
         data_vec = []
+        dark_space_vec = []
+        vessel_space_vec = []
+
         expression_image = []
 
-        expanded_cnt = expand_vessel_region_distance_transform(cnt, img_shape, pixel_expansion=pixel_expansion_amount)
+        if pixel_expansion_upper_bound < 0:
+            mask_expanded = contract_vessel_region(cnt, img_shape, pixel_expansion=pixel_expansion_upper_bound)
+        else:
+            mask_expanded = expand_vessel_region(cnt, img_shape, pixel_expansion=pixel_expansion_upper_bound)
 
-        if prev_pixel_expansion_amount != 0:
-            cnt = expand_vessel_region_distance_transform(cnt, img_shape, pixel_expansion=prev_pixel_expansion_amount)
+        if pixel_expansion_lower_bound != 0:
+            if pixel_expansion_lower_bound < 0:
+                mask = contract_vessel_region(cnt, img_shape, pixel_expansion=pixel_expansion_lower_bound)
+            else:
+                mask = expand_vessel_region(cnt, img_shape, pixel_expansion=pixel_expansion_lower_bound)
+        else:
+            mask = cv.drawContours(np.zeros(img_shape, np.uint8), [cnt], -1, (1, 1, 1), cv.FILLED)
+
+        result_mask = mask_expanded - mask
+        result_mask = cv.bitwise_and(result_mask, regions[idx].astype(np.uint8))
+        dark_space_mask = regions[idx].astype(np.uint8) - mask_expanded
+
+        if plot_vesselnonvessel_mask:
+            example_img[np.where(dark_space_mask == 1)] = (0, 0, 255)
+            example_img[np.where(mask_expanded == 1)] = (0, 255, 0)
+
+        if cv.countNonZero(result_mask) == 0:
+            stopped_vessels += 1
 
         for marker in markers_data:
             x, y, w, h = cv.boundingRect(cnt)
 
-            mask = np.zeros(marker.shape, np.uint8)
-
-            cv.drawContours(mask, [cnt], -1, (255, 255, 255), cv.FILLED)
-
-            mask_expanded = np.zeros(marker.shape, np.uint8)
-
-            cv.drawContours(mask_expanded, [expanded_cnt], -1, (255, 255, 255), cv.FILLED)
-
-            result_mask = mask_expanded - mask
-            result_mask = cv.bitwise_and(result_mask, regions[idx].astype(np.uint8))
-
-            result = cv.bitwise_and(marker, result_mask)
+            result = cv.bitwise_and(marker, marker, mask=result_mask)
+            dark_space_result = cv.bitwise_and(marker, marker, mask=dark_space_mask)
+            vessel_space_result = cv.bitwise_and(marker, marker, mask=mask_expanded)
 
             roi_result = result[y:y + h, x:x + w]
 
             expression_image.append(roi_result)
 
-            if plot:
-                if idx == 5:
-                    cv.imshow("ASD", regions[idx].astype(np.uint8) * 255)
-                    cv.imshow("mask", mask)
-                    cv.imshow("mask_expanded", mask_expanded)
-                    cv.imshow("result_mask", result_mask*255)
-                    cv.imshow("roi_result", roi_result * 255)
-                    cv.waitKey(0)
+            marker_data = preprocess_marker_data(result,
+                                                 result_mask,
+                                                 expression_type=expression_type)
 
-            if expression_type == "mean":
-                # Get mean intensity of marker
-                marker_data = cv.mean(result)[0]
+            dark_space_data = preprocess_marker_data(dark_space_result,
+                                                     dark_space_mask,
+                                                     expression_type=expression_type)
 
-            elif expression_type == "area_normalized_counts":
-                # Get cell area normalized count of marker
-                marker_data = cv.countNonZero(result) / cv.contourArea(cnt)
-
-            elif expression_type == "counts":
-                # Get cell area normalized count of marker
-                marker_data = cv.countNonZero(result)
+            vessel_space_data = preprocess_marker_data(vessel_space_result,
+                                                       mask_expanded,
+                                                       expression_type=expression_type)
 
             data_vec.append(marker_data)
-            if expansion_image is not None:
-                _, temp_contours, _ = cv.findContours(regions[idx].astype(np.uint8), cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
-                cv.drawContours(expansion_image, temp_contours, 0, (255, 255, 255), 1)
-                expansion_image[np.where(result_mask != 0)] = pix_val
+            dark_space_vec.append(dark_space_data)
+            vessel_space_vec.append(vessel_space_data)
 
         contour_mean_values.append(np.array(data_vec))
+        dark_space_values.append(np.array(dark_space_vec))
+        vessel_space_values.append(np.array(vessel_space_vec))
+
         expression_images.append(expression_image)
 
-    if scaling_factor > 0:
-        contour_mean_values = np.array(contour_mean_values) * scaling_factor
+    contour_mean_values = normalize_expression_data(contour_mean_values,
+                                                    transformation=transformation,
+                                                    normalization=normalization,
+                                                    scaling_factor=scaling_factor,
+                                                    n_markers=n_markers)
 
-    if transformation == "quantiletransform":
-        quantile_transformer = preprocessing.QuantileTransformer(output_distribution='normal', random_state=0,
-                                                                 n_quantiles=100)
-        contour_mean_values = quantile_transformer.fit_transform(np.array(contour_mean_values))
-        # contour_mean_values += abs(np.min(contour_mean_values))
-    elif transformation == "boxcox":
-        contour_mean_values, _ = boxcox(contour_mean_values)
-    elif transformation == "sqrt":
-        contour_mean_values = np.sqrt(contour_mean_values)
-    elif transformation == "log":
-        contour_mean_values = np.log(contour_mean_values + 1)
-    elif transformation == "arcsinh":
-        # Apply arcsinh transformation
-        contour_mean_values = arcsinh(np.array(contour_mean_values))
+    vessel_non_vessel_data = []
+    vessel_non_vessel_data.extend(dark_space_values)
+    vessel_non_vessel_data.extend(vessel_space_values)
 
-    if normalization == "percentile":
-        try:
-            contour_mean_values = np.array(contour_mean_values) / np.percentile(np.array(contour_mean_values), 99)
-        except IndexError:
-            print("Caught Exception!", len(contour_mean_values), n_markers)
-            contour_mean_values = np.zeros((1, n_markers))
-    elif normalization == "normalizer":
-        # Scale data by Sklearn normalizer
-        sc = Normalizer().fit(np.array(contour_mean_values))
-        contour_mean_values = sc.transform(contour_mean_values)
+    vessel_non_vessel_data = normalize_expression_data(vessel_non_vessel_data,
+                                                       transformation=transformation,
+                                                       normalization=normalization,
+                                                       scaling_factor=scaling_factor,
+                                                       n_markers=n_markers)
+
+    dark_space_values = vessel_non_vessel_data[0:len(dark_space_values)]
+    vessel_space_values = vessel_non_vessel_data[len(dark_space_values):]
 
     flat_list = sorted([item for sublist in contour_mean_values for item in sublist])
 
@@ -280,21 +369,24 @@ def calculate_microenvironment_marker_expression_single_vessel(markers_data, con
         plt.title('PDF of Marker Expression')
         plt.show()
 
-    # expression_images = np.asarray(expression_images)
+    if plot_vesselnonvessel_mask:
+        output_dir = "results/vessel_nonvessel_masks/%s_pixel_expansion" % str(pixel_expansion_upper_bound)
+        mkdir_p(output_dir)
+        cv.imwrite(os.path.join(output_dir, "vessel_non_vessel_point_%s.png" % vesselnonvessel_label), example_img)
 
-    return contour_mean_values, expression_images
+    return contour_mean_values, expression_images, stopped_vessels, dark_space_values, vessel_space_values
 
 
-def calculate_marker_composition_single_vessel(markers_data, contours,
-                                               scaling_factor=100,
-                                               expression_type="area_normalized_counts",
-                                               transformation="log",
-                                               normalization="percentile",
-                                               plot=True,
-                                               n_markers=34,
-                                               vessel_id_plot=True,
-                                               vessel_id_label="Point1"):
-    '''
+def calculate_composition_marker_expression(markers_data, contours,
+                                            scaling_factor=100,
+                                            expression_type="area_normalized_counts",
+                                            transformation="arcsinh",
+                                            normalization="percentile",
+                                            plot=True,
+                                            n_markers=34,
+                                            vessel_id_plot=False,
+                                            vessel_id_label="Point1"):
+    """
     Get normalized expression of markers in given cells
 
     :param vessel_id_label:
@@ -308,7 +400,7 @@ def calculate_marker_composition_single_vessel(markers_data, contours,
     :param markers_data: Pixel data for each marker
     :param contours: Contours of cells in image
     :return:
-    '''
+    """
 
     contour_mean_values = []
     img_shape = markers_data[0].shape
@@ -326,60 +418,25 @@ def calculate_marker_composition_single_vessel(markers_data, contours,
             cv.drawContours(vessel_id_img, [cnt], -1, (255, 255, 255), 1)
             cv.putText(vessel_id_img, str(idx), (cX, cY), cv.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
 
+        mask = np.zeros(img_shape, np.uint8)
+        cv.drawContours(mask, [cnt], -1, (1, 1, 1), cv.FILLED)
+
         for marker in markers_data:
-            x, y, w, h = cv.boundingRect(cnt)
+            result = cv.bitwise_and(marker, marker, mask=mask)
 
-            if expression_type == "mean":
-                # Get mean intensity of marker
-
-                mask = np.zeros(marker.shape, np.uint8)
-                cv.drawContours(mask, [cnt], -1, (255, 255, 255), 1)
-                result = cv.bitwise_and(marker, mask)
-
-                marker_data = cv.mean(result)[0]
-
-            elif expression_type == "area_normalized_counts":
-
-                mask = np.zeros(marker.shape, np.uint8)
-                cv.drawContours(mask, [cnt], -1, (255, 255, 255), cv.FILLED)
-                result = cv.bitwise_and(marker, mask)
-
-                # Get cell area normalized count of marker
-                marker_data = cv.countNonZero(result) / cv.contourArea(cnt)
+            marker_data = preprocess_marker_data(result,
+                                                 mask,
+                                                 expression_type=expression_type)
 
             data_vec.append(marker_data)
 
         contour_mean_values.append(np.array(data_vec))
 
-    if scaling_factor > 0:
-        contour_mean_values = np.array(contour_mean_values) * scaling_factor
-
-    if transformation == "quantiletransform":
-        quantile_transformer = preprocessing.QuantileTransformer(output_distribution='normal', random_state=0,
-                                                                 n_quantiles=100)
-        contour_mean_values = quantile_transformer.fit_transform(np.array(contour_mean_values))
-        # contour_mean_values += abs(np.min(contour_mean_values))
-    elif transformation == "boxcox":
-        contour_mean_values, _ = boxcox(contour_mean_values)
-    elif transformation == "sqrt":
-        contour_mean_values = np.sqrt(contour_mean_values)
-    elif transformation == "log":
-        contour_mean_values = np.log(contour_mean_values + 1)
-    elif transformation == "arcsinh":
-        # Apply arcsinh transformation
-        contour_mean_values = arcsinh(np.array(contour_mean_values))
-
-    if normalization == "percentile":
-        # Scale data by the 99th percentile
-        try:
-            contour_mean_values = np.array(contour_mean_values) / np.percentile(np.array(contour_mean_values), 99)
-        except IndexError:
-            print("Caught Exception!", len(contour_mean_values), n_markers)
-            contour_mean_values = np.zeros((1, n_markers))
-    elif normalization == "normalizer":
-        # Scale data by Sklearn normalizer
-        sc = Normalizer().fit(np.array(contour_mean_values))
-        contour_mean_values = sc.transform(contour_mean_values)
+    contour_mean_values = normalize_expression_data(contour_mean_values,
+                                                    transformation=transformation,
+                                                    normalization=normalization,
+                                                    scaling_factor=scaling_factor,
+                                                    n_markers=n_markers)
 
     flat_list = sorted([item for sublist in contour_mean_values for item in sublist])
 
@@ -391,6 +448,8 @@ def calculate_marker_composition_single_vessel(markers_data, contours,
         plt.show()
 
     if vessel_id_plot:
-        cv.imwrite("vessel_id_plot_%s.png" % vessel_id_label, vessel_id_img)
+        output_dir = "results/vessel_id_masks"
+        mkdir_p(output_dir)
+        cv.imwrite(os.path.join(output_dir, "vessel_id_plot_%s.png" % vessel_id_label), vessel_id_img)
 
     return contour_mean_values

@@ -98,13 +98,13 @@ def plot_vessel_areas(points_contours, points_img,
         area = pd.DataFrame(total_point_vessel_areas)
         area.to_csv('vessel_areas.csv')
 
-    # for i, area in enumerate(region_data):
-    #     area = sorted(area)
-    #     plt.hist(area, bins=200)
-    #     plt.title("Points %s to %s" % (str(brain_regions[i][0]), str(brain_regions[i][1])))
-    #     plt.xlabel("Pixel Area")
-    #     plt.ylabel("Count")
-    #     plt.show()
+    for i, area in enumerate(region_data):
+        area = sorted(area)
+        plt.hist(area, bins=200)
+        plt.title("Points %s to %s" % (str(brain_regions[i][0]), str(brain_regions[i][1])))
+        plt.xlabel("Pixel Area")
+        plt.ylabel("Count")
+        plt.show()
 
     colors = ['blue', 'green', 'purple', 'tan', 'pink', 'red']
 
@@ -136,7 +136,7 @@ def extract_cell_contours(img,
     else:
         imgray = img
 
-    imgray = cv.blur(imgray, (7, 7))
+    imgray = cv.blur(imgray, (2, 2))
     im2, contours, hierarchy = cv.findContours(imgray, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
 
     images = []
