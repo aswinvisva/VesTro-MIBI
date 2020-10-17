@@ -1,11 +1,8 @@
 import unittest
-import os
-
-import numpy as np
 
 from image_segmentation.extract_cell_events import extract_cell_contours
-from models.flowsom_clustering import ClusteringFlowSOM
-from feature_extraction.markers_feature_gen import calculate_composition_marker_expression
+from dnn_vessel_heterogeneity.models import ClusteringFlowSOM
+from utils.markers_feature_gen import calculate_composition_marker_expression
 from utils.mibi_reader import read
 
 

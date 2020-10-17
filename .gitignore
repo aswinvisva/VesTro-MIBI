@@ -3,11 +3,11 @@ venv/
 .idea/
 annotated_data/
 utils/__pycache__/
-topic_generation/__pycache__/
-results/
-masks/
+dnn_vessel_heterogeneity/topic_generation/__pycache__/
 trained_models/
 runs/
+dnn_vessel_heterogeneity/topic_generation/
+image_segmentation/
 *.tif
 *.png
 *.pyc

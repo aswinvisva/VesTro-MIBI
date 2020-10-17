@@ -5,14 +5,14 @@ from tifffile.tifffile import TiffFile
 import cv2 as cv
 
 
-def read(path, describe=False):
-    '''
-    Read a Tiff file
+def read(path: str, describe: bool = False) -> np.ndarray:
+    """
+    Read a Tiff file and collect a numpy array
 
-    :param path: Path to file
-    :param describe: Should describe file?
-    :return:
-    '''
+    :param path: str, Path to file
+    :param describe: bool, Provide a description of data
+    :return: array_like, [point_size[0], point_size[1]] -> MIBI tiff data
+    """
 
     with TiffFile(path) as tif:
         img = tif.asarray()

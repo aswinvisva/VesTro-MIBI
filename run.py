@@ -1,39 +1,10 @@
-import datetime
-import random
-from collections import Counter
-import os
-
-import cv2 as cv
-import matplotlib
-import numpy as np
-import matplotlib.pyplot as plt
-import torch
-from PIL import Image
-from sklearn.cluster import KMeans
-from sklearn.decomposition import PCA
-
-from feature_extraction.sift_feature_gen import SIFTFeatureGen
-from models.clustering_helper import ClusteringHelper
-from models.flowsom_clustering import ClusteringFlowSOM
-from models.vessel_net import VesselNet, vis_tensor
-from topic_generation.cnn_lda import CNNLDA
-from utils.construct_microenvironments import construct_partitioned_microenvironments_from_contours, \
-    construct_vessel_relative_area_microenvironments_from_contours
-from utils.mibi_reader import read, get_all_point_data
-from topic_generation.lda_topic_generation import LDATopicGen
-from image_segmentation.sliding_window_segmentation import split_image
-from image_segmentation.extract_cell_events import *
-from image_segmentation.acwe_segmentation import *
-from image_segmentation.sliding_window_segmentation import *
-from feature_extraction import bag_of_cells_feature_gen
-from feature_extraction.cnn_feature_gen import CNNFeatureGen
-from feature_extraction.markers_feature_gen import *
-from topic_generation.cnnfcluster import CNNFCluster
-from topic_generation.lda_topic_generation import LDATopicGen
-from topic_generation.lda import LDA, lda_learning
-from utils.cnn_dataloader import VesselDataset, preprocess_input
-from utils.utils_functions import mkdir_p
-from utils.visualizer import mask_nonmask_heatmap, point_region_plots, vessel_region_plots, brain_region_plots
+from utils.mibi_reader import get_all_point_data
+from utils.extract_vessel_contours import *
+from utils.markers_feature_gen import *
+from utils.visualizer import vessel_nonvessel_heatmap, point_region_plots, vessel_region_plots, brain_region_plots, \
+    all_points_plots, brain_region_expansion_heatmap, marker_expression_masks, vessel_areas_histogram, \
+    pixel_expansion_ring_plots
+import config.config_settings as config
 
 '''
 Author: Aswin Visva
@@ -41,39 +12,32 @@ Email: aavisva@uwaterloo.ca
 '''
 
 
-def pixel_expansion_plots(n_expansions=1, interval=5, mask="allvessels"):
+def get_outward_expansion_data(all_points_vessel_contours: list,
+                               all_points_marker_data: list,
+                               pixel_interval: int,
+                               n_expansions: int) -> (list, list, list):
     """
-    Pixel Expansion line plots
+    Collect outward expansion data for each expansion, for each point, for each vessel
 
-    :param n_expansions: # of expansions
-    :param interval: Pixel interval
-    :param mask: Mask type ex. allvessels, largevessels etc.
-    :return:
+    :param n_expansions: int -> Number of expansions to run
+    :param pixel_interval: int -> Pixel interval
+    :param all_points_vessel_contours: array_like, [n_points, n_vessels] -> list of vessel contours for each point
+    :param all_points_marker_data: array_like, [n_points, n_markers, point_size[0], point_size[1]]
+    -> list of marker data for each point
+
+    :return: list, [n_expansions, n_points, n_vessels, n_markers] -> Outward microenvironment expansion data,
+    list, [n_expansions, n_points, n_vessels, n_markers] -> nonvessel space expansion data,
+    list, [n_expansions, n_points, n_vessels, n_markers] -> vessel space expansion data
     """
 
-    n_expansions += 1  # Intuitively, 5 expansions means 5 expansions excluding the original composition of the
-    # vessel, but we mean 5 expansions including the original composition - thus 4 expansions. Therefore lets add 1
-    # so we are on the same page.
-
-    expansions = [1]  # Expansions that you want to run
-
-    assert n_expansions >= max(expansions), "More expansions selected than available!"
-
-    marker_segmentation_masks, markers_data, markers_names = get_all_point_data(segmentation_type=mask)
-
-    contour_data_multiple_points = []
-    contour_images_multiple_points = []
-
-    for segmentation_mask in marker_segmentation_masks:
-        contour_images, contours = extract_cell_contours(segmentation_mask, show=False)
-        contour_data_multiple_points.append(contours)
-        contour_images_multiple_points.append(contour_images)
-
+    # Store all data in lists
     expansion_data = []
     dark_space_expansion_data = []
     vessel_space_expansion_data = []
-    current_interval = interval
+    current_interval = pixel_interval
+    n_points = config.n_points
 
+    # Iterate through each expansion
     for x in range(n_expansions):
 
         current_expansion_data = []
@@ -82,27 +46,26 @@ def pixel_expansion_plots(n_expansions=1, interval=5, mask="allvessels"):
 
         all_points_stopped_vessels = 0
 
-        for i in range(len(contour_data_multiple_points)):
-            contours = contour_data_multiple_points[i]
-            marker_data = markers_data[i]
+        # Iterate through each point
+        for i in range(n_points):
+            contours = all_points_vessel_contours[i]
+            marker_data = all_points_marker_data[i]
             start_expression = datetime.datetime.now()
+
+            # If we are on the first expansion, calculate the marker expression within the vessel itself. Otherwise,
+            # calculate the marker expression in the outward microenvironment
 
             if x == 0:
                 data = calculate_composition_marker_expression(marker_data, contours,
-                                                               expression_type="area_normalized_counts",
-                                                               plot=False,
-                                                               vessel_id_plot=True,
                                                                vessel_id_label="Point_%s" % str(i + 1))
+                current_vessel_space_expansion_data.append(data)
+
             else:
                 data, _, stopped_vessels, dark_space_data, vessel_space_data = calculate_microenvironment_marker_expression(
                     marker_data,
                     contours,
-                    expression_type="area_normalized_counts",
-                    plot=False,
                     pixel_expansion_upper_bound=current_interval,
-                    pixel_expansion_lower_bound=current_interval - interval,
-                    n_markers=len(markers_names),
-                    plot_vesselnonvessel_mask=True,
+                    pixel_expansion_lower_bound=current_interval - pixel_interval,
                     vesselnonvessel_label="Point_%s" % str(i + 1))
 
                 all_points_stopped_vessels += stopped_vessels
@@ -111,153 +74,166 @@ def pixel_expansion_plots(n_expansions=1, interval=5, mask="allvessels"):
 
             end_expression = datetime.datetime.now()
 
-            print("Finished calculating expression %s in %s" % (str(i), end_expression - start_expression))
-            print(
-                "Current interval %s, previous interval %s" % (str(current_interval), str(current_interval - interval)))
+            print("Finished calculating expression for Point %s in %s" % (str(i+1), end_expression - start_expression))
 
             current_expansion_data.append(data)
 
         print("There were %s vessels which could not expand inward/outward by %s pixels" % (
-            all_points_stopped_vessels, x * interval))
+            all_points_stopped_vessels, x * pixel_interval))
 
         expansion_data.append(current_expansion_data)
         dark_space_expansion_data.append(current_dark_space_expansion_data)
         vessel_space_expansion_data.append(current_vessel_space_expansion_data)
 
         if x != 0:
-            current_interval += interval
+            current_interval += pixel_interval
 
-    for x in expansions:
-        mask_nonmask_heatmap(vessel_space_expansion_data, dark_space_expansion_data, markers_names, x + 1, interval)
-        brain_region_plots(x + 1, interval, markers_names, expansion_data)
-        point_region_plots(x + 1, interval, markers_names, expansion_data)
-        vessel_region_plots(x + 1, interval, markers_names, expansion_data)
+        print("Current interval %s, previous interval %s" % (str(current_interval), str(current_interval -
+                                                                                        pixel_interval)))
+
+    return expansion_data, dark_space_expansion_data, vessel_space_expansion_data
 
 
-def extract_vessel_heterogeneity(n=56,
-                                 feature_extraction_method="vesselnet"):
+def get_inward_expansion_data(all_points_vessel_contours: list,
+                              all_points_marker_data: list,
+                              pixel_interval: int) -> (list, int):
     """
-    Extract vessel heterogeneity
-    :return:
+    Collect inward expansion data for each expansion, for each point, for each vessel
+
+    :param pixel_interval: int -> Pixel interval
+    :param all_points_vessel_contours: array_like, [n_points, n_vessels] -> list of vessel contours for each point
+    :param all_points_marker_data: array_like, [n_points, n_markers, point_size[0], point_size[1]]
+    -> list of marker data for each point
+
+    :return: list, [n_expansions, n_points, n_vessels, n_markers] -> Inward microenvironment expansion data,
+    int, Final number of expansions needed to complete
     """
 
-    marker_segmentation_masks, markers_data, markers_names = get_all_point_data()
+    expansion_data = []
+    current_interval = pixel_interval
+    all_vessels_count = len([item for sublist in all_points_vessel_contours for item in sublist])
+    current_expansion_no = 0
+    all_points_stopped_vessels = 0
+    n_points = config.n_points
 
-    contour_data_multiple_points = []
-    contour_images_multiple_points = []
+    # Continue expanding inward until all vessels have been stopped
+    while all_vessels_count - all_points_stopped_vessels >= 0:
+        print("Current inward expansion: %s, Interval: %s" % (str(current_expansion_no), str(current_interval)))
 
+        current_expansion_data = []
+        all_points_stopped_vessels = 0
+
+        # Iterate through each point
+        for i in range(n_points):
+            contours = all_points_vessel_contours[i]
+            marker_data = all_points_marker_data[i]
+            start_expression = datetime.datetime.now()
+
+            data, stopped_vessels = calculate_inward_microenvironment_marker_expression(
+                marker_data,
+                contours,
+                pixel_expansion_upper_bound=current_interval,
+                pixel_expansion_lower_bound=current_interval - pixel_interval)
+
+            all_points_stopped_vessels += stopped_vessels
+            current_expansion_data.append(data)
+            end_expression = datetime.datetime.now()
+
+            print(
+                "Finished calculating expression for Point %s in %s" % (str(i + 1), end_expression - start_expression))
+
+        expansion_data.append(current_expansion_data)
+
+        current_interval += pixel_interval
+        current_expansion_no += 1
+
+        print("There are %s / %s vessels which have failed to expand inward" % (str(all_points_stopped_vessels),
+                                                                                str(all_vessels_count)))
+
+    return expansion_data.reverse(), current_expansion_no
+
+
+def run_vis():
+    """
+    Create the visualizations for inward and outward vessel expansions and populate all results in the directory
+    set in the configuration settings.
+    """
+
+    n_expansions = config.max_expansions
+    interval = config.pixel_interval
+    expansions = config.expansion_to_run  # Expansions that you want to run
+
+    n_expansions += 1  # Intuitively, 5 expansions means 5 expansions excluding the original composition of the
+    # vessel, but we mean 5 expansions including the original composition - thus 4 expansions. Therefore lets add 1
+    # so we are on the same page.
+
+    assert n_expansions >= max(expansions), "More expansions selected than available!"
+
+    marker_segmentation_masks, all_points_marker_data, markers_names = get_all_point_data()  # Collect all marker and
+    # mask data
+
+    all_points_vessel_contours = []
+    all_points_vessel_regions_of_interest = []
+
+    # Collect vessel contours from each segmentation mask
     for segmentation_mask in marker_segmentation_masks:
-        contour_images, contours = extract_cell_contours(segmentation_mask, show=False)
-        contour_data_multiple_points.append(contours)
-        contour_images_multiple_points.append(contour_images)
+        vessel_regions_of_interest, contours = extract(segmentation_mask)
+        all_points_vessel_contours.append(contours)
+        all_points_vessel_regions_of_interest.append(vessel_regions_of_interest)
 
-    if feature_extraction_method == "vesselnet":
-        data_loader = VesselDataset(contour_data_multiple_points, markers_data, batch_size=16, n=n)
+    # Marker expression overlay masks
+    if config.create_marker_expression_overlay_masks:
+        marker_expression_masks(all_points_vessel_contours, all_points_marker_data, markers_names)
 
-        # vn = VesselNet(n=n)
-        # vn.fit(data_loader, epochs=150)
-        # vn.visualize_filters()
-        # torch.save(vn.state_dict(), "trained_models/vessel_net_100.pth")
+    # Inward expansion data
+    if config.perform_inward_expansions:
+        get_inward_expansion_data(all_points_vessel_contours, all_points_marker_data, markers_names)
 
-        vn = VesselNet(n=n)
-        vn.load_state_dict(torch.load("trained_models/vessel_net_100.pth"))
-        vn.to(torch.device("cuda"))
-        # vn.visualize_filters()
+    # Vessel areas histograms and boxplots
+    if config.create_vessel_areas_histograms_and_boxplots:
+        vessel_areas_histogram()
 
-        encoder_output = []
-        marker_expressions = []
+    # Vessel expansion ring plots
+    if config.create_expansion_ring_plots:
+        pixel_expansion_ring_plots()
 
-        for i in range(len(contour_data_multiple_points)):
-            for x in range(len(contour_data_multiple_points[i])):
-                contours = [contour_data_multiple_points[i][x]]
-                marker_data = markers_data[i]
-                expression, expression_images, stopped_vessels, _ = calculate_microenvironment_marker_expression(
-                    marker_data,
-                    contours,
-                    plot=False)
+    # Collect outward microenvironment expansion data, nonvessel space expansion data and vessel space expansion data
+    expansion_data, nonvessel_space_expansion_data, vessel_space_expansion_data = get_outward_expansion_data(
+        all_points_vessel_contours,
+        all_points_marker_data,
+        interval,
+        n_expansions)
 
-                expression_image = preprocess_input(expression_images, n)
-                expression_image = torch.unsqueeze(expression_image, 0)
+    # Iterate through selected expansions to create heatmaps and line plots
+    for x in expansions:
 
-                reconstructed_img, output = vn.forward(expression_image)
+        # Brain region expansion heatmaps
+        if config.create_brain_region_expansion_heatmaps:
+            brain_region_expansion_heatmap(vessel_space_expansion_data,
+                                           nonvessel_space_expansion_data,
+                                           markers_names,
+                                           x + 1,
+                                           interval)
+        # Mask/Non-mask heatmaps
+        if config.create_vessel_nonvessel_heatmaps:
+            vessel_nonvessel_heatmap(vessel_space_expansion_data, nonvessel_space_expansion_data, markers_names, x + 1)
 
-                y_pred_numpy = reconstructed_img.cpu().data.numpy()
-                y_true_numpy = expression_image.cpu().data.numpy()
+        # Per brain region line plots
+        if config.create_brain_region_expansion_line_plots:
+            brain_region_plots(x + 1, interval, markers_names, expansion_data)
 
-                row_i = np.random.choice(y_pred_numpy.shape[0], 1)
-                random_pic = y_pred_numpy[row_i, :, :, :]
-                random_pic = random_pic.reshape(34, n, n)
+        # Per point line plots
+        if config.create_point_expansion_line_plots:
+            point_region_plots(x + 1, interval, markers_names, expansion_data)
 
-                true = y_true_numpy[row_i, :, :, :]
-                true = true.reshape(34, n, n)
+        # Per vessel line plots
+        if config.create_vessel_expansion_line_plots:
+            vessel_region_plots(x + 1, interval, markers_names, expansion_data)
 
-                # for w in range(len(random_pic)):
-                #     cv.imshow("Predicted", random_pic[w] * 255)
-                #     cv.imshow("True", true[w] * 255)
-                #     cv.waitKey(0)
-
-                output = output.cpu().data.numpy()
-                encoder_output.append(output.reshape(2048))
-                marker_expressions.append(expression[0])
-
-    elif feature_extraction_method == "sift":
-        flat_list = [item for sublist in contour_images_multiple_points for item in sublist]
-
-        sift = SIFTFeatureGen()
-        encoder_output = sift.generate(flat_list)
-    elif feature_extraction_method == "resnet":
-        flat_list = [item for sublist in contour_images_multiple_points for item in sublist]
-
-        cnn = CNNFeatureGen()
-        encoder_output = cnn.generate(flat_list)
-
-    km = ClusteringHelper(encoder_output, n_clusters=10, metric="cosine", method="kmeans")
-    indices, frequency = km.fit_predict()
-
-    print(len(indices))
-
-    indices = [[i, indices[i]] for i in range(len(indices))]
-    values = set(map(lambda y: y[1], indices))
-
-    grouped_indices = [[y[0] for y in indices if y[1] == x] for x in values]
-
-    marker_expressions_grouped = []
-
-    for i, cluster in enumerate(grouped_indices):
-        temp = []
-        for idx in cluster:
-            temp.append(marker_expressions[idx])
-
-        average = np.mean(temp, axis=0)
-
-        marker_expressions_grouped.append(average)
-
-    marker_expressions_grouped = np.array(marker_expressions_grouped)
-    print(marker_expressions_grouped.shape)
-
-    km.plot(x=marker_expressions_grouped, labels=markers_names)
-
-    k = 10
-
-    sampled_indices = []
-
-    for cluster in grouped_indices:
-        sampled_indices.append(random.choices(cluster, k=k))
-
-    flat_list = [item for sublist in contour_images_multiple_points for item in sublist]
-
-    for i, cluster in enumerate(sampled_indices):
-        for idx in cluster:
-            cv.imshow("Cluster %s" % i, flat_list[idx])
-            cv.waitKey(0)
+        # All points average line plots
+        if config.create_allpoints_expansion_line_plots:
+            all_points_plots(x + 1, interval, markers_names, expansion_data)
 
 
 if __name__ == '__main__':
-    # pixel_expansion_ring_plots()
-    pixel_expansion_plots()
-
-    # extract_vessel_heterogeneity()
-
-    # show_vessel_areas(show_outliers=False)
-
-    # counts = run_complete(use_flowsom=True, show_plots=True)
+    run_vis()

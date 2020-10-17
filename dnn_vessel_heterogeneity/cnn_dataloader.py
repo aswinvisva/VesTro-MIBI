@@ -1,6 +1,3 @@
-import datetime
-from collections import Counter
-
 import numpy as np
 import cv2 as cv
 import torch
@@ -10,7 +7,7 @@ import skimage as sk
 from skimage import transform
 from skimage import util
 
-from feature_extraction.markers_feature_gen import calculate_microenvironment_marker_expression
+from utils.markers_feature_gen import calculate_microenvironment_marker_expression
 
 device = torch.device("cuda")
 

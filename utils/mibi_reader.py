@@ -8,7 +8,8 @@ import numpy as np
 import cv2 as cv
 from PIL import Image
 
-from utils import tiff_reader, image_denoising
+from utils import tiff_reader
+import config.config_settings as config
 
 '''
 Author: Aswin Visva
@@ -16,84 +17,44 @@ Email: aavisva@uwaterloo.ca
 '''
 
 
-def random_color():
-    return tuple([random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)])
-
-
-def read(point_name="Point15",
-         plot=True,
-         plot_markers=False,
-         remove_noise=False,
-         segmentation_type='allvessels'):
-    '''
+def read(point_name: str) -> (np.ndarray, np.ndarray, list):
+    """
     Read the MIBI data from a single point
 
-    :param point_name: Name of point to read
-    :param plot: Should show a preview of the segmentation mask?
-    :param plot_markers: Should output a description of the marker data?
-    :param remove_noise: Should perform noise removal?
-    :param segmentation_type: Type of segmentation mask i.e 'allvessels' etc.
-    :return: Marker data and segmentation mask as numpy arrays
-    '''
+    :param point_name: str -> Name of point to read
+    :return: array_like, [n_markers, point_size[0], point_size[1]] -> Marker data,
+    array_like, [point_size[0], point_size[1]] -> Segmentation mask
+    """
 
-    # Ignore these markers from analysis
-    markers_to_ignore = [
-        "GAD",
-        "Neurogranin",
-        "ABeta40",
-        "pTDP43",
-        "polyubik63",
-        "Background",
-        "Au197",
-        "Ca40",
-        "Fe56",
-        "Na23",
-        "Si28",
-        "La139",
-        "Ta181",
-        "C12"
-    ]
+    # Get marker clusters, markers to ignore etc.
+    markers_to_ignore = config.markers_to_ignore
+    marker_clusters = config.marker_clusters
+    segmentation_type = config.selected_segmentation_mask_type
+    plot = config.show_segmentation_masks_when_reading
+    plot_markers = config.describe_markers_when_reading
 
-    marker_clusters = {
-        "Nucleus": ["HH3"],
-        "Microglia": ["CD45", "HLADR", "Iba1"],
-        "Disease": ["CD47", "ABeta42", "polyubiK48", "PHFTau", "8OHGuanosine"],
-        "Vessels": ["SMA", "CD31", "CollagenIV", "TrkA", "GLUT1", "Desmin", "vWF", "CD105"],
-        "Astrocytes": ["S100b", "GlnSyn", "Cx30", "EAAT2", "CD44", "GFAP", "Cx43"],
-        "Synapse": ["CD56", "Synaptophysin", "VAMP2", "PSD95"],
-        "Oligodendrocytes": ["MOG", "MAG"],
-        "Neurons": ["Calretinin", "Parvalbumin", "MAP2", "Gephyrin"]
-    }
-
-    image_loc = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-                             'data',
-                             point_name,
-                             'TIFs')
+    # Get path to data selected through configuration settings
+    data_loc = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                            config.data_dir,
+                            point_name,
+                            config.tifs_dir)
 
     marker_names = []
     marker_images = []
 
     for key in marker_clusters.keys():
-        for marker in marker_clusters[key]:
-            path = os.path.join(image_loc, "%s.tif" % marker)
+        for marker_name in marker_clusters[key]:
 
-            file_name = marker
-
-            # path = os.path.join(root, file)
+            # Path to marker tif file
+            path = os.path.join(data_loc, "%s.tif" % marker_name)
             img = tiff_reader.read(path, describe=plot_markers)
-
-            if remove_noise:
-                start_denoise = datetime.datetime.now()
-                img = image_denoising.knn_denoise(img)
-                end_denoise = datetime.datetime.now()
-                print("Finished %s in %s" % (file_name, end_denoise - start_denoise))
-
-            if file_name not in markers_to_ignore:
+            
+            if marker_name not in markers_to_ignore:
                 marker_images.append(img.copy())
-                marker_names.append(file_name)
-
+                marker_names.append(marker_name)
+    
     markers_img = np.array(marker_images)
-    segmentation_mask_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'masks',
+    segmentation_mask_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), config.masks_dr,
                                           point_name,
                                           segmentation_type + '.tif')
 
@@ -101,41 +62,37 @@ def read(point_name="Point15",
         segmentation_mask = np.array(Image.open(segmentation_mask_path).convert("RGB"))
     except FileNotFoundError:
         # If there is no segmentation mask, return a blank image
-        segmentation_mask = np.zeros((1024, 1024, 3), np.uint8)
+        segmentation_mask = np.zeros((config.segmentation_mask_size[0], config.segmentation_mask_size[1], 3), np.uint8)
 
     if plot:
         cv.imshow("Segmentation Mask", segmentation_mask)
         cv.waitKey(0)
 
-    cv.imwrite(os.path.join("annotated_data/" + point_name, "total.jpg"), segmentation_mask)
-
     return segmentation_mask, markers_img, marker_names
 
 
-def get_all_point_data(points_upper_bound=48,
-                       segmentation_type='allvessels'):
-    '''
-    Concatenate all the point data
+def get_all_point_data() -> (list, list, list):
+    """
+    Collect all points marker data, segmentation masks and marker names
 
-    :param segmentation_type:
-    :param points_upper_bound: Point number upper bound
-    :return: Marker data and segmentation mask as numpy arrays
-    '''
+    :return: array_like, [n_points, n_markers, point_size[0], point_size[1]] -> Marker data,
+    array_like, [n_points, point_size[0], point_size[1]] -> Segmentation masks,
+    array_like, [n_points, n_markers] -> Names of markers
+    """
 
-    fovs = ["Point" + str(i + 1) for i in range(points_upper_bound)]
+    fovs = [config.point_dir + str(i + 1) for i in range(config.n_points)]
 
-    flattened_marker_images = []
-    markers_data = []
-    markers_names = []
+    all_points_segmentation_masks = []
+    all_points_marker_data = []
 
     for fov in fovs:
         start = datetime.datetime.now()
-        image, marker_data, marker_names = read(point_name=fov, plot=False, segmentation_type=segmentation_type)
+        segmentation_mask, marker_data, marker_names = read(fov)
         end = datetime.datetime.now()
 
-        print("Finished stitching %s in %s" % (fov, str(end - start)))
+        print("Finished reading %s in %s" % (fov, str(end - start)))
 
-        flattened_marker_images.append(image)
-        markers_data.append(marker_data)
+        all_points_segmentation_masks.append(segmentation_mask)
+        all_points_marker_data.append(marker_data)
 
-    return flattened_marker_images, markers_data, marker_names
+    return all_points_segmentation_masks, all_points_marker_data, marker_names
