@@ -1,6 +1,8 @@
-# Dr. Oliveria 2020 Research Lab
+#  MIBI Toolbox for Spatial Analysis and Visualization
+Authors: Aswin Visva & John-Paul Oliveria, Ph.D
 
-The aim of this project is to uncover heterogeneity of micro-environments in the brain.
+This project is to aid research in uncovering vascular heterogeneity through data visualization and spatial analysis
+techniques in Python.
 
 ## Usage for Linux/macOS
 

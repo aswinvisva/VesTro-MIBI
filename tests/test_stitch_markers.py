@@ -7,7 +7,7 @@ from utils import mibi_reader
 class TestStitchMarkersMethods(unittest.TestCase):
 
     def test_stitch_markers(self):
-        segmentation_mask, markers_img, marker_names = mibi_reader.read(point_name="Point16", plot=False)
+        segmentation_mask, markers_img, marker_names = mibi_reader.read(point_name="Point16")
 
         # Ensure the correct number of markers
         self.assertEqual(len(markers_img), len(marker_names))

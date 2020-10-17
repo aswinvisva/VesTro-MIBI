@@ -1,7 +1,7 @@
 import unittest
 
-from image_segmentation.extract_cell_events import extract_cell_contours
-from dnn_vessel_heterogeneity.models import ClusteringFlowSOM
+from utils.extract_vessel_contours import extract
+from dnn_vessel_heterogeneity.models.flowsom_clustering import ClusteringFlowSOM
 from utils.markers_feature_gen import calculate_composition_marker_expression
 from utils.mibi_reader import read
 
@@ -9,10 +9,10 @@ from utils.mibi_reader import read
 class TestClusteringFlowSOM(unittest.TestCase):
 
     def test_predict(self):
-        image, marker_data, marker_names = read(point_name="Point16", plot=False)
-        images, contours = extract_cell_contours(image, show=False)
+        image, marker_data, marker_names = read(point_name="Point16")
+        images, contours = extract(image)
 
-        data = calculate_composition_marker_expression(marker_data, contours, plot=False)
+        data = calculate_composition_marker_expression(marker_data, contours)
 
         model = ClusteringFlowSOM(data,
                                   "Point16",
