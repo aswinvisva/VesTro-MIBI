@@ -1,13 +1,27 @@
 import unittest
 import os
 
+import config.config_settings as config
 from utils import mibi_reader
+from utils.mibi_reader import read
 
 
 class TestStitchMarkersMethods(unittest.TestCase):
 
     def test_stitch_markers(self):
-        segmentation_mask, markers_img, marker_names = mibi_reader.read(point_name="Point16")
+        # Get path to data selected through configuration settings
+        data_loc = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                                config.data_dir,
+                                "Point16",
+                                config.tifs_dir)
+
+        # Get path to mask selected through configuration settings
+        mask_loc = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                                config.masks_dr,
+                                "Point16",
+                                "allvessels" + '.tif')
+
+        segmentation_mask, markers_img, marker_names = read(data_loc, mask_loc)
 
         # Ensure the correct number of markers
         self.assertEqual(len(markers_img), len(marker_names))

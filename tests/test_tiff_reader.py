@@ -9,6 +9,7 @@ class TestTiffReader(unittest.TestCase):
     def test_read(self):
         path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                             'data',
+                            'hires',
                             "Point16",
                             'TIFs',
                             'ABeta42.tif'

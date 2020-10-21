@@ -95,12 +95,10 @@ def get_outward_expansion_data(all_points_vessel_contours: list,
 
 
 def get_inward_expansion_data(all_points_vessel_contours: list,
-                              all_points_marker_data: list,
-                              pixel_interval: int) -> (list, int):
+                              all_points_marker_data: list) -> (list, int):
     """
     Collect inward expansion data for each expansion, for each point, for each vessel
 
-    :param pixel_interval: int -> Pixel interval
     :param all_points_vessel_contours: array_like, [n_points, n_vessels] -> list of vessel contours for each point
     :param all_points_marker_data: array_like, [n_points, n_markers, point_size[0], point_size[1]]
     -> list of marker data for each point
@@ -110,7 +108,7 @@ def get_inward_expansion_data(all_points_vessel_contours: list,
     """
 
     expansion_data = []
-    current_interval = pixel_interval
+    current_interval = config.pixel_interval
     all_vessels_count = len([item for sublist in all_points_vessel_contours for item in sublist])
     current_expansion_no = 0
     all_points_stopped_vessels = 0
@@ -133,7 +131,7 @@ def get_inward_expansion_data(all_points_vessel_contours: list,
                 marker_data,
                 contours,
                 pixel_expansion_upper_bound=current_interval,
-                pixel_expansion_lower_bound=current_interval - pixel_interval)
+                pixel_expansion_lower_bound=current_interval - config.pixel_interval)
 
             all_points_stopped_vessels += stopped_vessels
             current_expansion_data.append(data)
@@ -144,7 +142,7 @@ def get_inward_expansion_data(all_points_vessel_contours: list,
 
         expansion_data.append(current_expansion_data)
 
-        current_interval += pixel_interval
+        current_interval += config.pixel_interval
         current_expansion_no += 1
 
         print("There are %s / %s vessels which have failed to expand inward" % (str(all_points_stopped_vessels),
@@ -169,15 +167,15 @@ def run_vis():
 
     assert n_expansions >= max(expansions), "More expansions selected than available!"
 
-    marker_segmentation_masks, all_points_marker_data, markers_names = get_all_point_data()  # Collect all marker and
-    # mask data
+    all_points_segmentation_masks, all_points_marker_data, markers_names = get_all_point_data()  # Collect all marker
+    # and mask data
 
     all_points_vessel_contours = []
     all_points_vessel_regions_of_interest = []
 
     # Collect vessel contours from each segmentation mask
-    for segmentation_mask in marker_segmentation_masks:
-        vessel_regions_of_interest, contours = extract(segmentation_mask)
+    for point_idx, segmentation_mask in enumerate(all_points_segmentation_masks):
+        vessel_regions_of_interest, contours = extract(segmentation_mask, point_name=str(point_idx+1))
         all_points_vessel_contours.append(contours)
         all_points_vessel_regions_of_interest.append(vessel_regions_of_interest)
 
@@ -187,7 +185,7 @@ def run_vis():
 
     # Inward expansion data
     if config.perform_inward_expansions:
-        get_inward_expansion_data(all_points_vessel_contours, all_points_marker_data, markers_names)
+        get_inward_expansion_data(all_points_vessel_contours, all_points_marker_data)
 
     # Vessel areas histograms and boxplots
     if config.create_vessel_areas_histograms_and_boxplots:
@@ -216,23 +214,39 @@ def run_vis():
                                            interval)
         # Mask/Non-mask heatmaps
         if config.create_vessel_nonvessel_heatmaps:
-            vessel_nonvessel_heatmap(vessel_space_expansion_data, nonvessel_space_expansion_data, markers_names, x + 1)
+            vessel_nonvessel_heatmap(expansion_data,
+                                     vessel_space_expansion_data,
+                                     nonvessel_space_expansion_data,
+                                     markers_names,
+                                     x + 1)
 
         # Per brain region line plots
         if config.create_brain_region_expansion_line_plots:
-            brain_region_plots(x + 1, interval, markers_names, expansion_data)
+            brain_region_plots(x + 1,
+                               interval,
+                               markers_names,
+                               expansion_data)
 
         # Per point line plots
         if config.create_point_expansion_line_plots:
-            point_region_plots(x + 1, interval, markers_names, expansion_data)
+            point_region_plots(x + 1,
+                               interval,
+                               markers_names,
+                               expansion_data)
 
         # Per vessel line plots
         if config.create_vessel_expansion_line_plots:
-            vessel_region_plots(x + 1, interval, markers_names, expansion_data)
+            vessel_region_plots(x + 1,
+                                interval,
+                                markers_names,
+                                expansion_data)
 
         # All points average line plots
         if config.create_allpoints_expansion_line_plots:
-            all_points_plots(x + 1, interval, markers_names, expansion_data)
+            all_points_plots(x + 1,
+                             interval,
+                             markers_names,
+                             expansion_data)
 
 
 if __name__ == '__main__':

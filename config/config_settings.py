@@ -1,3 +1,5 @@
+import os
+
 import matplotlib
 import matplotlib.pylab as pl
 
@@ -44,17 +46,33 @@ all_masks = [
 
 n_markers = 34
 brain_region_point_ranges = [(1, 16), (17, 32), (33, 48)]
+# brain_region_point_ranges = [(1, 100), (101, 200), (201, 300)]
+
 segmentation_mask_size = (1024, 1024)
+# segmentation_mask_size = (512, 512)
+
 brain_region_names = ["MFG", "HIP", "CAUD"]
 
 selected_segmentation_mask_type = "allvessels"
 
-data_dir = "data"
+data_type = "hires"
+data_dir = os.path.join("data", data_type)
+masks_dr = os.path.join("masks", data_type)
 point_dir = "Point"
 tifs_dir = "TIFs"
-masks_dr = "masks"
+caud_hip_mfg_separate_dir = False
+
+if caud_hip_mfg_separate_dir:
+    caud_dir = "CAUD"
+    hip_dir = "HIP"
+    mfg_dir = "MFG"
 
 n_points = 48
+
+if caud_hip_mfg_separate_dir:
+    n_points_per_dir = 100
+else:
+    n_points_per_dir = n_points
 
 show_segmentation_masks_when_reading = False
 describe_markers_when_reading = False
@@ -64,6 +82,8 @@ describe_markers_when_reading = False
 show_vessel_contours_when_extracting = False
 minimum_contour_area_to_remove = 30
 use_guassian_blur_when_extracting_vessels = True
+create_removed_vessels_mask = False
+create_blurred_vessels_mask = False
 
 if use_guassian_blur_when_extracting_vessels:
     guassian_blur = (2, 2)
@@ -79,34 +99,42 @@ if normalization_type == "percentile":
     percentile_to_normalize = 99
 
 show_probability_distribution_for_expression = False
+show_vessel_masks_when_generating_expression = False
 
 # Visualization settings for plotting data
 
 visualization_results_dir = "results"
-max_expansions = 12
 pixel_interval = 5
-expansion_to_run = [2, 4, 8, 12]
+expansion_to_run = [1, 2, 4, 8, 12]
+max_expansions = None  # Set to None to select max_expansions automatically
+
+if max_expansions is None:
+    max_expansions = max(expansion_to_run)
 
 perform_inward_expansions = False
+
+# Figures to generate
 
 create_vessel_id_plot = False
 create_vessel_nonvessel_mask = False
 create_marker_expression_overlay_masks = False
 create_vessel_areas_histograms_and_boxplots = False
 create_brain_region_expansion_heatmaps = True
-create_vessel_nonvessel_heatmaps = True
-create_brain_region_expansion_line_plots = True
-create_point_expansion_line_plots = True
-create_vessel_expansion_line_plots = True
-create_allpoints_expansion_line_plots = True
+create_vessel_nonvessel_heatmaps = False
+create_brain_region_expansion_line_plots = False
+create_point_expansion_line_plots = False
+create_vessel_expansion_line_plots = False
+create_allpoints_expansion_line_plots = False
 create_expansion_ring_plots = False
+create_embedded_vessel_id_masks = False
 
 if create_vessel_areas_histograms_and_boxplots:
     show_boxplot_outliers = False
 
 if create_vessel_nonvessel_mask:
-    vessel_mask_colour = (51, 153, 0)
+    vessel_space_colour = (51, 153, 0)
     nonvessel_mask_colour = (0, 0, 179)
+    vessel_mask_colour = (153, 51, 0)
 
 line_plots_color_maps = {
     "Nucleus": matplotlib.colors.LinearSegmentedColormap.from_list("", ["white", "yellow"]),

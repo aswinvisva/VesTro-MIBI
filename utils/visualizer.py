@@ -7,6 +7,10 @@ from utils.extract_vessel_contours import *
 from utils.markers_feature_gen import *
 from utils.utils_functions import mkdir_p
 
+'''
+Authors: Aswin Visva, John-Paul Oliveria, Ph.D
+'''
+
 
 def vessel_region_plots(n_expansions: int,
                         pixel_interval: int,
@@ -291,7 +295,7 @@ def all_points_plots(n_expansions: int, pixel_interval: int, markers_names: list
     pixel_expansions = pixel_expansions.tolist()
 
     output_dir = "%s/all_points/%s_expansions_%s_pix_interval" % (
-    config.visualization_results_dir, str(n_expansions), str(pixel_interval))
+        config.visualization_results_dir, str(n_expansions), str(pixel_interval))
     mkdir_p(output_dir)
 
     # All Points Averages
@@ -576,13 +580,15 @@ def pixel_expansion_ring_plots():
 
 
 def vessel_nonvessel_heatmap(vessel_data: list,
+                             vessel_environment_data: list,
                              nonvessel_data: list,
                              markers_names: list,
                              n_expansions: int):
     """
     Vessel/Non-vessel heatmaps for marker expression
 
-    :param vessel_data: list, [n_expansions, n_points, n_vessels, n_markers] -> vessel space expansion data
+    :param vessel_data: list, [n_expansions, n_points, n_vessels, n_markers] -> vessel space data
+    :param vessel_environment_data: list, [n_expansions, n_points, n_vessels, n_markers] -> vessel space expansion data
     :param nonvessel_data: list, [n_expansions, n_points, n_vessels, n_markers] -> nonvessel space expansion data
     :param markers_names: array_like, [n_points, n_markers] -> Names of markers
     :param n_expansions: int, Number of expansions
@@ -591,34 +597,38 @@ def vessel_nonvessel_heatmap(vessel_data: list,
     brain_regions = config.brain_region_point_ranges
     marker_clusters = config.marker_clusters
 
-    all_mask_data = []
-    mfg_mask_data = []
-    hip_mask_data = []
-    caud_mask_data = []
+    # Vessel Environment Space
 
-    for expansion in vessel_data[0:n_expansions]:
+    all_vessels_data = []
+    mfg_vessels_data = []
+    hip_vessels_data = []
+    caud_vessels_data = []
+
+    for expansion in vessel_environment_data[0:n_expansions]:
         for point_idx, point in enumerate(expansion):
             for vessel in point:
-                all_mask_data.append(vessel)
+                all_vessels_data.append(vessel)
 
                 if brain_regions[0][0] <= point_idx <= brain_regions[0][1]:
-                    mfg_mask_data.append(vessel)
+                    mfg_vessels_data.append(vessel)
                 elif brain_regions[1][0] <= point_idx <= brain_regions[1][1]:
-                    hip_mask_data.append(vessel)
+                    hip_vessels_data.append(vessel)
                 elif brain_regions[2][0] <= point_idx <= brain_regions[2][1]:
-                    caud_mask_data.append(vessel)
+                    caud_vessels_data.append(vessel)
 
-    all_mask_data = np.array(all_mask_data)
-    mean_mask_data = np.mean(all_mask_data, axis=0)
+    all_vessels_data = np.array(all_vessels_data)
+    all_vessels_data = np.mean(all_vessels_data, axis=0)
 
-    mfg_mask_data = np.array(mfg_mask_data)
-    mfg_mask_data = np.mean(mfg_mask_data, axis=0)
+    mfg_vessels_data = np.array(mfg_vessels_data)
+    mfg_vessels_data = np.mean(mfg_vessels_data, axis=0)
 
-    hip_mask_data = np.array(hip_mask_data)
-    hip_mask_data = np.mean(hip_mask_data, axis=0)
+    hip_vessels_data = np.array(hip_vessels_data)
+    hip_vessels_data = np.mean(hip_vessels_data, axis=0)
 
-    caud_mask_data = np.array(caud_mask_data)
-    caud_mask_data = np.mean(caud_mask_data, axis=0)
+    caud_vessels_data = np.array(caud_vessels_data)
+    caud_vessels_data = np.mean(caud_vessels_data, axis=0)
+
+    # Non-vessel Space
 
     all_nonmask_data = []
     mfg_nonmask_data = []
@@ -637,7 +647,7 @@ def vessel_nonvessel_heatmap(vessel_data: list,
                 caud_nonmask_data.append(vessel)
 
     all_nonmask_data = np.array(all_nonmask_data)
-    mean_nonmask_data = np.mean(all_nonmask_data, axis=0)
+    all_nonmask_data = np.mean(all_nonmask_data, axis=0)
 
     mfg_nonmask_data = np.array(mfg_nonmask_data)
     mfg_nonmask_data = np.mean(mfg_nonmask_data, axis=0)
@@ -648,23 +658,62 @@ def vessel_nonvessel_heatmap(vessel_data: list,
     caud_nonmask_data = np.array(caud_nonmask_data)
     caud_nonmask_data = np.mean(caud_nonmask_data, axis=0)
 
-    all_data = [mean_mask_data,
-                mean_nonmask_data,
-                mfg_mask_data,
+    # Vessel environment space
+
+    all_vessels_environment_data = []
+    mfg_vessels_environment_data = []
+    hip_vessels_environment_data = []
+    caud_vessels_environment_data = []
+
+    for expansion in vessel_data[0:n_expansions]:
+        for point_idx, point in enumerate(expansion):
+            for vessel in point:
+                all_vessels_environment_data.append(vessel)
+
+                if brain_regions[0][0] <= point_idx <= brain_regions[0][1]:
+                    mfg_vessels_environment_data.append(vessel)
+                elif brain_regions[1][0] <= point_idx <= brain_regions[1][1]:
+                    hip_vessels_environment_data.append(vessel)
+                elif brain_regions[2][0] <= point_idx <= brain_regions[2][1]:
+                    caud_vessels_environment_data.append(vessel)
+
+    all_vessels_environment_data = np.array(all_vessels_environment_data)
+    all_vessels_environment_data = np.mean(all_vessels_environment_data, axis=0)
+
+    mfg_vessels_environment_data = np.array(mfg_vessels_environment_data)
+    mfg_vessels_environment_data = np.mean(mfg_vessels_environment_data, axis=0)
+
+    hip_vessels_environment_data = np.array(hip_vessels_environment_data)
+    hip_vessels_environment_data = np.mean(hip_vessels_environment_data, axis=0)
+
+    caud_vessels_environment_data = np.array(caud_vessels_environment_data)
+    caud_vessels_environment_data = np.mean(caud_vessels_environment_data, axis=0)
+
+    all_data = [all_vessels_data,
+                all_vessels_environment_data,
+                all_nonmask_data,
+                mfg_vessels_data,
+                mfg_vessels_environment_data,
                 mfg_nonmask_data,
-                hip_mask_data,
+                hip_vessels_data,
+                hip_vessels_environment_data,
                 hip_nonmask_data,
-                caud_mask_data,
+                caud_vessels_data,
+                caud_vessels_environment_data,
                 caud_nonmask_data]
 
-    yticklabels = ["Vessel Space - All Points",
-                   "Non-Vessel Space - All Points",
-                   "Vessel Space - MFG",
-                   "Non-Vessel Space - MFG",
-                   "Vessel Space - HIP",
-                   "Non-Vessel Space - HIP",
-                   "Vessel Space - CAUD",
-                   "Non-Vessel Space - CAUD"]
+    yticklabels = ["Vascular Space - All Points",
+                   "Vascular Expansion Space - All Points",
+                   "Non-Vascular Space - All Points",
+                   "Vascular Space - MFG",
+                   "Vascular Expansion Space - MFG",
+                   "Non-Vascular Space - MFG",
+                   "Vascular Space - HIP",
+                   "Vascular Expansion Space - HIP",
+                   "Non-Vascular Space - HIP",
+                   "Vascular Space - CAUD",
+                   "Vascular Expansion Space - CAUD",
+                   "Non-Vascular Space - CAUD"]
 
     norm = matplotlib.colors.Normalize(-1, 1)
     colors = [[norm(-1.0), "black"],
@@ -698,7 +747,7 @@ def vessel_nonvessel_heatmap(vessel_data: list,
     h_line_idx = 0
 
     while h_line_idx < len(yticklabels):
-        h_line_idx += 2
+        h_line_idx += 3
         ax.axhline(h_line_idx, 0, len(markers_names), linewidth=3, c='w')
 
     output_dir = "%s/heatmaps" % config.visualization_results_dir
@@ -836,7 +885,7 @@ def brain_region_expansion_heatmap(vessel_data: list,
     # Heatmaps Output
 
     output_dir = "%s/brain_region_expansion_heatmaps/%s_expansions" % (
-    config.visualization_results_dir, str(n_expansions))
+        config.visualization_results_dir, str(n_expansions - 1))
     mkdir_p(output_dir)
 
     plt.figure(figsize=(22, 10))
@@ -934,7 +983,7 @@ def brain_region_expansion_heatmap(vessel_data: list,
     # Clustermaps Outputs
 
     output_dir = "%s/brain_region_expansion_clustermaps/%s_expansions" % (
-    config.visualization_results_dir, str(n_expansions))
+        config.visualization_results_dir, str(n_expansions - 1))
     mkdir_p(output_dir)
 
     ax = sns.clustermap(all_mask_data,

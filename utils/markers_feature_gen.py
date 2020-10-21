@@ -13,13 +13,13 @@ from sklearn import preprocessing
 from sklearn.preprocessing import StandardScaler, Normalizer, normalize
 import scipy.stats as stats
 import matplotlib.pyplot as plt
+from PIL import Image
 
 from utils.utils_functions import mkdir_p
 import config.config_settings as config
 
 '''
-Author: Aswin Visva
-Email: aavisva@uwaterloo.ca
+Authors: Aswin Visva, John-Paul Oliveria, Ph.D
 '''
 
 
@@ -178,8 +178,7 @@ def normalize_expression_data(expression_data: list,
 
     elif normalization == "normalizer":
         # Scale data by Sklearn normalizer
-        sc = Normalizer().fit(np.array(expression_data))
-        expression_data = sc.transform(expression_data)
+        expression_data = normalize(expression_data, axis=0)
 
     return expression_data
 
@@ -343,6 +342,10 @@ def calculate_inward_microenvironment_marker_expression(per_point_marker_data: n
         result_mask = contract_vessel_region(cnt, img_shape, upper_bound=pixel_expansion_upper_bound,
                                              lower_bound=pixel_expansion_lower_bound)
 
+        if config.show_vessel_masks_when_generating_expression:
+            cv.imshow("Vessel Mask", result_mask*255)
+            cv.waitKey(0)
+
         if cv.countNonZero(result_mask) == 0:
             stopped_vessels += 1
 
@@ -444,11 +447,19 @@ def calculate_microenvironment_marker_expression(per_point_marker_data: np.ndarr
 
         result_mask = mask_expanded - mask
         result_mask = cv.bitwise_and(result_mask, regions[idx].astype(np.uint8))
+        mask_expanded = cv.bitwise_and(mask_expanded, regions[idx].astype(np.uint8))
         dark_space_mask = regions[idx].astype(np.uint8) - mask_expanded
+
+        if config.show_vessel_masks_when_generating_expression:
+            cv.imshow("Microenvironment Mask", result_mask*255)
+            cv.imshow("Dark Space Mask", dark_space_mask*255)
+            cv.imshow("Expanded Mask", mask_expanded*255)
+            cv.waitKey(0)
 
         if plot_vesselnonvessel_mask:
             example_img[np.where(dark_space_mask == 1)] = config.nonvessel_mask_colour  # red
-            example_img[np.where(mask_expanded == 1)] = config.vessel_mask_colour  # green
+            example_img[np.where(mask_expanded == 1)] = config.vessel_space_colour  # green
+            cv.drawContours(example_img, [cnt], -1, config.vessel_mask_colour, cv.FILLED)  # blue
 
         if cv.countNonZero(result_mask) == 0:
             stopped_vessels += 1
@@ -542,12 +553,16 @@ def calculate_composition_marker_expression(per_point_marker_data: np.ndarray,
     plot = config.show_probability_distribution_for_expression
     n_markers = config.n_markers
     vessel_id_plot = config.create_vessel_id_plot
+    embedded_id_plot = config.create_embedded_vessel_id_masks
 
     per_point_vessel_expression_data = []
     img_shape = per_point_marker_data[0].shape
 
     if vessel_id_plot:
         vessel_id_img = np.zeros(per_point_marker_data[0].shape)
+
+    if embedded_id_plot:
+        embedded_id_img = np.zeros(per_point_marker_data[0].shape, np.uint8)
 
     for idx, cnt in enumerate(per_point_vessel_contours):
         data_vec = []
@@ -557,10 +572,18 @@ def calculate_composition_marker_expression(per_point_marker_data: np.ndarray,
             cX = int(M["m10"] / M["m00"])
             cY = int(M["m01"] / M["m00"])
             cv.drawContours(vessel_id_img, [cnt], -1, (255, 255, 255), 1)
-            cv.putText(vessel_id_img, str(idx), (cX, cY), cv.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
+            cv.putText(vessel_id_img, str(idx), (cX, cY), cv.FONT_HERSHEY_SIMPLEX, 0.65, (255, 255, 255), 2)
+
+        if embedded_id_plot:
+            cv.drawContours(embedded_id_img, [cnt], -1, (idx, idx, idx), cv.FILLED)  # Give all pixels in the
+            # contour region value of ID
 
         mask = np.zeros(img_shape, np.uint8)
         cv.drawContours(mask, [cnt], -1, (1, 1, 1), cv.FILLED)
+
+        if config.show_vessel_masks_when_generating_expression:
+            cv.imshow("Vessel Mask", mask*255)
+            cv.waitKey(1)
 
         for marker in per_point_marker_data:
             result = cv.bitwise_and(marker, marker, mask=mask)
@@ -592,5 +615,11 @@ def calculate_composition_marker_expression(per_point_marker_data: np.ndarray,
         output_dir = "%s/vessel_id_masks" % config.visualization_results_dir
         mkdir_p(output_dir)
         cv.imwrite(os.path.join(output_dir, "vessel_id_plot_%s.png" % vessel_id_label), vessel_id_img)
+
+    if embedded_id_plot:
+        output_dir = "%s/embedded_id_masks" % config.visualization_results_dir
+        mkdir_p(output_dir)
+        im = Image.fromarray(embedded_id_img)
+        im.save(os.path.join(output_dir, "embedded_id_plot_%s.tif" % vessel_id_label))
 
     return per_point_vessel_expression_data
