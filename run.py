@@ -7,8 +7,7 @@ from utils.visualizer import vessel_nonvessel_heatmap, point_region_plots, vesse
 import config.config_settings as config
 
 '''
-Author: Aswin Visva
-Email: aavisva@uwaterloo.ca
+Authors: Aswin Visva, John-Paul Oliveria, Ph.D
 '''
 
 
