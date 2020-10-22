@@ -566,17 +566,18 @@ def calculate_composition_marker_expression(per_point_marker_data: np.ndarray,
 
     for idx, cnt in enumerate(per_point_vessel_contours):
         data_vec = []
+        vessel_id = idx + 1  # Index from 1 rather than from 0
 
         if vessel_id_plot:
             M = cv.moments(cnt)
             cX = int(M["m10"] / M["m00"])
             cY = int(M["m01"] / M["m00"])
             cv.drawContours(vessel_id_img, [cnt], -1, (255, 255, 255), 1)
-            cv.putText(vessel_id_img, str(idx), (cX, cY), cv.FONT_HERSHEY_SIMPLEX, 0.65, (255, 255, 255), 2)
+            cv.putText(vessel_id_img, str(vessel_id), (cX, cY), cv.FONT_HERSHEY_SIMPLEX, 0.65, (255, 255, 255), 2)
 
         if embedded_id_plot:
-            cv.drawContours(embedded_id_img, [cnt], -1, (idx, idx, idx), cv.FILLED)  # Give all pixels in the
-            # contour region value of ID
+            cv.drawContours(embedded_id_img, [cnt], -1, (vessel_id, vessel_id, vessel_id), cv.FILLED)  # Give all
+            # pixels in the contour region value of ID
 
         mask = np.zeros(img_shape, np.uint8)
         cv.drawContours(mask, [cnt], -1, (1, 1, 1), cv.FILLED)
