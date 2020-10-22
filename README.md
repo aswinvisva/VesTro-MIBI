@@ -18,10 +18,30 @@ source env/bin/activate
 
 3. Install requirements:
 ```console
-pip install -r requirements.txt
+pip3 install -r requirements.txt
 ```
 
 4. Run the script:
 ```console
 python3 run.py
+```
+
+## Contributing
+
+1. Clone the repository
+```console
+git clone https://github.com/aswinvisva/oliveria-lab-ml.git
+```
+
+2. Create new branch and switch to it
+```console
+git checkout -b my_feature_branch
+```
+
+3. Add your feature to the code
+
+4. Commit with a message and push your code to the remote
+```console
+git commit -m "Added a cool feature"
+git push --set-upstream origin my_feature_branch
 ```
