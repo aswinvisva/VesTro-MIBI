@@ -119,7 +119,7 @@ create_vessel_id_plot = False
 create_vessel_nonvessel_mask = False
 create_marker_expression_overlay_masks = False
 create_vessel_areas_histograms_and_boxplots = False
-create_brain_region_expansion_heatmaps = True
+create_brain_region_expansion_heatmaps = False
 create_vessel_nonvessel_heatmaps = False
 create_brain_region_expansion_line_plots = False
 create_point_expansion_line_plots = False
@@ -127,6 +127,7 @@ create_vessel_expansion_line_plots = False
 create_allpoints_expansion_line_plots = False
 create_expansion_ring_plots = False
 create_embedded_vessel_id_masks = False
+create_removed_vessels_expression_boxplot = True
 
 if create_vessel_areas_histograms_and_boxplots:
     show_boxplot_outliers = False

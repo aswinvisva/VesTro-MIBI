@@ -16,14 +16,15 @@ Authors: Aswin Visva, John-Paul Oliveria, Ph.D
 
 
 def extract(img: np.ndarray,
-            point_name: str = "Point1") -> (list, list):
+            point_name: str = "Point1") -> (list, list, list):
     """
     Extract vessel contours and vessel ROI's from a segmentation mask
 
     :param point_name: str, Point name
     :param img: np.ndarray, [point_size[0], point_size[1]] -> Segmentation mask
     :return: array_like, [n_vessels, vessel_size[0], vessel_size[1]] -> Vessel regions of interest,
-    array_like, [n_vessels] -> vessel contours
+    array_like, [n_vessels] -> vessel contours,
+    array_like, [n_removed_vessels] -> Removed vessel contours
     """
 
     show = config.show_vessel_contours_when_extracting
@@ -56,6 +57,7 @@ def extract(img: np.ndarray,
 
     images = []
     usable_contours = []
+    removed_contours = []
 
     # Iterate through vessel contours to filter unusable ones
     for i, cnt in enumerate(contours):
@@ -69,6 +71,8 @@ def extract(img: np.ndarray,
 
         # If vessel area is lower than threshold, remove it
         if contour_area < min_contour_area:
+            removed_contours.append(cnt)
+
             if config.create_removed_vessels_mask:
                 cv.drawContours(removed_vessels_img, contours, i, (255, 255, 255), cv.FILLED)
 
@@ -108,4 +112,4 @@ def extract(img: np.ndarray,
         cv.waitKey(0)
         del copy
 
-    return images, usable_contours
+    return images, usable_contours, removed_contours

@@ -549,7 +549,7 @@ def pixel_expansion_ring_plots():
     contour_images_multiple_points = []
 
     for segmentation_mask in marker_segmentation_masks:
-        contour_images, per_point_vessel_contours = extract(segmentation_mask, show=False)
+        contour_images, per_point_vessel_contours, removed_contours = extract(segmentation_mask, show=False)
         all_points_vessel_contours.append(per_point_vessel_contours)
         contour_images_multiple_points.append(contour_images)
 
@@ -1092,6 +1092,117 @@ def marker_expression_masks(all_points_vessel_contours: list,
             plt.clf()
 
 
+def removed_vessel_expression_boxplot(all_points_vessel_contours: list,
+                                      all_points_removed_vessel_contours: list,
+                                      all_points_marker_data: list,
+                                      markers_names: list):
+    """
+    Create kept vs. removed vessel expression comparison using Box Plots
+
+    :param markers_names: array_like, [n_points, n_markers] -> Names of markers
+    :param all_points_removed_vessel_contours: array_like, [n_points, n_vessels] -> list of removed vessel contours
+    for each point
+    :param all_points_vessel_contours: array_like, [n_points, n_vessels] -> list of vessel contours for each point
+    :param all_points_marker_data: array_like, [n_points, n_markers, point_size[0], point_size[1]] ->
+    list of marker data for each point
+    """
+    n_points = config.n_points
+
+    all_points_vessels_expression = []
+    all_points_removed_vessels_expression = []
+
+    parent_dir = "%s/kept_removed_vessel_expression" % config.visualization_results_dir
+    mkdir_p(parent_dir)
+
+    # Iterate through each point
+    for i in range(n_points):
+        contours = all_points_vessel_contours[i]
+        removed_contours = all_points_removed_vessel_contours[i]
+        marker_data = all_points_marker_data[i]
+        start_expression = datetime.datetime.now()
+
+        vessel_expression_data = calculate_composition_marker_expression(marker_data, contours,
+                                                                         vessel_id_label="Point_%s" % str(i + 1))
+        removed_vessel_expression_data = calculate_composition_marker_expression(marker_data, removed_contours,
+                                                                                 vessel_id_label="Point_%s" % str(
+                                                                                     i + 1))
+
+        all_points_vessels_expression.append(vessel_expression_data)
+        all_points_removed_vessels_expression.append(removed_vessel_expression_data)
+
+        end_expression = datetime.datetime.now()
+
+        print("Finished calculating expression for Point %s in %s" % (str(i + 1), end_expression - start_expression))
+
+    brain_region_names = config.brain_region_names
+    brain_region_point_ranges = config.brain_region_point_ranges
+    markers_to_show = config.marker_clusters["Vessels"]
+
+    # Get marker index range to be used for expression comparison
+    sll = len(markers_to_show)
+    marker_range = (0, len(markers_names))
+    for ind in (i for i, e in enumerate(markers_names) if e == markers_to_show[0]):
+        if markers_names[ind:ind + sll] == markers_to_show:
+            marker_range = (ind, ind + sll)
+
+    all_points_per_brain_region_dir = "%s/all_points_per_brain_region" % parent_dir
+    mkdir_p(all_points_per_brain_region_dir)
+
+    average_points_dir = "%s/average_points_per_brain_region" % parent_dir
+    mkdir_p(average_points_dir)
+
+    all_points = "%s/all_points" % parent_dir
+    mkdir_p(all_points)
+
+    all_kept_removed_vessel_expression_data_collapsed = []
+
+    for idx, brain_region in enumerate(brain_region_names):
+        brain_region_range = brain_region_point_ranges[idx]
+
+        vessel_removed_vessel_expression_data_collapsed = []
+
+        for point_idx, per_point_point_vessel_data in \
+                enumerate(all_points_vessels_expression[brain_region_range[0] - 1:brain_region_range[1]]):
+
+            for vessel_data in per_point_point_vessel_data:
+                data = np.mean(vessel_data[marker_range[0]:marker_range[1]])
+                vessel_removed_vessel_expression_data_collapsed.append(
+                    [data, "Kept", point_idx + brain_region_range[0]])
+
+                all_kept_removed_vessel_expression_data_collapsed.append(
+                    [data, "Kept", point_idx + brain_region_range[0]])
+
+        for point_idx, per_point_point_vessel_data in \
+                enumerate(all_points_removed_vessels_expression[brain_region_range[0] - 1:brain_region_range[1]]):
+
+            for vessel_data in per_point_point_vessel_data:
+                data = np.mean(vessel_data[marker_range[0]:marker_range[1]])
+                vessel_removed_vessel_expression_data_collapsed.append([data, "Removed",
+                                                                        point_idx + brain_region_range[0]])
+
+                all_kept_removed_vessel_expression_data_collapsed.append([data, "Removed",
+                                                                          point_idx + brain_region_range[0]])
+
+        df = pd.DataFrame(vessel_removed_vessel_expression_data_collapsed, columns=["Expression", "Vessel", "Point"])
+
+        plt.title("Kept vs Removed Vessel Marker Expression - %s" % brain_region)
+        ax = sns.boxplot(x="Point", y="Expression", hue="Vessel", data=df, palette="Set3")
+        plt.savefig(os.path.join(all_points_per_brain_region_dir, "%s.png" % brain_region))
+        plt.clf()
+
+        plt.title("Kept vs Removed Vessel Marker Expression - %s: Average Points" % brain_region)
+        ax = sns.boxplot(x="Vessel", y="Expression", hue="Vessel", data=df, palette="Set3")
+        plt.savefig(os.path.join(average_points_dir, "%s.png" % brain_region))
+        plt.clf()
+
+    df = pd.DataFrame(all_kept_removed_vessel_expression_data_collapsed, columns=["Expression", "Vessel", "Point"])
+
+    plt.title("Kept vs Removed Vessel Marker Expression - All Points")
+    ax = sns.boxplot(x="Vessel", y="Expression", hue="Vessel", data=df, palette="Set3")
+    plt.savefig(os.path.join(all_points, "All_Points.png"))
+    plt.clf()
+
+
 def vessel_areas_histogram():
     """
     Create visualizations of vessel areas
@@ -1116,7 +1227,7 @@ def vessel_areas_histogram():
         contour_data_multiple_points = []
 
         for segmentation_mask in marker_segmentation_masks:
-            contour_images, contours = extract(segmentation_mask)
+            contour_images, contours, removed_contours = extract(segmentation_mask)
             contour_images_multiple_points.append(contour_images)
             contour_data_multiple_points.append(contours)
 

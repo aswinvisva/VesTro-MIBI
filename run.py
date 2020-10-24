@@ -3,7 +3,7 @@ from utils.extract_vessel_contours import *
 from utils.markers_feature_gen import *
 from utils.visualizer import vessel_nonvessel_heatmap, point_region_plots, vessel_region_plots, brain_region_plots, \
     all_points_plots, brain_region_expansion_heatmap, marker_expression_masks, vessel_areas_histogram, \
-    pixel_expansion_ring_plots
+    pixel_expansion_ring_plots, removed_vessel_expression_boxplot
 import config.config_settings as config
 
 '''
@@ -171,16 +171,25 @@ def run_vis():
 
     all_points_vessel_contours = []
     all_points_vessel_regions_of_interest = []
+    all_points_removed_vessel_contours = []
 
     # Collect vessel contours from each segmentation mask
     for point_idx, segmentation_mask in enumerate(all_points_segmentation_masks):
-        vessel_regions_of_interest, contours = extract(segmentation_mask, point_name=str(point_idx+1))
+        vessel_regions_of_interest, contours, removed_contours = extract(segmentation_mask, point_name=str(point_idx+1))
         all_points_vessel_contours.append(contours)
         all_points_vessel_regions_of_interest.append(vessel_regions_of_interest)
+        all_points_removed_vessel_contours.append(removed_contours)
 
     # Marker expression overlay masks
     if config.create_marker_expression_overlay_masks:
         marker_expression_masks(all_points_vessel_contours, all_points_marker_data, markers_names)
+
+    # Removed vessel expression box plots
+    if config.create_removed_vessels_expression_boxplot:
+        removed_vessel_expression_boxplot(all_points_vessel_contours,
+                                          all_points_removed_vessel_contours,
+                                          all_points_marker_data,
+                                          markers_names)
 
     # Inward expansion data
     if config.perform_inward_expansions:

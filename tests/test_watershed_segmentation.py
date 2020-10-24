@@ -23,7 +23,7 @@ class TestWatershedSegmentation(unittest.TestCase):
 
         image, marker_data, marker_names = read(data_loc, mask_loc)
 
-        images, usable_contours = extract(image)
+        images, usable_contours, removed_contours = extract(image)
 
         self.assertAlmostEqual(len(usable_contours), 56)
         self.assertEqual(len(images), len(usable_contours))

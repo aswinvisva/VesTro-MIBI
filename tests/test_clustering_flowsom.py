@@ -24,7 +24,7 @@ class TestClusteringFlowSOM(unittest.TestCase):
                                 "allvessels" + '.tif')
 
         image, marker_data, marker_names = read(data_loc, mask_loc)
-        images, contours = extract(image)
+        images, contours, removed_contours = extract(image)
 
         data = calculate_composition_marker_expression(marker_data, contours)
 

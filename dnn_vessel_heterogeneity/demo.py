@@ -26,7 +26,7 @@ def extract_vessel_heterogeneity(n=56,
     contour_images_multiple_points = []
 
     for segmentation_mask in marker_segmentation_masks:
-        contour_images, contours = extract(segmentation_mask, show=False)
+        contour_images, contours, removed_contours = extract(segmentation_mask, show=False)
         contour_data_multiple_points.append(contours)
         contour_images_multiple_points.append(contour_images)
 
