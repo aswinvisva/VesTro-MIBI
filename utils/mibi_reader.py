@@ -83,15 +83,13 @@ def get_all_point_data() -> (list, list, list):
         for brain_region_directory in brain_region_directories:
             for fov in fovs:
                 # Get path to data selected through configuration settings
-                data_loc = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-                                        config.data_dir,
+                data_loc = os.path.join(config.data_dir,
                                         brain_region_directory,
                                         fov,
                                         config.tifs_dir)
 
                 # Get path to mask selected through configuration settings
-                mask_loc = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-                                        config.masks_dr,
+                mask_loc = os.path.join(config.masks_dr,
                                         brain_region_directory,
                                         fov,
                                         segmentation_type + '.tif')
@@ -107,14 +105,12 @@ def get_all_point_data() -> (list, list, list):
     else:
         for fov in fovs:
             # Get path to data selected through configuration settings
-            data_loc = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-                                    config.data_dir,
+            data_loc = os.path.join(config.data_dir,
                                     fov,
                                     config.tifs_dir)
 
             # Get path to mask selected through configuration settings
-            mask_loc = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-                                    config.masks_dr,
+            mask_loc = os.path.join(config.masks_dr,
                                     fov,
                                     segmentation_type + '.tif')
 
