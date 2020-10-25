@@ -1,8 +1,7 @@
 #  MIBI Toolbox for Spatial Analysis and Visualization
 Authors: Aswin Visva & John-Paul Oliveria, Ph.D
 
-This project is to aid research in uncovering vascular heterogeneity through data visualization and spatial analysis
-techniques in Python.
+This project is the main toolbox for MIBI data preprocessing and visualization.
 
 ## Usage for Linux/macOS
 
