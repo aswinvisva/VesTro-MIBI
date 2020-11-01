@@ -165,6 +165,9 @@ def normalize_expression_data(expression_data: list,
         # Apply arcsinh transformation
         expression_data = arcsinh(np.array(expression_data))
 
+    elif transformation == "square":
+        expression_data = np.square(expression_data)
+
     if normalization == "percentile":
         try:
             expression_data = np.array(expression_data) / np.percentile(np.array(expression_data),
@@ -204,7 +207,7 @@ def preprocess_marker_data(marker_data: np.ndarray,
     elif expression_type == "area_normalized_counts":
         # Get cell area normalized count of marker
         if cv.countNonZero(marker_data) != 0:
-            marker_data = np.sum(marker_data, axis=None) / cv.countNonZero(mask)
+            marker_data = np.sum(marker_data, axis=None) / (cv.countNonZero(mask) * (config.pixel_area_scaler**2))
         else:
             marker_data = 0
 
@@ -568,6 +571,13 @@ def calculate_composition_marker_expression(per_point_marker_data: np.ndarray,
         data_vec = []
         vessel_id = idx + 1  # Index from 1 rather than from 0
 
+        mask = np.zeros(img_shape, np.uint8)
+        cv.drawContours(mask, [cnt], -1, (1, 1, 1), cv.FILLED)
+
+        if config.show_vessel_masks_when_generating_expression:
+            cv.imshow("Vessel Mask", mask * 255)
+            cv.waitKey(0)
+
         if vessel_id_plot:
             M = cv.moments(cnt)
             cX = int(M["m10"] / M["m00"])
@@ -578,13 +588,6 @@ def calculate_composition_marker_expression(per_point_marker_data: np.ndarray,
         if embedded_id_plot:
             cv.drawContours(embedded_id_img, [cnt], -1, (vessel_id, vessel_id, vessel_id), cv.FILLED)  # Give all
             # pixels in the contour region value of ID
-
-        mask = np.zeros(img_shape, np.uint8)
-        cv.drawContours(mask, [cnt], -1, (1, 1, 1), cv.FILLED)
-
-        if config.show_vessel_masks_when_generating_expression:
-            cv.imshow("Vessel Mask", mask*255)
-            cv.waitKey(1)
 
         for marker in per_point_marker_data:
             result = cv.bitwise_and(marker, marker, mask=mask)

@@ -1071,7 +1071,6 @@ def marker_expression_masks(all_points_vessel_contours: list,
         marker_data = all_points_marker_data[i]
 
         img_shape = marker_data[0].shape
-        print(img_shape)
 
         expression_img = np.zeros(img_shape, np.uint8)
         expression_img = cv.cvtColor(expression_img, cv.COLOR_GRAY2BGR)

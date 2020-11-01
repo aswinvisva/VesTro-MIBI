@@ -3,6 +3,10 @@ import os
 import matplotlib
 import matplotlib.pylab as pl
 
+# High-Level Settings
+
+data_resolution = "medres"
+
 # Marker settings for reading data
 
 markers_to_ignore = [
@@ -45,29 +49,37 @@ all_masks = [
 ]
 
 n_markers = 34
-brain_region_point_ranges = [(1, 16), (17, 32), (33, 48)]
-# brain_region_point_ranges = [(1, 100), (101, 200), (201, 300)]
 
-segmentation_mask_size = (1024, 1024)
-# segmentation_mask_size = (512, 512)
+if data_resolution == "hires":
+    brain_region_point_ranges = [(1, 16), (17, 32), (33, 48)]
+elif data_resolution == "medres":
+    brain_region_point_ranges = [(1, 100), (101, 200), (201, 300)]
+
+if data_resolution == "hires":
+    segmentation_mask_size = (1024, 1024)
+elif data_resolution == "medres":
+    segmentation_mask_size = (512, 512)
 
 brain_region_names = ["MFG", "HIP", "CAUD"]
 
 selected_segmentation_mask_type = "allvessels"
 
-data_type = "hires"
-data_dir = os.path.join("data", data_type)
-masks_dr = os.path.join("masks", data_type)
+data_dir = os.path.join("/home/aswinvisva/oliveria_data/data", data_resolution)
+masks_dr = os.path.join("/home/aswinvisva/oliveria_data/masks", data_resolution)
 point_dir = "Point"
 tifs_dir = "TIFs"
-caud_hip_mfg_separate_dir = False
+
+caud_hip_mfg_separate_dir = data_resolution == "medres"
 
 if caud_hip_mfg_separate_dir:
     caud_dir = "CAUD"
     hip_dir = "HIP"
     mfg_dir = "MFG"
 
-n_points = 48
+if data_resolution == "hires":
+    n_points = 48
+elif data_resolution == "medres":
+    n_points = 300
 
 if caud_hip_mfg_separate_dir:
     n_points_per_dir = 100
@@ -79,8 +91,13 @@ describe_markers_when_reading = False
 
 # Settings for extracting vessels from segmentation mask
 
+if data_resolution == "hires":
+    pixel_area_scaler = 1.0
+elif data_resolution == "medres":
+    pixel_area_scaler = 2.0
+
 show_vessel_contours_when_extracting = False
-minimum_contour_area_to_remove = 30
+minimum_contour_area_to_remove = 30 * (pixel_area_scaler ** 2)
 use_guassian_blur_when_extracting_vessels = True
 create_removed_vessels_mask = False
 create_blurred_vessels_mask = False
@@ -90,9 +107,9 @@ if use_guassian_blur_when_extracting_vessels:
 
 # Settings for calculation marker expression
 
-scaling_factor = 100
+scaling_factor = 0.01
 expression_type = "area_normalized_counts"
-transformation_type = "arcsinh"
+transformation_type = "square"
 normalization_type = "percentile"
 
 if normalization_type == "percentile":
@@ -103,8 +120,8 @@ show_vessel_masks_when_generating_expression = False
 
 # Visualization settings for plotting data
 
-visualization_results_dir = "results"
-pixel_interval = 5
+visualization_results_dir = "medres_square_0.01"
+pixel_interval = 5.0 / pixel_area_scaler
 expansion_to_run = [1, 2, 4, 8, 12]
 max_expansions = None  # Set to None to select max_expansions automatically
 
@@ -119,15 +136,15 @@ create_vessel_id_plot = False
 create_vessel_nonvessel_mask = False
 create_marker_expression_overlay_masks = False
 create_vessel_areas_histograms_and_boxplots = False
-create_brain_region_expansion_heatmaps = False
-create_vessel_nonvessel_heatmaps = False
+create_brain_region_expansion_heatmaps = True
+create_vessel_nonvessel_heatmaps = True
 create_brain_region_expansion_line_plots = False
 create_point_expansion_line_plots = False
 create_vessel_expansion_line_plots = False
 create_allpoints_expansion_line_plots = False
 create_expansion_ring_plots = False
 create_embedded_vessel_id_masks = False
-create_removed_vessels_expression_boxplot = True
+create_removed_vessels_expression_boxplot = False
 
 if create_vessel_areas_histograms_and_boxplots:
     show_boxplot_outliers = False
