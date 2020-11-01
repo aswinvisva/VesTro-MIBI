@@ -13,11 +13,13 @@ Authors: Aswin Visva, John-Paul Oliveria, Ph.D
 
 def get_outward_expansion_data(all_points_vessel_contours: list,
                                all_points_marker_data: list,
+                               marker_names: list,
                                pixel_interval: int,
                                n_expansions: int) -> (list, list, list):
     """
     Collect outward expansion data for each expansion, for each point, for each vessel
 
+    :param marker_names: list -> Marker names
     :param n_expansions: int -> Number of expansions to run
     :param pixel_interval: int -> Pixel interval
     :param all_points_vessel_contours: array_like, [n_points, n_vessels] -> list of vessel contours for each point
@@ -55,42 +57,56 @@ def get_outward_expansion_data(all_points_vessel_contours: list,
             # calculate the marker expression in the outward microenvironment
 
             if x == 0:
-                data = calculate_composition_marker_expression(marker_data, contours,
-                                                               vessel_id_label="Point_%s" % str(i + 1))
+                data = calculate_composition_marker_expression(marker_data, contours, marker_names,
+                                                               point_num=i + 1)
                 current_vessel_space_expansion_data.append(data)
 
             else:
-                data, _, stopped_vessels, dark_space_data, vessel_space_data = calculate_microenvironment_marker_expression(
+                data, expression_images, stopped_vessels = calculate_microenvironment_marker_expression(
                     marker_data,
                     contours,
+                    marker_names,
                     pixel_expansion_upper_bound=current_interval,
                     pixel_expansion_lower_bound=current_interval - pixel_interval,
-                    vesselnonvessel_label="Point_%s" % str(i + 1))
+                    point_num=i + 1,
+                    expansion_num=x)
 
                 all_points_stopped_vessels += stopped_vessels
-                current_dark_space_expansion_data.append(dark_space_data)
-                current_vessel_space_expansion_data.append(vessel_space_data)
 
             end_expression = datetime.datetime.now()
 
-            print("Finished calculating expression for Point %s in %s" % (str(i+1), end_expression - start_expression))
+            print(
+                "Finished calculating expression for Point %s in %s" % (str(i + 1), end_expression - start_expression))
 
             current_expansion_data.append(data)
 
         print("There were %s vessels which could not expand inward/outward by %s pixels" % (
             all_points_stopped_vessels, x * pixel_interval))
 
-        expansion_data.append(current_expansion_data)
-        dark_space_expansion_data.append(current_dark_space_expansion_data)
-        vessel_space_expansion_data.append(current_vessel_space_expansion_data)
+        all_points_features = pd.concat(current_expansion_data).fillna(0)
+        expansion_data.append(all_points_features)
 
         if x != 0:
             current_interval += pixel_interval
 
         print("Current interval %s, previous interval %s" % (str(current_interval), str(current_interval -
                                                                                         pixel_interval)))
+    all_expansions_features = pd.concat(expansion_data).fillna(0)
 
-    return expansion_data, dark_space_expansion_data, vessel_space_expansion_data
+    scaling_factor = config.scaling_factor
+    transformation = config.transformation_type
+    normalization = config.normalization_type
+    n_markers = config.n_markers
+
+    all_expansions_features = normalize_expression_data(all_expansions_features,
+                                                        transformation=transformation,
+                                                        normalization=normalization,
+                                                        scaling_factor=scaling_factor,
+                                                        n_markers=n_markers)
+
+    all_expansions_features = all_expansions_features.sort_index()
+
+    return all_expansions_features
 
 
 def get_inward_expansion_data(all_points_vessel_contours: list,
@@ -175,7 +191,8 @@ def run_vis():
 
     # Collect vessel contours from each segmentation mask
     for point_idx, segmentation_mask in enumerate(all_points_segmentation_masks):
-        vessel_regions_of_interest, contours, removed_contours = extract(segmentation_mask, point_name=str(point_idx+1))
+        vessel_regions_of_interest, contours, removed_contours = extract(segmentation_mask,
+                                                                         point_name=str(point_idx + 1))
         all_points_vessel_contours.append(contours)
         all_points_vessel_regions_of_interest.append(vessel_regions_of_interest)
         all_points_removed_vessel_contours.append(removed_contours)
@@ -204,27 +221,24 @@ def run_vis():
         pixel_expansion_ring_plots()
 
     # Collect outward microenvironment expansion data, nonvessel space expansion data and vessel space expansion data
-    expansion_data, nonvessel_space_expansion_data, vessel_space_expansion_data = get_outward_expansion_data(
-        all_points_vessel_contours,
-        all_points_marker_data,
-        interval,
-        n_expansions)
+    all_expansions_features = get_outward_expansion_data(all_points_vessel_contours,
+                                                         all_points_marker_data,
+                                                         markers_names,
+                                                         interval,
+                                                         n_expansions)
 
     # Iterate through selected expansions to create heatmaps and line plots
     for x in expansions:
 
         # Brain region expansion heatmaps
         if config.create_brain_region_expansion_heatmaps:
-            brain_region_expansion_heatmap(vessel_space_expansion_data,
-                                           nonvessel_space_expansion_data,
+            brain_region_expansion_heatmap(all_expansions_features,
                                            markers_names,
                                            x + 1,
                                            interval)
         # Mask/Non-mask heatmaps
         if config.create_vessel_nonvessel_heatmaps:
-            vessel_nonvessel_heatmap(expansion_data,
-                                     vessel_space_expansion_data,
-                                     nonvessel_space_expansion_data,
+            vessel_nonvessel_heatmap(all_expansions_features,
                                      markers_names,
                                      x + 1)
 
@@ -233,28 +247,28 @@ def run_vis():
             brain_region_plots(x + 1,
                                interval,
                                markers_names,
-                               expansion_data)
+                               all_expansions_features)
 
         # Per point line plots
         if config.create_point_expansion_line_plots:
             point_region_plots(x + 1,
                                interval,
                                markers_names,
-                               expansion_data)
+                               all_expansions_features)
 
         # Per vessel line plots
         if config.create_vessel_expansion_line_plots:
             vessel_region_plots(x + 1,
                                 interval,
                                 markers_names,
-                                expansion_data)
+                                all_expansions_features)
 
         # All points average line plots
         if config.create_allpoints_expansion_line_plots:
             all_points_plots(x + 1,
                              interval,
                              markers_names,
-                             expansion_data)
+                             all_expansions_features)
 
 
 if __name__ == '__main__':

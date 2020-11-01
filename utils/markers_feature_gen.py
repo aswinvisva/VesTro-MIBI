@@ -14,6 +14,7 @@ from sklearn.preprocessing import StandardScaler, Normalizer, normalize
 import scipy.stats as stats
 import matplotlib.pyplot as plt
 from PIL import Image
+import pandas as pd
 
 from utils.utils_functions import mkdir_p
 import config.config_settings as config
@@ -127,7 +128,7 @@ def expand_vessel_region(cnt: np.ndarray, img_shape: (int, int), pixel_expansion
     return ring
 
 
-def normalize_expression_data(expression_data: list,
+def normalize_expression_data(expression_data_df: pd.DataFrame,
                               transformation: str = "arcsinh",
                               normalization: str = "percentile",
                               scaling_factor: int = 100,
@@ -135,7 +136,7 @@ def normalize_expression_data(expression_data: list,
     """
     Normalize expression vectors
 
-    :param expression_data: list, [n_vessels, n_markers] -> Marker expression data per vessel
+    :param expression_data_df: pd.DataFrame, [n_vessels, n_markers] -> Marker expression data per vessel
     :param transformation: str, Transformation type
     :param normalization: str, Normalization type
     :param scaling_factor: int, Scaling factor
@@ -143,13 +144,15 @@ def normalize_expression_data(expression_data: list,
     :return:
     """
 
+    expression_data = expression_data_df.to_numpy()
+
     if scaling_factor > 0:
-        expression_data = np.array(expression_data) * scaling_factor
+        expression_data = expression_data * scaling_factor
 
     if transformation == "quantiletransform":
         quantile_transformer = preprocessing.QuantileTransformer(output_distribution='normal', random_state=0,
                                                                  n_quantiles=100)
-        expression_data = quantile_transformer.fit_transform(np.array(expression_data))
+        expression_data = quantile_transformer.fit_transform(expression_data)
 
         # expression_data += abs(np.min(expression_data))
     elif transformation == "boxcox":
@@ -170,9 +173,9 @@ def normalize_expression_data(expression_data: list,
 
     if normalization == "percentile":
         try:
-            expression_data = np.array(expression_data) / np.percentile(np.array(expression_data),
-                                                                        config.percentile_to_normalize,
-                                                                        axis=0)
+            expression_data = expression_data / np.percentile(expression_data,
+                                                              config.percentile_to_normalize,
+                                                              axis=0)
             expression_data = np.nan_to_num(expression_data)
 
         except IndexError:
@@ -183,7 +186,11 @@ def normalize_expression_data(expression_data: list,
         # Scale data by Sklearn normalizer
         expression_data = normalize(expression_data, axis=0)
 
-    return expression_data
+    scaled_expression_df = pd.DataFrame(expression_data,
+                                        columns=list(expression_data_df),
+                                        index=expression_data_df.index)
+
+    return scaled_expression_df
 
 
 def preprocess_marker_data(marker_data: np.ndarray,
@@ -207,7 +214,7 @@ def preprocess_marker_data(marker_data: np.ndarray,
     elif expression_type == "area_normalized_counts":
         # Get cell area normalized count of marker
         if cv.countNonZero(marker_data) != 0:
-            marker_data = np.sum(marker_data, axis=None) / (cv.countNonZero(mask) * (config.pixel_area_scaler**2))
+            marker_data = np.sum(marker_data, axis=None) / (cv.countNonZero(mask) * (config.pixel_area_scaler ** 2))
         else:
             marker_data = 0
 
@@ -346,7 +353,7 @@ def calculate_inward_microenvironment_marker_expression(per_point_marker_data: n
                                              lower_bound=pixel_expansion_lower_bound)
 
         if config.show_vessel_masks_when_generating_expression:
-            cv.imshow("Vessel Mask", result_mask*255)
+            cv.imshow("Vessel Mask", result_mask * 255)
             cv.waitKey(0)
 
         if cv.countNonZero(result_mask) == 0:
@@ -388,41 +395,37 @@ def calculate_inward_microenvironment_marker_expression(per_point_marker_data: n
 
 def calculate_microenvironment_marker_expression(per_point_marker_data: np.ndarray,
                                                  per_point_vessel_contours: list,
+                                                 marker_names: list,
                                                  pixel_expansion_upper_bound: int = 5,
                                                  pixel_expansion_lower_bound: int = 0,
-                                                 vesselnonvessel_label: str = "Point1") -> (np.ndarray,
-                                                                                            list,
-                                                                                            int,
-                                                                                            np.ndarray,
-                                                                                            np.ndarray):
+                                                 point_num: int = 1,
+                                                 expansion_num: int = 1) -> (np.ndarray,
+                                                                             list,
+                                                                             int,
+                                                                             np.ndarray,
+                                                                             np.ndarray):
     """
     Get normalized expression of markers in given cells
 
+    :param marker_names: list, Marker names
+    :param expansion_num: int, Current expansion number
     :param pixel_expansion_lower_bound: int, Lower bound to expand
     :param pixel_expansion_upper_bound: int, Upper bound to expand
     :param per_point_marker_data: array_like, [n_markers, point_size[0], point_size[1]] -> Pixel data for each marker
     :param per_point_vessel_contours: list, [n_vessels] -> Contours of cells in image
-    :param vesselnonvessel_label: str, Vessel/Non-vessel label
+    :param point_num: int, Point from which samples came from
 
-    :returns per_point_microenvironment_expression_data: array_like, [n_vessels, n_markers] -> Per point microenvironment
-    expression data,
+    :returns per_point_microenvironment_expression_data: pd.DataFrame, [n_vessels, n_markers] -> Per point
+    microenvironment expression data,
     expression_images: list, [n_vessels, n_markers] -> ROI marker expressions,
     stopped_vessels: int, Number of vessels which couldn't expand inwards,
-    per_point_nonvessel_expression_data: array_like, [n_vessels, n_markers] -> Per point non-vessel expression data,
-    per_point_vessel_expression_data: array_like, [n_vessels, n_markers] -> Per point vessel expression data
     """
 
-    scaling_factor = config.scaling_factor
     expression_type = config.expression_type
-    transformation = config.transformation_type
-    normalization = config.normalization_type
     plot = config.show_probability_distribution_for_expression
-    n_markers = config.n_markers
     plot_vesselnonvessel_mask = config.create_vessel_nonvessel_mask
 
-    per_point_microenvironment_expression_data = []
-    per_point_nonvessel_expression_data = []
-    per_point_vessel_expression_data = []
+    per_point_features = []
     expression_images = []
 
     img_shape = per_point_marker_data[0].shape
@@ -454,9 +457,9 @@ def calculate_microenvironment_marker_expression(per_point_marker_data: np.ndarr
         dark_space_mask = regions[idx].astype(np.uint8) - mask_expanded
 
         if config.show_vessel_masks_when_generating_expression:
-            cv.imshow("Microenvironment Mask", result_mask*255)
-            cv.imshow("Dark Space Mask", dark_space_mask*255)
-            cv.imshow("Expanded Mask", mask_expanded*255)
+            cv.imshow("Microenvironment Mask", result_mask * 255)
+            cv.imshow("Dark Space Mask", dark_space_mask * 255)
+            cv.imshow("Expanded Mask", mask_expanded * 255)
             cv.waitKey(0)
 
         if plot_vesselnonvessel_mask:
@@ -494,71 +497,73 @@ def calculate_microenvironment_marker_expression(per_point_marker_data: np.ndarr
             dark_space_vec.append(dark_space_data)
             vessel_space_vec.append(vessel_space_data)
 
-        per_point_microenvironment_expression_data.append(np.array(data_vec))
-        per_point_nonvessel_expression_data.append(np.array(dark_space_vec))
-        per_point_vessel_expression_data.append(np.array(vessel_space_vec))
+        features = []
+
+        microenvironment_features = pd.DataFrame(np.array([data_vec]), columns=marker_names)
+        microenvironment_features.index = map(lambda a: (point_num, idx, expansion_num, "Data"),
+                                              microenvironment_features.index)
+        features.append(microenvironment_features)
+
+        nonvascular_features = pd.DataFrame(np.array([dark_space_vec]), columns=marker_names)
+        nonvascular_features.index = map(lambda a: (point_num, idx, expansion_num, "Non-Vascular Space"),
+                                         nonvascular_features.index)
+        features.append(nonvascular_features)
+
+        vascular_features = pd.DataFrame(np.array([vessel_space_vec]), columns=marker_names)
+        vascular_features.index = map(lambda a: (point_num, idx, expansion_num, "Vascular Space"),
+                                      vascular_features.index)
+        features.append(vascular_features)
+
+        all_features = pd.concat(features).fillna(0)
+        per_point_features.append(all_features)
 
         expression_images.append(expression_image)
 
-    per_point_microenvironment_expression_data = normalize_expression_data(per_point_microenvironment_expression_data,
-                                                                           transformation=transformation,
-                                                                           normalization=normalization,
-                                                                           scaling_factor=scaling_factor,
-                                                                           n_markers=n_markers)
-
-    vessel_non_vessel_data = []
-    vessel_non_vessel_data.extend(per_point_nonvessel_expression_data)
-    vessel_non_vessel_data.extend(per_point_vessel_expression_data)
-
-    vessel_non_vessel_data = normalize_expression_data(vessel_non_vessel_data,
-                                                       transformation=transformation,
-                                                       normalization=normalization,
-                                                       scaling_factor=scaling_factor,
-                                                       n_markers=n_markers)
-
-    per_point_nonvessel_expression_data = vessel_non_vessel_data[0:len(per_point_nonvessel_expression_data)]
-    per_point_vessel_expression_data = vessel_non_vessel_data[len(per_point_nonvessel_expression_data):]
-
-    flat_list = sorted([item for sublist in per_point_microenvironment_expression_data for item in sublist])
+    all_samples_features = pd.concat(per_point_features).fillna(0)
+    all_samples_features.index = pd.MultiIndex.from_tuples(all_samples_features.index)
 
     if plot:
-        plt.plot(np.array(flat_list), stats.norm.pdf(np.array(flat_list)))
+        idx = pd.IndexSlice
+        d = all_samples_features.loc[idx[:, :, :, "Data"], :].to_numpy().flatten()
+        plt.plot(np.array(d), stats.norm.pdf(np.array(d)))
+
         plt.xlabel('Area Normalized Marker Expression')
         plt.ylabel('Probability')
         plt.title('PDF of Marker Expression')
         plt.show()
 
     if plot_vesselnonvessel_mask:
+        vesselnonvessel_label = "Point %s" % point_num
+
         output_dir = "%s/vessel_nonvessel_masks/%s_pixel_expansion" % (config.visualization_results_dir,
                                                                        str(pixel_expansion_upper_bound))
         mkdir_p(output_dir)
         cv.imwrite(os.path.join(output_dir, "vessel_non_vessel_point_%s.png" % vesselnonvessel_label), example_img)
 
-    return per_point_microenvironment_expression_data, expression_images, stopped_vessels, per_point_nonvessel_expression_data, per_point_vessel_expression_data
+    return all_samples_features, expression_images, stopped_vessels
 
 
 def calculate_composition_marker_expression(per_point_marker_data: np.ndarray,
                                             per_point_vessel_contours: list,
-                                            vessel_id_label: str = "Point1") -> np.ndarray:
+                                            marker_names: list,
+                                            point_num: int = 1) -> np.ndarray:
     """
     Get normalized expression of markers in given cells
 
-    :param vessel_id_label: str, Point number for vessel ID plot
+    :param marker_names: list, Marker Names
+    :param point_num: int, Point number for vessel ID plot
     :param per_point_marker_data: array_like, [n_markers, point_size[0], point_size[1]] -> Pixel data for each marker
     :param per_point_vessel_contours: list, [n_vessels] -> Contours of cells in image
-    :return: per_point_vessel_expression_data: array_like, [n_vessels, n_markers] -> Per point vessel expression data
+    :return: per_point_vessel_expression_data: pd.DataFrame, [n_vessels, n_markers] -> Per point vessel expression data
     """
 
-    scaling_factor = config.scaling_factor
     expression_type = config.expression_type
-    transformation = config.transformation_type
-    normalization = config.normalization_type
     plot = config.show_probability_distribution_for_expression
-    n_markers = config.n_markers
     vessel_id_plot = config.create_vessel_id_plot
     embedded_id_plot = config.create_embedded_vessel_id_masks
 
-    per_point_vessel_expression_data = []
+    # per_point_vessel_expression_data = []
+    per_point_features = []
     img_shape = per_point_marker_data[0].shape
 
     if vessel_id_plot:
@@ -598,32 +603,35 @@ def calculate_composition_marker_expression(per_point_marker_data: np.ndarray,
 
             data_vec.append(marker_data)
 
-        per_point_vessel_expression_data.append(np.array(data_vec))
+        vessel_features = pd.DataFrame(np.array([data_vec]), columns=marker_names)
+        vessel_features.index = map(lambda a: (point_num, idx, 0, "Data"),
+                                    vessel_features.index)
 
-    per_point_vessel_expression_data = normalize_expression_data(per_point_vessel_expression_data,
-                                                                 transformation=transformation,
-                                                                 normalization=normalization,
-                                                                 scaling_factor=scaling_factor,
-                                                                 n_markers=n_markers)
+        per_point_features.append(vessel_features)
 
-    flat_list = sorted([item for sublist in per_point_vessel_expression_data for item in sublist])
+    all_samples_features = pd.concat(per_point_features).fillna(0)
+    all_samples_features.index = pd.MultiIndex.from_tuples(all_samples_features.index)
 
     if plot:
-        plt.plot(np.array(flat_list), stats.norm.pdf(np.array(flat_list)))
+        idx = pd.IndexSlice
+        d = all_samples_features.loc[idx[:, :, :, "Data"], :].to_numpy().flatten()
+        plt.plot(np.array(d), stats.norm.pdf(np.array(d)))
         plt.xlabel('Area Normalized Marker Expression')
         plt.ylabel('Probability')
         plt.title('PDF of Marker Expression')
         plt.show()
 
     if vessel_id_plot:
+        vessel_id_label = "Point %s" % point_num
         output_dir = "%s/vessel_id_masks" % config.visualization_results_dir
         mkdir_p(output_dir)
         cv.imwrite(os.path.join(output_dir, "vessel_id_plot_%s.png" % vessel_id_label), vessel_id_img)
 
     if embedded_id_plot:
+        vessel_id_label = "Point %s" % point_num
         output_dir = "%s/embedded_id_masks" % config.visualization_results_dir
         mkdir_p(output_dir)
         im = Image.fromarray(embedded_id_img)
         im.save(os.path.join(output_dir, "embedded_id_plot_%s.tif" % vessel_id_label))
 
-    return per_point_vessel_expression_data
+    return all_samples_features

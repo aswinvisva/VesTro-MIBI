@@ -107,9 +107,9 @@ if use_guassian_blur_when_extracting_vessels:
 
 # Settings for calculation marker expression
 
-scaling_factor = 0.01
+scaling_factor = 100
 expression_type = "area_normalized_counts"
-transformation_type = "square"
+transformation_type = "arcsinh"
 normalization_type = "percentile"
 
 if normalization_type == "percentile":
@@ -120,7 +120,7 @@ show_vessel_masks_when_generating_expression = False
 
 # Visualization settings for plotting data
 
-visualization_results_dir = "medres_square_0.01"
+visualization_results_dir = "medres"
 pixel_interval = 5.0 / pixel_area_scaler
 expansion_to_run = [1, 2, 4, 8, 12]
 max_expansions = None  # Set to None to select max_expansions automatically

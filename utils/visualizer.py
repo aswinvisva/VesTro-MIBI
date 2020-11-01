@@ -15,7 +15,7 @@ Authors: Aswin Visva, John-Paul Oliveria, Ph.D
 def vessel_region_plots(n_expansions: int,
                         pixel_interval: int,
                         markers_names: list,
-                        expansion_data: list):
+                        all_samples_features: pd.DataFrame):
     """
     Create vessel region line plots for all marker bins, average marker bins and per marker bins
 
@@ -35,6 +35,12 @@ def vessel_region_plots(n_expansions: int,
     pixel_expansions = np.array(range(0, n_expansions)) * pixel_interval
     pixel_expansions = pixel_expansions.tolist()
 
+    marker_color_dict = {}
+
+    for marker_cluster in marker_clusters.keys():
+        for marker in marker_clusters[marker_cluster]:
+            marker_color_dict[marker] = colors[marker_cluster]
+
     # Change in Marker Expression w.r.t pixel expansion per vessel (All bins)
     for point in points:
         output_dir = "%s/mean_per_vessel_per_point_per_brain_region/point_%s_vessels_%s_interval_" \
@@ -42,7 +48,11 @@ def vessel_region_plots(n_expansions: int,
                                                 str(point), str(pixel_interval), str(n_expansions - 1))
         mkdir_p(output_dir)
 
-        n_vessels = len(expansion_data[0][point - 1])
+        idx = pd.IndexSlice
+        n_vessels = len(all_samples_features.loc[idx[point,
+                                                 :,
+                                                 0,
+                                                 "Data"], :].to_numpy())
 
         for vessel in range(n_vessels):
             for key in marker_clusters.keys():
@@ -50,16 +60,15 @@ def vessel_region_plots(n_expansions: int,
 
             for marker, marker_name in enumerate(markers_names):
                 y = []
-                color = None
-
-                for key in marker_clusters.keys():
-                    if marker_name in marker_clusters[key]:
-                        color = colors[key]
-                        break
+                color = marker_color_dict[marker_name]
 
                 for i in range(n_expansions):
-                    vessel_data = expansion_data[i][point - 1][vessel]
-                    y.append(vessel_data[marker])
+                    idx = pd.IndexSlice
+                    vessel_data = all_samples_features.loc[idx[point,
+                                                               vessel,
+                                                               i,
+                                                               "Data"], marker_name]
+                    y.append(vessel_data)
 
                 plt.plot(pixel_expansions, y, color=color)
             plt.xticks(pixel_expansions, fontsize=7)
@@ -78,8 +87,11 @@ def vessel_region_plots(n_expansions: int,
                                                     str(point), str(pixel_interval), str(n_expansions - 1))
         mkdir_p(output_dir)
 
-        n_vessels = len(expansion_data[0][point - 1])
-
+        idx = pd.IndexSlice
+        n_vessels = len(all_samples_features.loc[idx[point,
+                                                 :,
+                                                 0,
+                                                 "Data"], :].to_numpy())
         for vessel in range(n_vessels):
             for key in marker_clusters.keys():
                 plt.plot([], [], color=colors[key], label=key)
@@ -87,19 +99,17 @@ def vessel_region_plots(n_expansions: int,
             for key in marker_clusters.keys():
                 color = colors[key]
                 y_tot = []
-                for marker, marker_name in enumerate(markers_names):
-                    if marker_name not in marker_clusters[key]:
-                        continue
 
-                    y = []
+                for i in range(n_expansions):
+                    idx = pd.IndexSlice
+                    all_vessels_data = all_samples_features.loc[idx[point,
+                                                                    vessel,
+                                                                    i,
+                                                                    "Data"], marker_clusters[key]]
+                    average_expression = np.mean(all_vessels_data)
+                    y_tot.append(average_expression)
 
-                    for i in range(n_expansions):
-                        vessel_data = expansion_data[i][point - 1][vessel]
-                        y.append(vessel_data[marker])
-
-                    y_tot.append(y)
-
-                plt.plot(pixel_expansions, np.mean(np.array(y_tot), axis=0), color=color)
+                plt.plot(pixel_expansions, y_tot, color=color)
             plt.xticks(pixel_expansions, fontsize=7)
             plt.xlabel("# of Pixels Expanded")
             plt.ylabel("Mean Pixel Expression")
@@ -116,23 +126,28 @@ def vessel_region_plots(n_expansions: int,
                                                str(point), str(pixel_interval), str(n_expansions - 1))
         mkdir_p(output_dir)
 
-        n_vessels = len(expansion_data[0][point - 1])
-
+        idx = pd.IndexSlice
+        n_vessels = len(all_samples_features.loc[idx[point,
+                                                 :,
+                                                 0,
+                                                 "Data"], :].to_numpy())
         for vessel in range(n_vessels):
             for key in marker_clusters.keys():
 
                 colors_clusters = color_maps[key](np.linspace(0, 1, len(marker_clusters[key]) + 2))
                 color_idx = 2
 
-                for marker, marker_name in enumerate(markers_names):
-                    if marker_name not in marker_clusters[key]:
-                        continue
-
+                for marker, marker_name in enumerate(marker_clusters[key]):
                     y = []
 
                     for i in range(n_expansions):
-                        vessel_data = expansion_data[i][point - 1][vessel]
-                        y.append(vessel_data[marker])
+                        idx = pd.IndexSlice
+                        all_vessels_data = all_samples_features.loc[idx[point,
+                                                                        vessel,
+                                                                        i,
+                                                                        "Data"], marker_name]
+                        average_expression = np.mean(all_vessels_data)
+                        y.append(average_expression)
 
                     plt.plot(pixel_expansions, y, label=marker_name, color=colors_clusters[color_idx])
                     color_idx += 1
@@ -146,7 +161,7 @@ def vessel_region_plots(n_expansions: int,
                 plt.clf()
 
 
-def point_region_plots(n_expansions: int, pixel_interval: int, markers_names: list, expansion_data: list):
+def point_region_plots(n_expansions: int, pixel_interval: int, markers_names: list, all_samples_features: pd.DataFrame):
     """
     Create point region line plots for all marker bins, average marker bins and per marker bins
 
@@ -173,6 +188,12 @@ def point_region_plots(n_expansions: int, pixel_interval: int, markers_names: li
         str(pixel_interval), str(n_expansions - 1))
     mkdir_p(output_dir)
 
+    marker_color_dict = {}
+
+    for marker_cluster in marker_clusters.keys():
+        for marker in marker_clusters[marker_cluster]:
+            marker_color_dict[marker] = colors[marker_cluster]
+
     # Change in Marker Expression w.r.t pixel expansion per point (All bins)
     for point in range(n_points):
         for key in marker_clusters.keys():
@@ -180,21 +201,16 @@ def point_region_plots(n_expansions: int, pixel_interval: int, markers_names: li
 
         for marker, marker_name in enumerate(markers_names):
             y = []
-            color = None
-
-            for key in marker_clusters.keys():
-                if marker_name in marker_clusters[key]:
-                    color = colors[key]
-                    break
+            color = marker_color_dict[marker_name]
 
             for i in range(n_expansions):
-                current = []
-                point_data = expansion_data[i][point]
+                idx = pd.IndexSlice
+                all_vessels_data = all_samples_features.loc[idx[point + 1,
+                                                            :,
+                                                            i,
+                                                            "Data"], marker_name].to_numpy()
+                average_expression = np.mean(all_vessels_data)
 
-                for vessel in point_data:
-                    current.append(vessel[marker])
-
-                average_expression = sum(current) / len(current)
                 y.append(average_expression)
             plt.plot(pixel_expansions, y, color=color)
         plt.xticks(pixel_expansions, fontsize=7)
@@ -214,24 +230,17 @@ def point_region_plots(n_expansions: int, pixel_interval: int, markers_names: li
         for key in marker_clusters.keys():
             color = colors[key]
             y_tot = []
-            for marker, marker_name in enumerate(markers_names):
-                if marker_name not in marker_clusters[key]:
-                    continue
 
-                y = []
+            for i in range(n_expansions):
+                idx = pd.IndexSlice
+                all_vessels_data = all_samples_features.loc[idx[point + 1,
+                                                            :,
+                                                            i,
+                                                            "Data"], marker_clusters[key]].to_numpy()
+                average_expression = np.mean(all_vessels_data)
+                y_tot.append(average_expression)
 
-                for i in range(n_expansions):
-                    current = []
-                    point_data = expansion_data[i][point]
-
-                    for vessel in point_data:
-                        current.append(vessel[marker])
-
-                    average_expression = sum(current) / len(current)
-                    y.append(average_expression)
-                y_tot.append(y)
-
-            plt.plot(pixel_expansions, np.mean(np.array(y_tot), axis=0), color=color)
+            plt.plot(pixel_expansions, y_tot, color=color)
         plt.xticks(pixel_expansions, fontsize=7)
         plt.xlabel("# of Pixels Expanded")
         plt.ylabel("Mean Pixel Expression")
@@ -243,25 +252,20 @@ def point_region_plots(n_expansions: int, pixel_interval: int, markers_names: li
 
     # Change in Marker Expression w.r.t pixel expansion per point (One bin per plot)
     for point in range(n_points):
-
         for key in marker_clusters.keys():
 
             colors_clusters = color_maps[key](np.linspace(0, 1, len(marker_clusters[key]) + 2))
             color_idx = 2
-            for marker, marker_name in enumerate(markers_names):
-                if marker_name not in marker_clusters[key]:
-                    continue
-
+            for marker, marker_name in enumerate(marker_clusters[key]):
                 y = []
 
                 for i in range(n_expansions):
-                    current = []
-                    point_data = expansion_data[i][point]
-
-                    for vessel in point_data:
-                        current.append(vessel[marker])
-
-                    average_expression = sum(current) / len(current)
+                    idx = pd.IndexSlice
+                    all_vessels_data = all_samples_features.loc[idx[point + 1,
+                                                                :,
+                                                                i,
+                                                                "Data"], marker_name].to_numpy()
+                    average_expression = np.mean(all_vessels_data)
                     y.append(average_expression)
 
                 plt.plot(pixel_expansions, y, label=marker_name, color=colors_clusters[color_idx])
@@ -276,7 +280,7 @@ def point_region_plots(n_expansions: int, pixel_interval: int, markers_names: li
             plt.clf()
 
 
-def all_points_plots(n_expansions: int, pixel_interval: int, markers_names: list, expansion_data: list):
+def all_points_plots(n_expansions: int, pixel_interval: int, markers_names: list, all_samples_features: pd.DataFrame):
     """
     Create all points average region line plots for all marker bins, average marker bins and per marker bins
 
@@ -298,6 +302,12 @@ def all_points_plots(n_expansions: int, pixel_interval: int, markers_names: list
         config.visualization_results_dir, str(n_expansions), str(pixel_interval))
     mkdir_p(output_dir)
 
+    marker_color_dict = {}
+
+    for marker_cluster in marker_clusters.keys():
+        for marker in marker_clusters[marker_cluster]:
+            marker_color_dict[marker] = colors[marker_cluster]
+
     # All Points Averages
 
     # Change in Marker Expression w.r.t pixel expansion per point (All bins)
@@ -306,21 +316,16 @@ def all_points_plots(n_expansions: int, pixel_interval: int, markers_names: list
 
     for marker, marker_name in enumerate(markers_names):
         y = []
-        color = None
-
-        for key in marker_clusters.keys():
-            if marker_name in marker_clusters[key]:
-                color = colors[key]
-                break
+        color = marker_color_dict[marker_name]
 
         for i in range(n_expansions):
-            current = []
-            point_data = [item for sublist in expansion_data[i] for item in sublist]
+            idx = pd.IndexSlice
+            all_vessels_data = all_samples_features.loc[idx[:,
+                                                        :,
+                                                        i,
+                                                        "Data"], marker_name].to_numpy()
+            average_expression = np.mean(all_vessels_data)
 
-            for vessel in point_data:
-                current.append(vessel[marker])
-
-            average_expression = sum(current) / len(current)
             y.append(average_expression)
         plt.plot(pixel_expansions, y, color=color)
     plt.xticks(pixel_expansions, fontsize=7)
@@ -339,24 +344,17 @@ def all_points_plots(n_expansions: int, pixel_interval: int, markers_names: list
     for key in marker_clusters.keys():
         color = colors[key]
         y_tot = []
-        for marker, marker_name in enumerate(markers_names):
-            if marker_name not in marker_clusters[key]:
-                continue
 
-            y = []
+        for i in range(n_expansions):
+            idx = pd.IndexSlice
+            all_vessels_data = all_samples_features.loc[idx[:,
+                                                        :,
+                                                        i,
+                                                        "Data"], marker_clusters[key]].to_numpy()
+            average_expression = np.mean(all_vessels_data)
+            y_tot.append(average_expression)
 
-            for i in range(n_expansions):
-                current = []
-                point_data = [item for sublist in expansion_data[i] for item in sublist]
-
-                for vessel in point_data:
-                    current.append(vessel[marker])
-
-                average_expression = sum(current) / len(current)
-                y.append(average_expression)
-            y_tot.append(y)
-
-        plt.plot(pixel_expansions, np.mean(np.array(y_tot), axis=0), color=color)
+        plt.plot(pixel_expansions, y_tot, color=color)
     plt.xticks(pixel_expansions, fontsize=7)
     plt.xlabel("# of Pixels Expanded")
     plt.ylabel("Mean Pixel Expression")
@@ -371,24 +369,21 @@ def all_points_plots(n_expansions: int, pixel_interval: int, markers_names: list
 
         colors_clusters = color_maps[key](np.linspace(0, 1, len(marker_clusters[key]) + 2))
         color_idx = 2
-        for marker, marker_name in enumerate(markers_names):
-            if marker_name not in marker_clusters[key]:
-                continue
-
+        for marker, marker_name in enumerate(marker_clusters[key]):
             y = []
 
             for i in range(n_expansions):
-                current = []
-                point_data = [item for sublist in expansion_data[i] for item in sublist]
-
-                for vessel in point_data:
-                    current.append(vessel[marker])
-
-                average_expression = sum(current) / len(current)
+                idx = pd.IndexSlice
+                all_vessels_data = all_samples_features.loc[idx[:,
+                                                            :,
+                                                            i,
+                                                            "Data"], marker_name].to_numpy()
+                average_expression = np.mean(all_vessels_data)
                 y.append(average_expression)
 
             plt.plot(pixel_expansions, y, label=marker_name, color=colors_clusters[color_idx])
             color_idx += 1
+
         plt.xticks(pixel_expansions, fontsize=7)
         plt.xlabel("# of Pixels Expanded")
         plt.ylabel("Mean Pixel Expression")
@@ -399,7 +394,7 @@ def all_points_plots(n_expansions: int, pixel_interval: int, markers_names: list
         plt.clf()
 
 
-def brain_region_plots(n_expansions: int, pixel_interval: int, markers_names: list, expansion_data: list):
+def brain_region_plots(n_expansions: int, pixel_interval: int, markers_names: list, all_samples_features: pd.DataFrame):
     """
     Create brain region average region line plots for all marker bins, average marker bins and per marker bins
 
@@ -425,29 +420,32 @@ def brain_region_plots(n_expansions: int, pixel_interval: int, markers_names: li
         config.visualization_results_dir, str(pixel_interval), str(n_expansions - 1))
     mkdir_p(output_dir)
 
+    marker_color_dict = {}
+
+    for marker_cluster in marker_clusters.keys():
+        for marker in marker_clusters[marker_cluster]:
+            marker_color_dict[marker] = colors[marker_cluster]
+
     # Brain Region Plots
 
     # Change in Marker Expression w.r.t pixel expansion per brain region (All bins in one graph)
-    for idx, region in enumerate(brain_regions):
+    for region_idx, region in enumerate(brain_regions):
         for key in marker_clusters.keys():
             plt.plot([], [], color=colors[key], label=key)
 
         for marker, marker_name in enumerate(markers_names):
             y = []
-            color = None
-            for key in marker_clusters.keys():
-                if marker_name in marker_clusters[key]:
-                    color = colors[key]
-                    break
+            color = marker_color_dict[marker_name]
 
             for i in range(n_expansions):
-                current = []
+                idx = pd.IndexSlice
+                all_vessels_data = all_samples_features.loc[idx[region[0]:region[1],
+                                                            :,
+                                                            i,
+                                                            "Data"], marker_name].to_numpy()
 
-                for point_data in expansion_data[i][region[0] - 1: region[1] - 1]:
-                    for vessel in point_data:
-                        current.append(vessel[marker])
+                average_expression = np.mean(all_vessels_data)
 
-                average_expression = sum(current) / len(current)
                 y.append(average_expression)
 
             plt.plot(pixel_expansions, y, color=color)
@@ -455,66 +453,57 @@ def brain_region_plots(n_expansions: int, pixel_interval: int, markers_names: li
         plt.xticks(pixel_expansions, fontsize=7)
         plt.xlabel("# of Pixels Expanded")
         plt.ylabel("Mean Pixel Expression")
-        plt.title("Brain Region - %s - All Bins" % str(region_names[idx]))
+        plt.title("Brain Region - %s - All Bins" % str(region_names[region_idx]))
         plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 
-        plt.savefig(output_dir + '/region_%s_allbins.png' % str(region_names[idx]), bbox_inches='tight')
+        plt.savefig(output_dir + '/region_%s_allbins.png' % str(region_names[region_idx]), bbox_inches='tight')
         plt.clf()
 
     # Change in Marker Expression w.r.t pixel expansion per brain region (Bins averaged into one line)
-    for idx, region in enumerate(brain_regions):
+    for region_idx, region in enumerate(brain_regions):
         for key in marker_clusters.keys():
             plt.plot([], [], color=colors[key], label=key)
 
         for key in marker_clusters.keys():
             color = colors[key]
             y_tot = []
-            for marker, marker_name in enumerate(markers_names):
-                if marker_name not in marker_clusters[key]:
-                    continue
+            for i in range(n_expansions):
+                idx = pd.IndexSlice
+                marker_cluster_data = all_samples_features.loc[idx[region[0]:region[1],
+                                                               :,
+                                                               i,
+                                                               "Data"], marker_clusters[key]].to_numpy()
 
-                y = []
+                y_tot.append(np.mean(marker_cluster_data))
 
-                for i in range(n_expansions):
-                    current = []
-                    for point_data in expansion_data[i][region[0] - 1: region[1] - 1]:
-                        for vessel in point_data:
-                            current.append(vessel[marker])
-
-                    average_expression = sum(current) / len(current)
-                    y.append(average_expression)
-                y_tot.append(y)
-
-            plt.plot(pixel_expansions, np.mean(np.array(y_tot), axis=0), color=color)
+            plt.plot(pixel_expansions, y_tot, color=color)
         plt.xticks(pixel_expansions, fontsize=7)
         plt.xlabel("# of Pixels Expanded")
         plt.ylabel("Mean Pixel Expression")
-        plt.title("Brain Region - %s - Average Bins" % str(region_names[idx]))
+        plt.title("Brain Region - %s - Average Bins" % str(region_names[region_idx]))
         plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 
-        plt.savefig(output_dir + '/region_%s_averagebins.png' % str(region_names[idx]), bbox_inches='tight')
+        plt.savefig(output_dir + '/region_%s_averagebins.png' % str(region_names[region_idx]), bbox_inches='tight')
         plt.clf()
 
     # Change in Marker Expression w.r.t pixel expansion per brain region (One bin per plot)
-    for idx, region in enumerate(brain_regions):
+    for region_idx, region in enumerate(brain_regions):
         x = np.arange(n_expansions)
 
         for key in marker_clusters.keys():
 
             colors_clusters = color_maps[key](np.linspace(0, 1, len(marker_clusters[key]) + 2))
             color_idx = 2
-            for marker, marker_name in enumerate(markers_names):
-                if marker_name not in marker_clusters[key]:
-                    continue
-
+            for marker, marker_name in enumerate(marker_clusters[key]):
                 y = []
                 for i in range(n_expansions):
-                    current = []
-                    for point_data in expansion_data[i][region[0] - 1: region[1] - 1]:
-                        for vessel in point_data:
-                            current.append(vessel[marker])
+                    idx = pd.IndexSlice
+                    marker_data = all_samples_features.loc[idx[region[0]:region[1],
+                                                           :,
+                                                           i,
+                                                           "Data"], marker_name].to_numpy()
 
-                    average_expression = sum(current) / len(current)
+                    average_expression = np.mean(marker_data)
                     y.append(average_expression)
 
                 plt.plot(pixel_expansions, y, label=marker_name, color=colors_clusters[color_idx])
@@ -522,10 +511,11 @@ def brain_region_plots(n_expansions: int, pixel_interval: int, markers_names: li
             plt.xticks(pixel_expansions, fontsize=7)
             plt.xlabel("# of Pixels Expanded")
             plt.ylabel("Mean Pixel Expression")
-            plt.title("Brain Region - %s - %s" % (str(region_names[idx]), str(key)))
+            plt.title("Brain Region - %s - %s" % (str(region_names[region_idx]), str(key)))
             plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 
-            plt.savefig(output_dir + '/region_%s_%s.png' % (str(region_names[idx]), str(key)), bbox_inches='tight')
+            plt.savefig(output_dir + '/region_%s_%s.png' % (str(region_names[region_idx]), str(key)),
+                        bbox_inches='tight')
             plt.clf()
 
 
@@ -543,13 +533,13 @@ def pixel_expansion_ring_plots():
     parent_dir = "%s/ring_plots" % config.visualization_results_dir
     mkdir_p(parent_dir)
 
-    marker_segmentation_masks, markers_data, markers_names = get_all_point_data(segmentation_type=mask)
+    marker_segmentation_masks, markers_data, markers_names = get_all_point_data()
 
     all_points_vessel_contours = []
     contour_images_multiple_points = []
 
     for segmentation_mask in marker_segmentation_masks:
-        contour_images, per_point_vessel_contours, removed_contours = extract(segmentation_mask, show=False)
+        contour_images, per_point_vessel_contours, removed_contours = extract(segmentation_mask)
         all_points_vessel_contours.append(per_point_vessel_contours)
         contour_images_multiple_points.append(contour_images)
 
@@ -579,17 +569,13 @@ def pixel_expansion_ring_plots():
             current_interval += interval
 
 
-def vessel_nonvessel_heatmap(vessel_data: list,
-                             vessel_environment_data: list,
-                             nonvessel_data: list,
+def vessel_nonvessel_heatmap(all_samples_features: pd.DataFrame,
                              markers_names: list,
                              n_expansions: int):
     """
     Vessel/Non-vessel heatmaps for marker expression
 
-    :param vessel_data: list, [n_expansions, n_points, n_vessels, n_markers] -> vessel space data
-    :param vessel_environment_data: list, [n_expansions, n_points, n_vessels, n_markers] -> vessel space expansion data
-    :param nonvessel_data: list, [n_expansions, n_points, n_vessels, n_markers] -> nonvessel space expansion data
+    :param all_samples_features: pd.DataFrame, All features
     :param markers_names: array_like, [n_points, n_markers] -> Names of markers
     :param n_expansions: int, Number of expansions
     :return:
@@ -597,96 +583,74 @@ def vessel_nonvessel_heatmap(vessel_data: list,
     brain_regions = config.brain_region_point_ranges
     marker_clusters = config.marker_clusters
 
-    # Vessel Environment Space
+    # Vessel Space
 
-    all_vessels_data = []
-    mfg_vessels_data = []
-    hip_vessels_data = []
-    caud_vessels_data = []
+    idx = pd.IndexSlice
+    all_vessels_data = all_samples_features.loc[idx[:, :, 0,
+                                                "Data"], :].to_numpy()
+    mfg_vessels_data = all_samples_features.loc[idx[brain_regions[0][0]:brain_regions[0][1],
+                                                :,
+                                                0,
+                                                "Data"], :].to_numpy()
+    hip_vessels_data = all_samples_features.loc[idx[brain_regions[1][0]:brain_regions[1][1],
+                                                :,
+                                                0,
+                                                "Data"], :].to_numpy()
+    caud_vessels_data = all_samples_features.loc[idx[brain_regions[2][0]:brain_regions[2][1],
+                                                 :,
+                                                 0,
+                                                 "Data"], :].to_numpy()
 
-    for expansion in vessel_environment_data[0:n_expansions]:
-        for point_idx, point in enumerate(expansion):
-            for vessel in point:
-                all_vessels_data.append(vessel)
-
-                if brain_regions[0][0] <= point_idx <= brain_regions[0][1]:
-                    mfg_vessels_data.append(vessel)
-                elif brain_regions[1][0] <= point_idx <= brain_regions[1][1]:
-                    hip_vessels_data.append(vessel)
-                elif brain_regions[2][0] <= point_idx <= brain_regions[2][1]:
-                    caud_vessels_data.append(vessel)
-
-    all_vessels_data = np.array(all_vessels_data)
     all_vessels_data = np.mean(all_vessels_data, axis=0)
-
-    mfg_vessels_data = np.array(mfg_vessels_data)
     mfg_vessels_data = np.mean(mfg_vessels_data, axis=0)
-
-    hip_vessels_data = np.array(hip_vessels_data)
     hip_vessels_data = np.mean(hip_vessels_data, axis=0)
-
-    caud_vessels_data = np.array(caud_vessels_data)
     caud_vessels_data = np.mean(caud_vessels_data, axis=0)
 
     # Non-vessel Space
 
-    all_nonmask_data = []
-    mfg_nonmask_data = []
-    hip_nonmask_data = []
-    caud_nonmask_data = []
+    idx = pd.IndexSlice
+    all_nonmask_data = all_samples_features.loc[idx[:, :, :,
+                                                "Non-Vascular Space"], :].to_numpy()
+    mfg_nonmask_data = all_samples_features.loc[idx[brain_regions[0][0]:brain_regions[0][1],
+                                                :,
+                                                1:n_expansions,
+                                                "Non-Vascular Space"], :].to_numpy()
+    hip_nonmask_data = all_samples_features.loc[idx[brain_regions[1][0]:brain_regions[1][1],
+                                                :,
+                                                1:n_expansions,
+                                                "Non-Vascular Space"], :].to_numpy()
+    caud_nonmask_data = all_samples_features.loc[idx[brain_regions[2][0]:brain_regions[2][1],
+                                                 :,
+                                                 1:n_expansions,
+                                                 "Non-Vascular Space"], :].to_numpy()
 
-    for point_idx, point in enumerate(nonvessel_data[n_expansions - 1]):
-        for vessel in point:
-            all_nonmask_data.append(vessel)
-
-            if brain_regions[0][0] <= point_idx <= brain_regions[0][1]:
-                mfg_nonmask_data.append(vessel)
-            elif brain_regions[1][0] <= point_idx <= brain_regions[1][1]:
-                hip_nonmask_data.append(vessel)
-            elif brain_regions[2][0] <= point_idx <= brain_regions[2][1]:
-                caud_nonmask_data.append(vessel)
-
-    all_nonmask_data = np.array(all_nonmask_data)
     all_nonmask_data = np.mean(all_nonmask_data, axis=0)
-
-    mfg_nonmask_data = np.array(mfg_nonmask_data)
     mfg_nonmask_data = np.mean(mfg_nonmask_data, axis=0)
-
-    hip_nonmask_data = np.array(hip_nonmask_data)
     hip_nonmask_data = np.mean(hip_nonmask_data, axis=0)
-
-    caud_nonmask_data = np.array(caud_nonmask_data)
     caud_nonmask_data = np.mean(caud_nonmask_data, axis=0)
 
     # Vessel environment space
 
-    all_vessels_environment_data = []
-    mfg_vessels_environment_data = []
-    hip_vessels_environment_data = []
-    caud_vessels_environment_data = []
+    idx = pd.IndexSlice
+    all_vessels_environment_data = all_samples_features.loc[idx[:, :,
+                                                            1:n_expansions,
+                                                            "Vascular Space"], :].to_numpy()
+    mfg_vessels_environment_data = all_samples_features.loc[idx[brain_regions[0][0]:brain_regions[0][1],
+                                                            :,
+                                                            1:n_expansions,
+                                                            "Vascular Space"], :].to_numpy()
+    hip_vessels_environment_data = all_samples_features.loc[idx[brain_regions[1][0]:brain_regions[1][1],
+                                                            :,
+                                                            1:n_expansions,
+                                                            "Vascular Space"], :].to_numpy()
+    caud_vessels_environment_data = all_samples_features.loc[idx[brain_regions[2][0]:brain_regions[2][1],
+                                                             :,
+                                                             1:n_expansions,
+                                                             "Vascular Space"], :].to_numpy()
 
-    for expansion in vessel_data[0:n_expansions]:
-        for point_idx, point in enumerate(expansion):
-            for vessel in point:
-                all_vessels_environment_data.append(vessel)
-
-                if brain_regions[0][0] <= point_idx <= brain_regions[0][1]:
-                    mfg_vessels_environment_data.append(vessel)
-                elif brain_regions[1][0] <= point_idx <= brain_regions[1][1]:
-                    hip_vessels_environment_data.append(vessel)
-                elif brain_regions[2][0] <= point_idx <= brain_regions[2][1]:
-                    caud_vessels_environment_data.append(vessel)
-
-    all_vessels_environment_data = np.array(all_vessels_environment_data)
     all_vessels_environment_data = np.mean(all_vessels_environment_data, axis=0)
-
-    mfg_vessels_environment_data = np.array(mfg_vessels_environment_data)
     mfg_vessels_environment_data = np.mean(mfg_vessels_environment_data, axis=0)
-
-    hip_vessels_environment_data = np.array(hip_vessels_environment_data)
     hip_vessels_environment_data = np.mean(hip_vessels_environment_data, axis=0)
-
-    caud_vessels_environment_data = np.array(caud_vessels_environment_data)
     caud_vessels_environment_data = np.mean(caud_vessels_environment_data, axis=0)
 
     all_data = [all_vessels_data,
@@ -777,17 +741,15 @@ def vessel_nonvessel_heatmap(vessel_data: list,
     plt.clf()
 
 
-def brain_region_expansion_heatmap(vessel_data: list,
-                                   nonvessel_data: list,
+def brain_region_expansion_heatmap(all_samples_features: pd.DataFrame,
                                    markers_names: list,
                                    n_expansions: int,
                                    pixel_interval: int):
     """
     Brain Region Expansion Heatmap
 
+    :param all_samples_features: pd.DataFrame, All samples features
     :param pixel_interval: int, Pixel interval for expansion
-    :param vessel_data: list, [n_expansions, n_points, n_vessels, n_markers] -> vessel space expansion data
-    :param nonvessel_data: list, [n_expansions, n_points, n_vessels, n_markers] -> nonvessel space expansion data
     :param markers_names: array_like, [n_points, n_markers] -> Names of markers
     :param n_expansions: int, Number of expansions
     """
@@ -800,22 +762,41 @@ def brain_region_expansion_heatmap(vessel_data: list,
     hip_mask_data = []
     caud_mask_data = []
 
-    for expansion in vessel_data[0:n_expansions]:
-        current_expansion_all = []
-        current_expansion_mfg = []
-        current_expansion_hip = []
-        current_expansion_caud = []
-
-        for point_idx, point in enumerate(expansion):
-            for vessel in point:
-                current_expansion_all.append(vessel)
-
-                if brain_regions[0][0] <= point_idx <= brain_regions[0][1]:
-                    current_expansion_mfg.append(vessel)
-                elif brain_regions[1][0] <= point_idx <= brain_regions[1][1]:
-                    current_expansion_hip.append(vessel)
-                elif brain_regions[2][0] <= point_idx <= brain_regions[2][1]:
-                    current_expansion_caud.append(vessel)
+    for i in range(n_expansions):
+        if i == 0:
+            idx = pd.IndexSlice
+            current_expansion_all = all_samples_features.loc[idx[:, :,
+                                                             i,
+                                                             "Data"], :].to_numpy()
+            current_expansion_mfg = all_samples_features.loc[idx[brain_regions[0][0]:brain_regions[0][1],
+                                                             :,
+                                                             i,
+                                                             "Data"], :].to_numpy()
+            current_expansion_hip = all_samples_features.loc[idx[brain_regions[1][0]:brain_regions[1][1],
+                                                             :,
+                                                             i,
+                                                             "Data"], :].to_numpy()
+            current_expansion_caud = all_samples_features.loc[idx[brain_regions[2][0]:brain_regions[2][1],
+                                                              :,
+                                                              i,
+                                                              "Data"], :].to_numpy()
+        else:
+            idx = pd.IndexSlice
+            current_expansion_all = all_samples_features.loc[idx[:, :,
+                                                             i,
+                                                             "Vascular Space"], :].to_numpy()
+            current_expansion_mfg = all_samples_features.loc[idx[brain_regions[0][0]:brain_regions[0][1],
+                                                             :,
+                                                             i,
+                                                             "Vascular Space"], :].to_numpy()
+            current_expansion_hip = all_samples_features.loc[idx[brain_regions[1][0]:brain_regions[1][1],
+                                                             :,
+                                                             i,
+                                                             "Vascular Space"], :].to_numpy()
+            current_expansion_caud = all_samples_features.loc[idx[brain_regions[2][0]:brain_regions[2][1],
+                                                              :,
+                                                              i,
+                                                              "Vascular Space"], :].to_numpy()
 
         all_mask_data.append(np.mean(np.array(current_expansion_all), axis=0))
         mfg_mask_data.append(np.mean(np.array(current_expansion_mfg), axis=0))
@@ -827,32 +808,29 @@ def brain_region_expansion_heatmap(vessel_data: list,
     hip_mask_data = np.array(hip_mask_data)
     caud_mask_data = np.array(caud_mask_data)
 
-    all_nonmask_data = []
-    mfg_nonmask_data = []
-    hip_nonmask_data = []
-    caud_nonmask_data = []
+    idx = pd.IndexSlice
+    all_nonmask_data = all_samples_features.loc[idx[:, :,
+                                                i,
+                                                "Non-Vascular Space"], :].to_numpy()
+    mfg_nonmask_data = all_samples_features.loc[idx[brain_regions[0][0]:brain_regions[0][1],
+                                                :,
+                                                i,
+                                                "Non-Vascular Space"], :].to_numpy()
+    hip_nonmask_data = all_samples_features.loc[idx[brain_regions[1][0]:brain_regions[1][1],
+                                                :,
+                                                i,
+                                                "Non-Vascular Space"], :].to_numpy()
+    caud_nonmask_data = all_samples_features.loc[idx[brain_regions[2][0]:brain_regions[2][1],
+                                                 :,
+                                                 i,
+                                                 "Non-Vascular Space"], :].to_numpy()
 
-    for point_idx, point in enumerate(nonvessel_data[n_expansions - 1]):
-        for vessel in point:
-            all_nonmask_data.append(vessel)
-
-            if brain_regions[0][0] <= point_idx <= brain_regions[0][1]:
-                mfg_nonmask_data.append(vessel)
-            elif brain_regions[1][0] <= point_idx <= brain_regions[1][1]:
-                hip_nonmask_data.append(vessel)
-            elif brain_regions[2][0] <= point_idx <= brain_regions[2][1]:
-                caud_nonmask_data.append(vessel)
-
-    all_nonmask_data = np.array(all_nonmask_data)
     mean_nonmask_data = np.mean(all_nonmask_data, axis=0)
 
-    mfg_nonmask_data = np.array(mfg_nonmask_data)
     mfg_nonmask_data = np.mean(mfg_nonmask_data, axis=0)
 
-    hip_nonmask_data = np.array(hip_nonmask_data)
     hip_nonmask_data = np.mean(hip_nonmask_data, axis=0)
 
-    caud_nonmask_data = np.array(caud_nonmask_data)
     caud_nonmask_data = np.mean(caud_nonmask_data, axis=0)
 
     all_mask_data = np.append(all_mask_data, [mean_nonmask_data], axis=0)
@@ -1075,14 +1053,14 @@ def marker_expression_masks(all_points_vessel_contours: list,
         expression_img = np.zeros(img_shape, np.uint8)
         expression_img = cv.cvtColor(expression_img, cv.COLOR_GRAY2BGR)
 
-        data = calculate_composition_marker_expression(marker_data, contours)
+        data = calculate_composition_marker_expression(marker_data, contours, markers_names)
 
         for marker_idx, marker_name in enumerate(markers_names):
-            for idx, vessel_vec in enumerate(data):
+            for idx, vessel_vec in data.iterrows():
                 color = plt.get_cmap('hot')(vessel_vec[marker_idx])
                 color = (255 * color[0], 255 * color[1], 255 * color[2])
 
-                cv.drawContours(expression_img, contours, idx, color, cv.FILLED)
+                cv.drawContours(expression_img, contours, idx[1], color, cv.FILLED)
 
             plt.imshow(expression_img)
             sm = plt.cm.ScalarMappable(cmap=plt.get_cmap('hot'))
@@ -1120,11 +1098,14 @@ def removed_vessel_expression_boxplot(all_points_vessel_contours: list,
         marker_data = all_points_marker_data[i]
         start_expression = datetime.datetime.now()
 
-        vessel_expression_data = calculate_composition_marker_expression(marker_data, contours,
-                                                                         vessel_id_label="Point_%s" % str(i + 1))
-        removed_vessel_expression_data = calculate_composition_marker_expression(marker_data, removed_contours,
-                                                                                 vessel_id_label="Point_%s" % str(
-                                                                                     i + 1))
+        vessel_expression_data = calculate_composition_marker_expression(marker_data,
+                                                                         contours,
+                                                                         markers_names,
+                                                                         point_num=i + 1)
+        removed_vessel_expression_data = calculate_composition_marker_expression(marker_data,
+                                                                                 removed_contours,
+                                                                                 markers_names,
+                                                                                 point_num=i + 1)
 
         all_points_vessels_expression.append(vessel_expression_data)
         all_points_removed_vessels_expression.append(removed_vessel_expression_data)
@@ -1133,16 +1114,33 @@ def removed_vessel_expression_boxplot(all_points_vessel_contours: list,
 
         print("Finished calculating expression for Point %s in %s" % (str(i + 1), end_expression - start_expression))
 
+    kept_vessel_expression = pd.concat(all_points_vessels_expression).fillna(0)
+    kept_vessel_expression.index = map(lambda a: (a[0], a[1], a[2], a[3], "Kept"), kept_vessel_expression.index)
+    removed_vessel_expression = pd.concat(all_points_removed_vessels_expression).fillna(0)
+    removed_vessel_expression.index = map(lambda a: (a[0], a[1], a[2], a[3], "Removed"),
+                                          removed_vessel_expression.index)
+
+    kept_removed_features = [kept_vessel_expression, removed_vessel_expression]
+    kept_removed_features = pd.concat(kept_removed_features).fillna(0)
+    kept_removed_features.index = pd.MultiIndex.from_tuples(kept_removed_features.index)
+    kept_removed_features = kept_removed_features.sort_index()
+
+    scaling_factor = config.scaling_factor
+    transformation = config.transformation_type
+    normalization = config.normalization_type
+    n_markers = config.n_markers
+
+    kept_removed_features = normalize_expression_data(kept_removed_features,
+                                                      transformation=transformation,
+                                                      normalization=normalization,
+                                                      scaling_factor=scaling_factor,
+                                                      n_markers=n_markers)
+
+    print(kept_removed_features)
+
     brain_region_names = config.brain_region_names
     brain_region_point_ranges = config.brain_region_point_ranges
     markers_to_show = config.marker_clusters["Vessels"]
-
-    # Get marker index range to be used for expression comparison
-    sll = len(markers_to_show)
-    marker_range = (0, len(markers_names))
-    for ind in (i for i, e in enumerate(markers_names) if e == markers_to_show[0]):
-        if markers_names[ind:ind + sll] == markers_to_show:
-            marker_range = (ind, ind + sll)
 
     all_points_per_brain_region_dir = "%s/all_points_per_brain_region" % parent_dir
     mkdir_p(all_points_per_brain_region_dir)
@@ -1160,44 +1158,51 @@ def removed_vessel_expression_boxplot(all_points_vessel_contours: list,
 
         vessel_removed_vessel_expression_data_collapsed = []
 
-        for point_idx, per_point_point_vessel_data in \
-                enumerate(all_points_vessels_expression[brain_region_range[0] - 1:brain_region_range[1]]):
+        idx = pd.IndexSlice
+        per_point_point_vessel_data = kept_removed_features.loc[idx[brain_region_range[0]:brain_region_range[1], :,
+                                                                :,
+                                                                "Data",
+                                                                "Kept"],
+                                                                markers_to_show]
 
-            for vessel_data in per_point_point_vessel_data:
-                data = np.mean(vessel_data[marker_range[0]:marker_range[1]])
-                vessel_removed_vessel_expression_data_collapsed.append(
-                    [data, "Kept", point_idx + brain_region_range[0]])
+        per_point_point_removed_data = kept_removed_features.loc[idx[brain_region_range[0]:brain_region_range[1], :,
+                                                                 :,
+                                                                 "Data",
+                                                                 "Removed"],
+                                                                 markers_to_show]
 
-                all_kept_removed_vessel_expression_data_collapsed.append(
-                    [data, "Kept", point_idx + brain_region_range[0]])
+        for index, vessel_data in per_point_point_vessel_data.iterrows():
+            data = np.mean(vessel_data)
+            vessel_removed_vessel_expression_data_collapsed.append(
+                [data, "Kept", index[0]])
 
-        for point_idx, per_point_point_vessel_data in \
-                enumerate(all_points_removed_vessels_expression[brain_region_range[0] - 1:brain_region_range[1]]):
+            all_kept_removed_vessel_expression_data_collapsed.append(
+                [data, "Kept", index[0]])
 
-            for vessel_data in per_point_point_vessel_data:
-                data = np.mean(vessel_data[marker_range[0]:marker_range[1]])
-                vessel_removed_vessel_expression_data_collapsed.append([data, "Removed",
-                                                                        point_idx + brain_region_range[0]])
+        for index, vessel_data in per_point_point_removed_data.iterrows():
+            data = np.mean(vessel_data)
+            vessel_removed_vessel_expression_data_collapsed.append([data, "Removed",
+                                                                    index[0]])
 
-                all_kept_removed_vessel_expression_data_collapsed.append([data, "Removed",
-                                                                          point_idx + brain_region_range[0]])
+            all_kept_removed_vessel_expression_data_collapsed.append([data, "Removed",
+                                                                      index[0]])
 
         df = pd.DataFrame(vessel_removed_vessel_expression_data_collapsed, columns=["Expression", "Vessel", "Point"])
 
         plt.title("Kept vs Removed Vessel Marker Expression - %s" % brain_region)
-        ax = sns.boxplot(x="Point", y="Expression", hue="Vessel", data=df, palette="Set3")
+        ax = sns.boxplot(x="Point", y="Expression", hue="Vessel", data=df, palette="Set3", showfliers=False)
         plt.savefig(os.path.join(all_points_per_brain_region_dir, "%s.png" % brain_region))
         plt.clf()
 
         plt.title("Kept vs Removed Vessel Marker Expression - %s: Average Points" % brain_region)
-        ax = sns.boxplot(x="Vessel", y="Expression", hue="Vessel", data=df, palette="Set3")
+        ax = sns.boxplot(x="Vessel", y="Expression", hue="Vessel", data=df, palette="Set3", showfliers=False)
         plt.savefig(os.path.join(average_points_dir, "%s.png" % brain_region))
         plt.clf()
 
     df = pd.DataFrame(all_kept_removed_vessel_expression_data_collapsed, columns=["Expression", "Vessel", "Point"])
 
     plt.title("Kept vs Removed Vessel Marker Expression - All Points")
-    ax = sns.boxplot(x="Vessel", y="Expression", hue="Vessel", data=df, palette="Set3")
+    ax = sns.boxplot(x="Vessel", y="Expression", hue="Vessel", data=df, palette="Set3", showfliers=False)
     plt.savefig(os.path.join(all_points, "All_Points.png"))
     plt.clf()
 
