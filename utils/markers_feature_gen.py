@@ -107,13 +107,16 @@ def contract_vessel_region(cnt: np.ndarray,
     return ring
 
 
-def expand_vessel_region(cnt: np.ndarray, img_shape: (int, int), pixel_expansion: int = 5) -> np.ndarray:
+def expand_vessel_region(cnt: np.ndarray, img_shape: (int, int),
+                         upper_bound: int = 5,
+                         lower_bound: int = 0) -> np.ndarray:
     """
     Create an expanded vessel mask
 
+    :param lower_bound: int, Pixel Lower Bound
     :param cnt: np.ndarray, Vessel contour
     :param img_shape: tuple, Point data size ex. (1024, 1024)
-    :param pixel_expansion: int, Pixel expansion
+    :param upper_bound: int, Pixel expansion
     :return: array_like, [point_size[0], point_size[1]] -> Vessel ring mask
     """
 
@@ -122,7 +125,7 @@ def expand_vessel_region(cnt: np.ndarray, img_shape: (int, int), pixel_expansion
 
     dist = cv.distanceTransform(inverted, cv.DIST_L2, cv.DIST_MASK_PRECISE)
 
-    ring = cv.inRange(dist, 0, pixel_expansion)  # take all pixels at distance between 0 px and pixel_expansion px
+    ring = cv.inRange(dist, lower_bound, upper_bound)  # take all pixels at distance between 0 px and pixel_expansion px
     ring = (ring / 255).astype(np.uint8)
 
     return ring
@@ -248,13 +251,13 @@ def expansion_ring_plots(per_point_contours: list,
         if pixel_expansion_upper_bound < 0:
             mask_expanded = contract_vessel_region(cnt, img_shape, upper_bound=pixel_expansion_upper_bound)
         else:
-            mask_expanded = expand_vessel_region(cnt, img_shape, pixel_expansion=pixel_expansion_upper_bound)
+            mask_expanded = expand_vessel_region(cnt, img_shape, upper_bound=pixel_expansion_upper_bound)
 
         if pixel_expansion_lower_bound != 0:
             if pixel_expansion_lower_bound < 0:
                 mask = contract_vessel_region(cnt, img_shape, upper_bound=pixel_expansion_lower_bound)
             else:
-                mask = expand_vessel_region(cnt, img_shape, pixel_expansion=pixel_expansion_lower_bound)
+                mask = expand_vessel_region(cnt, img_shape, upper_bound=pixel_expansion_lower_bound)
         else:
             mask = np.zeros(img_shape, np.uint8)
 
@@ -290,13 +293,13 @@ def get_microenvironment_masks(per_point_marker_data: np.ndarray,
         if pixel_expansion_upper_bound < 0:
             mask_expanded = contract_vessel_region(cnt, img_shape, upper_bound=pixel_expansion_upper_bound)
         else:
-            mask_expanded = expand_vessel_region(cnt, img_shape, pixel_expansion=pixel_expansion_upper_bound)
+            mask_expanded = expand_vessel_region(cnt, img_shape, upper_bound=pixel_expansion_upper_bound)
 
         if pixel_expansion_lower_bound != 0:
             if pixel_expansion_lower_bound < 0:
                 mask = contract_vessel_region(cnt, img_shape, upper_bound=pixel_expansion_lower_bound)
             else:
-                mask = expand_vessel_region(cnt, img_shape, pixel_expansion=pixel_expansion_lower_bound)
+                mask = expand_vessel_region(cnt, img_shape, upper_bound=pixel_expansion_lower_bound)
         else:
             mask = cv.drawContours(np.zeros(img_shape, np.uint8), [cnt], -1, (1, 1, 1), cv.FILLED)
 
@@ -444,10 +447,10 @@ def calculate_microenvironment_marker_expression(per_point_marker_data: np.ndarr
 
         expression_image = []
 
-        mask_expanded = expand_vessel_region(cnt, img_shape, pixel_expansion=pixel_expansion_upper_bound)
+        mask_expanded = expand_vessel_region(cnt, img_shape, upper_bound=pixel_expansion_upper_bound)
 
         if pixel_expansion_lower_bound != 0:
-            mask = expand_vessel_region(cnt, img_shape, pixel_expansion=pixel_expansion_lower_bound)
+            mask = expand_vessel_region(cnt, img_shape, upper_bound=pixel_expansion_lower_bound)
         else:
             mask = cv.drawContours(np.zeros(img_shape, np.uint8), [cnt], -1, (1, 1, 1), cv.FILLED)
 

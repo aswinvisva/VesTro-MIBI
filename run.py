@@ -3,7 +3,8 @@ from utils.extract_vessel_contours import *
 from utils.markers_feature_gen import *
 from utils.visualizer import vessel_nonvessel_heatmap, point_region_plots, vessel_region_plots, brain_region_plots, \
     all_points_plots, brain_region_expansion_heatmap, marker_expression_masks, vessel_areas_histogram, \
-    pixel_expansion_ring_plots, removed_vessel_expression_boxplot
+    pixel_expansion_ring_plots, removed_vessel_expression_boxplot, biaxial_scatter_plot, obtain_expanded_vessel_masks, \
+    obtain_embedded_vessel_masks, spatial_probability_maps
 import config.config_settings as config
 
 '''
@@ -33,8 +34,6 @@ def get_outward_expansion_data(all_points_vessel_contours: list,
 
     # Store all data in lists
     expansion_data = []
-    dark_space_expansion_data = []
-    vessel_space_expansion_data = []
     current_interval = pixel_interval
     n_points = config.n_points
 
@@ -42,8 +41,6 @@ def get_outward_expansion_data(all_points_vessel_contours: list,
     for x in range(n_expansions):
 
         current_expansion_data = []
-        current_dark_space_expansion_data = []
-        current_vessel_space_expansion_data = []
 
         all_points_stopped_vessels = 0
 
@@ -59,8 +56,6 @@ def get_outward_expansion_data(all_points_vessel_contours: list,
             if x == 0:
                 data = calculate_composition_marker_expression(marker_data, contours, marker_names,
                                                                point_num=i + 1)
-                current_vessel_space_expansion_data.append(data)
-
             else:
                 data, expression_images, stopped_vessels = calculate_microenvironment_marker_expression(
                     marker_data,
@@ -105,6 +100,9 @@ def get_outward_expansion_data(all_points_vessel_contours: list,
                                                         n_markers=n_markers)
 
     all_expansions_features = all_expansions_features.sort_index()
+
+    if config.save_to_csv:
+        all_expansions_features.to_csv(config.csv_loc)
 
     return all_expansions_features
 
@@ -197,6 +195,11 @@ def run_vis():
         all_points_vessel_regions_of_interest.append(vessel_regions_of_interest)
         all_points_removed_vessel_contours.append(removed_contours)
 
+    # Spatial Probability Maps
+    if config.create_spatial_probability_maps:
+        spatial_probability_maps(all_points_marker_data,
+                                 markers_names)
+
     # Marker expression overlay masks
     if config.create_marker_expression_overlay_masks:
         marker_expression_masks(all_points_vessel_contours, all_points_marker_data, markers_names)
@@ -208,10 +211,6 @@ def run_vis():
                                           all_points_marker_data,
                                           markers_names)
 
-    # Inward expansion data
-    if config.perform_inward_expansions:
-        get_inward_expansion_data(all_points_vessel_contours, all_points_marker_data)
-
     # Vessel areas histograms and boxplots
     if config.create_vessel_areas_histograms_and_boxplots:
         vessel_areas_histogram()
@@ -219,6 +218,21 @@ def run_vis():
     # Vessel expansion ring plots
     if config.create_expansion_ring_plots:
         pixel_expansion_ring_plots()
+
+    if config.create_biaxial_scatter_plot:
+        biaxial_scatter_plot(all_points_vessel_contours,
+                             all_points_marker_data,
+                             markers_names)
+
+    if config.create_expanded_vessel_masks:
+        obtain_expanded_vessel_masks(all_points_vessel_contours)
+
+    if config.create_embedded_vessel_id_masks:
+        obtain_embedded_vessel_masks(all_points_vessel_contours)
+
+    # Inward expansion data
+    if config.perform_inward_expansions:
+        get_inward_expansion_data(all_points_vessel_contours, all_points_marker_data)
 
     # Collect outward microenvironment expansion data, nonvessel space expansion data and vessel space expansion data
     all_expansions_features = get_outward_expansion_data(all_points_vessel_contours,

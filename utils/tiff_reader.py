@@ -21,7 +21,7 @@ def read(path: str, describe: bool = False) -> np.ndarray:
             print(tif)
             print("Pages:", len(tif.pages))
 
-            cv.imshow("Marker", (img / max(img.flatten())) * 255)
+            cv.imshow("Marker", img * 255)
             cv.waitKey(0)
 
     return img
