@@ -722,6 +722,74 @@ def pixel_expansion_ring_plots():
             current_interval += interval
 
 
+def expression_histogram(all_points_vessel_contours: list,
+                         all_points_marker_data: list,
+                         markers_names: list):
+    """
+    Histogram for visualizing Marker Expressions
+
+    :param markers_names: array_like, [n_points, n_markers] -> Names of markers
+    :param all_points_vessel_contours: array_like, [n_points, n_vessels] -> list of vessel contours for each point
+    :param all_points_marker_data: array_like, [n_points, n_markers, point_size[0], point_size[1]] ->
+    list of marker data for each point
+    :return:
+    """
+
+    n_points = config.n_points
+
+    all_points_vessels_expression = []
+
+    output_dir = "%s/expression_histograms" % config.visualization_results_dir
+    mkdir_p(output_dir)
+
+    # Iterate through each point
+    for i in range(n_points):
+        contours = all_points_vessel_contours[i]
+        marker_data = all_points_marker_data[i]
+        start_expression = datetime.datetime.now()
+
+        vessel_expression_data = calculate_composition_marker_expression(marker_data,
+                                                                         contours,
+                                                                         markers_names,
+                                                                         point_num=i + 1)
+
+        all_points_vessels_expression.append(vessel_expression_data)
+
+        end_expression = datetime.datetime.now()
+
+        print("Finished calculating expression for Point %s in %s" % (str(i + 1), end_expression - start_expression))
+
+    all_samples_features = pd.concat(all_points_vessels_expression).fillna(0)
+    all_samples_features = all_samples_features.sort_index()
+
+    scaling_factor = config.scaling_factor
+    transformation = config.transformation_type
+    normalization = config.normalization_type
+    n_markers = config.n_markers
+
+    all_samples_features = normalize_expression_data(all_samples_features,
+                                                     transformation=transformation,
+                                                     normalization=normalization,
+                                                     scaling_factor=scaling_factor,
+                                                     n_markers=n_markers)
+    idx = pd.IndexSlice
+
+    x = "SMA"
+    x_data = all_samples_features.loc[idx[:, :, 0, "Data"], x].values
+
+    plt.hist(x_data, density=True, bins=30, label="Data")
+    mn, mx = plt.xlim()
+    plt.xlim(mn, mx)
+    kde_xs = np.linspace(mn, mx, 301)
+    kde = gaussian_kde(x_data)
+    plt.plot(kde_xs, kde.pdf(kde_xs), label="PDF")
+    plt.legend(loc="upper left")
+    plt.ylabel('Probability')
+    plt.xlabel('Data')
+    plt.title("Histogram")
+    plt.savefig(output_dir + "/%s_expression_histogram" % x)
+
+
 def biaxial_scatter_plot(all_points_vessel_contours: list,
                          all_points_marker_data: list,
                          markers_names: list):
@@ -780,10 +848,10 @@ def biaxial_scatter_plot(all_points_vessel_contours: list,
     x_data = all_samples_features.loc[idx[:, :, 0, "Data"], x].values
     y_data = all_samples_features.loc[idx[:, :, 0, "Data"], y].values
 
-    posiitve_sma = len(all_samples_features.loc[all_samples_features[x] > 0.1].values)
+    positive_sma = len(all_samples_features.loc[all_samples_features[x] > 0.1].values)
     all_vess = len(all_samples_features.values)
 
-    print("There are %s / %s vessels which are positive for SMA" % (posiitve_sma, all_vess))
+    print("There are %s / %s vessels which are positive for SMA" % (positive_sma, all_vess))
 
     # Calculate the point density
     xy = np.vstack([x_data, y_data])
@@ -803,10 +871,10 @@ def biaxial_scatter_plot(all_points_vessel_contours: list,
     x_data = all_samples_features.loc[idx[:, :, 0, "Data"], x].values
     y_data = all_samples_features.loc[idx[:, :, 0, "Data"], y].values
 
-    posiitve_sma = len(all_samples_features.loc[all_samples_features[x] > 0.1].values)
+    positive_sma = len(all_samples_features.loc[all_samples_features[x] > 0.1].values)
     all_vess = len(all_samples_features.values)
 
-    print("There are %s / %s vessels which are positive for SMA" % (posiitve_sma, all_vess))
+    print("There are %s / %s vessels which are positive for SMA" % (positive_sma, all_vess))
 
     # Calculate the point density
     xy = np.vstack([x_data, y_data])
@@ -826,10 +894,10 @@ def biaxial_scatter_plot(all_points_vessel_contours: list,
     x_data = all_samples_features.loc[idx[:, :, 0, "Data"], x].values
     y_data = all_samples_features.loc[idx[:, :, 0, "Data"], y].values
 
-    posiitve_sma = len(all_samples_features.loc[all_samples_features[x] > 0.1].values)
+    positive_sma = len(all_samples_features.loc[all_samples_features[x] > 0.1].values)
     all_vess = len(all_samples_features.values)
 
-    print("There are %s / %s vessels which are positive for SMA" % (posiitve_sma, all_vess))
+    print("There are %s / %s vessels which are positive for SMA" % (positive_sma, all_vess))
 
     # Calculate the point density
     xy = np.vstack([x_data, y_data])
@@ -844,6 +912,108 @@ def biaxial_scatter_plot(all_points_vessel_contours: list,
     plt.clf()
 
 
+def violin_plot_brain_expansion(all_expansions_features: pd.DataFrame,
+                                n_expansions: int):
+    """
+    Violin Plots for Expansion Data
+
+    :param n_expansions: int, Number of expansions
+    :param all_expansions_features: pd.DataFrame, all expansion features
+
+    :return:
+    """
+
+    output_dir = "%s/expansion_violin_plots" % config.visualization_results_dir
+    mkdir_p(output_dir)
+
+    bins_dir = "%s/per_bin" % output_dir
+    mkdir_p(bins_dir)
+
+    per_bin_expansions_dir = "%s/expansion_%s" % (bins_dir, str(n_expansions))
+    mkdir_p(per_bin_expansions_dir)
+
+    markers_dir = "%s/per_marker" % output_dir
+    mkdir_p(markers_dir)
+
+    per_marker_expansions_dir = "%s/expansion_%s" % (markers_dir, str(n_expansions))
+    mkdir_p(per_marker_expansions_dir)
+
+    idx = pd.IndexSlice
+    marker_clusters = config.marker_clusters
+    color_maps = config.line_plots_color_maps
+
+    extracted_features = all_expansions_features.loc[idx[:,
+                                                     :,
+                                                     0:n_expansions,
+                                                     "Data"], :]
+
+    extracted_features = extracted_features.stack().to_frame()
+    extracted_features.index.rename(['Point', 'Vessel', 'Expansion', 'Data Type', 'Marker'], inplace=True)
+    extracted_features = extracted_features.rename(columns={0: 'Expression'})
+    extracted_features.reset_index(level=['Marker', 'Point', 'Expansion'], inplace=True)
+    extracted_features['Region'] = pd.cut(extracted_features['Point'],
+                                          bins=[config.brain_region_point_ranges[0][0] - 1,
+                                                config.brain_region_point_ranges[1][0] - 1,
+                                                config.brain_region_point_ranges[2][0] - 1,
+                                                float('Inf')],
+                                          labels=[config.brain_region_names[0],
+                                                  config.brain_region_names[1],
+                                                  config.brain_region_names[2]])
+
+    extracted_features['Expansion'] = extracted_features['Expansion'].apply(lambda x: x * config.pixel_interval)
+    extracted_features = extracted_features.rename(columns={'Expansion': 'Pixels Expanded'})
+
+    for key in marker_clusters.keys():
+        colors_clusters = color_maps[key](np.linspace(0, 1, len(marker_clusters[key]) + 2))
+        color_idx = 2
+
+        for marker, marker_name in enumerate(marker_clusters[key]):
+            marker_features = extracted_features[(extracted_features["Marker"] == marker_name) &
+                                                 (extracted_features["Expression"] <= 1.0)]
+
+            plt.figure(figsize=(22, 10))
+            ax = sns.violinplot(x='Pixels Expanded',
+                                y="Expression",
+                                palette=[colors_clusters[color_idx]],
+                                inner=None,
+                                data=marker_features,
+                                bw=0.2)
+
+            sns.pointplot(x='Pixels Expanded', y="Expression", hue="Region", data=marker_features,
+                          markers=["o", "x", "^"],
+                          join=False
+                          )
+
+            plt.savefig(per_marker_expansions_dir + '/%s.png' % str(marker_name),
+                        bbox_inches='tight')
+            plt.clf()
+
+            color_idx += 1
+
+    for key in marker_clusters.keys():
+        marker_features = extracted_features.loc[(extracted_features["Marker"].isin(marker_clusters[key])) &
+                                                 (extracted_features["Expression"] <= 1.0)]
+
+        color = config.line_plots_bin_colors[key]
+
+        plt.figure(figsize=(22, 10))
+        ax = sns.violinplot(x='Pixels Expanded',
+                            y="Expression",
+                            palette=[color],
+                            inner=None,
+                            data=marker_features,
+                            bw=0.2)
+
+        sns.pointplot(x='Pixels Expanded', y="Expression", hue="Region", data=marker_features,
+                      markers=["o", "x", "^"],
+                      join=False
+                      )
+
+        plt.savefig(per_bin_expansions_dir + '/%s.png' % str(key),
+                    bbox_inches='tight')
+        plt.clf()
+
+
 def spatial_probability_maps(all_points_marker_data: list,
                              markers_names: list):
     """
@@ -855,14 +1025,64 @@ def spatial_probability_maps(all_points_marker_data: list,
     :return:
     """
 
-    for marker_data in all_points_marker_data:
-        marker_dict = dict(zip(markers_names, marker_data))
-        blurred_data = gaussian_filter(marker_dict["SMA"], sigma=8)
-        color_map = plt.imshow(blurred_data)
-        color_map.set_cmap("viridis")
-        plt.colorbar()
+    parent_dir = "%s/pixel_expression_spatial_maps" % config.visualization_results_dir
+    mkdir_p(parent_dir)
 
-        plt.show()
+    vessels_dir = "%s/vessels" % parent_dir
+    mkdir_p(vessels_dir)
+
+    astrocytes_dir = "%s/astrocytes" % parent_dir
+    mkdir_p(astrocytes_dir)
+
+    all_markers_dir = "%s/all_markers" % parent_dir
+    mkdir_p(all_markers_dir)
+
+    for point_idx, marker_data in enumerate(all_points_marker_data):
+        marker_dict = dict(zip(markers_names, marker_data))
+        data = []
+
+        for marker in config.marker_clusters["Vessels"]:
+            data.append(marker_dict[marker])
+
+        data = np.nanmean(np.array(data), axis=0)
+        blurred_data = gaussian_filter(data, sigma=4)
+        color_map = plt.imshow(blurred_data)
+        color_map.set_cmap("jet")
+        plt.colorbar()
+        plt.savefig("%s/Point%s" % (vessels_dir, str(point_idx + 1)))
+        plt.clf()
+
+    for point_idx, marker_data in enumerate(all_points_marker_data):
+        marker_dict = dict(zip(markers_names, marker_data))
+        data = []
+
+        for marker in config.marker_clusters["Astrocytes"]:
+            data.append(marker_dict[marker])
+
+        data = np.nanmean(np.array(data), axis=0)
+        blurred_data = gaussian_filter(data, sigma=4)
+        color_map = plt.imshow(blurred_data)
+        color_map.set_cmap("jet")
+        plt.colorbar()
+        plt.savefig("%s/Point%s" % (astrocytes_dir, str(point_idx + 1)))
+        plt.clf()
+
+    for point_idx, marker_data in enumerate(all_points_marker_data):
+        marker_dict = dict(zip(markers_names, marker_data))
+
+        point_dir = "%s/Point%s" % (all_markers_dir, str(point_idx + 1))
+        mkdir_p(point_dir)
+
+        for key in marker_dict.keys():
+            marker_name = key
+            data = marker_dict[key]
+
+            blurred_data = gaussian_filter(data, sigma=4)
+            color_map = plt.imshow(blurred_data)
+            color_map.set_cmap("jet")
+            plt.colorbar()
+            plt.savefig("%s/%s" % (point_dir, marker_name))
+            plt.clf()
 
 
 def vessel_nonvessel_heatmap(all_samples_features: pd.DataFrame,
@@ -931,82 +1151,139 @@ def vessel_nonvessel_heatmap(all_samples_features: pd.DataFrame,
 
     # Non-vessel Space
 
-    all_nonmask_data = all_samples_features.loc[idx[:, :, :,
+    all_nonmask_sma_data = positve_sma.loc[idx[:, :, :,
+                                           "Non-Vascular Space"], :].to_numpy()
+    mfg_nonmask_sma_data = positve_sma.loc[idx[brain_regions[0][0]:brain_regions[0][1],
+                                           :,
+                                           1:n_expansions,
+                                           "Non-Vascular Space"], :].to_numpy()
+    hip_nonmask_sma_data = positve_sma.loc[idx[brain_regions[1][0]:brain_regions[1][1],
+                                           :,
+                                           1:n_expansions,
+                                           "Non-Vascular Space"], :].to_numpy()
+    caud_nonmask_sma_data = positve_sma.loc[idx[brain_regions[2][0]:brain_regions[2][1],
+                                            :,
+                                            1:n_expansions,
+                                            "Non-Vascular Space"], :].to_numpy()
+
+    all_nonmask_sma_data = np.mean(all_nonmask_sma_data, axis=0)
+    mfg_nonmask_sma_data = np.mean(mfg_nonmask_sma_data, axis=0)
+    hip_nonmask_sma_data = np.mean(hip_nonmask_sma_data, axis=0)
+    caud_nonmask_sma_data = np.mean(caud_nonmask_sma_data, axis=0)
+
+    all_nonmask_non_sma_data = negative_sma.loc[idx[:, :, :,
                                                 "Non-Vascular Space"], :].to_numpy()
-    mfg_nonmask_data = all_samples_features.loc[idx[brain_regions[0][0]:brain_regions[0][1],
+    mfg_nonmask_non_sma_data = negative_sma.loc[idx[brain_regions[0][0]:brain_regions[0][1],
                                                 :,
                                                 1:n_expansions,
                                                 "Non-Vascular Space"], :].to_numpy()
-    hip_nonmask_data = all_samples_features.loc[idx[brain_regions[1][0]:brain_regions[1][1],
+    hip_nonmask_non_sma_data = negative_sma.loc[idx[brain_regions[1][0]:brain_regions[1][1],
                                                 :,
                                                 1:n_expansions,
                                                 "Non-Vascular Space"], :].to_numpy()
-    caud_nonmask_data = all_samples_features.loc[idx[brain_regions[2][0]:brain_regions[2][1],
+    caud_nonmask_non_sma_data = negative_sma.loc[idx[brain_regions[2][0]:brain_regions[2][1],
                                                  :,
                                                  1:n_expansions,
                                                  "Non-Vascular Space"], :].to_numpy()
 
-    all_nonmask_data = np.mean(all_nonmask_data, axis=0)
-    mfg_nonmask_data = np.mean(mfg_nonmask_data, axis=0)
-    hip_nonmask_data = np.mean(hip_nonmask_data, axis=0)
-    caud_nonmask_data = np.mean(caud_nonmask_data, axis=0)
+    all_nonmask_non_sma_data = np.mean(all_nonmask_non_sma_data, axis=0)
+    mfg_nonmask_non_sma_data = np.mean(mfg_nonmask_non_sma_data, axis=0)
+    hip_nonmask_non_sma_data = np.mean(hip_nonmask_non_sma_data, axis=0)
+    caud_nonmask_non_sma_data = np.mean(caud_nonmask_non_sma_data, axis=0)
 
     # Vessel environment space
 
-    all_vessels_environment_data = all_samples_features.loc[idx[:, :,
+    all_vessels_environment_sma_data = positve_sma.loc[idx[:, :,
+                                                       1:n_expansions,
+                                                       "Vascular Space"], :].to_numpy()
+    mfg_vessels_environment_sma_data = positve_sma.loc[idx[brain_regions[0][0]:brain_regions[0][1],
+                                                       :,
+                                                       1:n_expansions,
+                                                       "Vascular Space"], :].to_numpy()
+    hip_vessels_environment_sma_data = positve_sma.loc[idx[brain_regions[1][0]:brain_regions[1][1],
+                                                       :,
+                                                       1:n_expansions,
+                                                       "Vascular Space"], :].to_numpy()
+    caud_vessels_environment_sma_data = positve_sma.loc[idx[brain_regions[2][0]:brain_regions[2][1],
+                                                        :,
+                                                        1:n_expansions,
+                                                        "Vascular Space"], :].to_numpy()
+
+    all_vessels_environment_sma_data = np.mean(all_vessels_environment_sma_data, axis=0)
+    mfg_vessels_environment_sma_data = np.mean(mfg_vessels_environment_sma_data, axis=0)
+    hip_vessels_environment_sma_data = np.mean(hip_vessels_environment_sma_data, axis=0)
+    caud_vessels_environment_sma_data = np.mean(caud_vessels_environment_sma_data, axis=0)
+
+    all_vessels_environment_non_sma_data = negative_sma.loc[idx[:, :,
                                                             1:n_expansions,
                                                             "Vascular Space"], :].to_numpy()
-    mfg_vessels_environment_data = all_samples_features.loc[idx[brain_regions[0][0]:brain_regions[0][1],
+    mfg_vessels_environment_non_sma_data = negative_sma.loc[idx[brain_regions[0][0]:brain_regions[0][1],
                                                             :,
                                                             1:n_expansions,
                                                             "Vascular Space"], :].to_numpy()
-    hip_vessels_environment_data = all_samples_features.loc[idx[brain_regions[1][0]:brain_regions[1][1],
+    hip_vessels_environment_non_sma_data = negative_sma.loc[idx[brain_regions[1][0]:brain_regions[1][1],
                                                             :,
                                                             1:n_expansions,
                                                             "Vascular Space"], :].to_numpy()
-    caud_vessels_environment_data = all_samples_features.loc[idx[brain_regions[2][0]:brain_regions[2][1],
+    caud_vessels_environment_non_sma_data = negative_sma.loc[idx[brain_regions[2][0]:brain_regions[2][1],
                                                              :,
                                                              1:n_expansions,
                                                              "Vascular Space"], :].to_numpy()
 
-    all_vessels_environment_data = np.mean(all_vessels_environment_data, axis=0)
-    mfg_vessels_environment_data = np.mean(mfg_vessels_environment_data, axis=0)
-    hip_vessels_environment_data = np.mean(hip_vessels_environment_data, axis=0)
-    caud_vessels_environment_data = np.mean(caud_vessels_environment_data, axis=0)
+    all_vessels_environment_non_sma_data = np.mean(all_vessels_environment_non_sma_data, axis=0)
+    mfg_vessels_environment_non_sma_data = np.mean(mfg_vessels_environment_non_sma_data, axis=0)
+    hip_vessels_environment_non_sma_data = np.mean(hip_vessels_environment_non_sma_data, axis=0)
+    caud_vessels_environment_non_sma_data = np.mean(caud_vessels_environment_non_sma_data, axis=0)
 
     all_data = [all_vessels_sma_data,
                 all_vessels_non_sma_data,
-                all_vessels_environment_data,
-                all_nonmask_data,
+                all_vessels_environment_sma_data,
+                all_vessels_environment_non_sma_data,
+                all_nonmask_sma_data,
+                all_nonmask_non_sma_data,
                 mfg_vessels_sma_data,
                 mfg_vessels_non_sma_data,
-                mfg_vessels_environment_data,
-                mfg_nonmask_data,
+                mfg_vessels_environment_sma_data,
+                mfg_vessels_environment_non_sma_data,
+                mfg_nonmask_sma_data,
+                mfg_nonmask_non_sma_data,
                 hip_vessels_sma_data,
                 hip_vessels_non_sma_data,
-                hip_vessels_environment_data,
-                hip_nonmask_data,
+                hip_vessels_environment_sma_data,
+                hip_vessels_environment_non_sma_data,
+                hip_nonmask_sma_data,
+                hip_nonmask_non_sma_data,
                 caud_vessels_sma_data,
                 caud_vessels_non_sma_data,
-                caud_vessels_environment_data,
-                caud_nonmask_data]
+                caud_vessels_environment_sma_data,
+                caud_vessels_environment_non_sma_data,
+                caud_nonmask_sma_data,
+                caud_nonmask_non_sma_data]
 
     yticklabels = ["Vascular Space (SMA+) - All Points",
                    "Vascular Space (SMA-) - All Points",
-                   "Vascular Expansion Space - All Points",
-                   "Non-Vascular Space - All Points",
+                   "Vascular Expansion Space (SMA+) - All Points",
+                   "Vascular Expansion Space (SMA-) - All Points",
+                   "Non-Vascular Space (SMA+) - All Points",
+                   "Non-Vascular Space (SMA-) - All Points",
                    "Vascular Space (SMA+) - MFG",
                    "Vascular Space (SMA-) - MFG",
-                   "Vascular Expansion Space - MFG",
-                   "Non-Vascular Space - MFG",
+                   "Vascular Expansion Space (SMA+) - MFG",
+                   "Vascular Expansion Space (SMA-) - MFG",
+                   "Non-Vascular Space (SMA+) - MFG",
+                   "Non-Vascular Space (SMA-) - MFG",
                    "Vascular Space (SMA+) - HIP",
                    "Vascular Space (SMA-) - HIP",
-                   "Vascular Expansion Space - HIP",
-                   "Non-Vascular Space - HIP",
+                   "Vascular Expansion Space (SMA+) - HIP",
+                   "Vascular Expansion Space (SMA-) - HIP",
+                   "Non-Vascular Space (SMA+) - HIP",
+                   "Non-Vascular Space (SMA-) - HIP",
                    "Vascular Space (SMA+) - CAUD",
                    "Vascular Space (SMA-) - CAUD",
-                   "Vascular Expansion Space - CAUD",
-                   "Non-Vascular Space - CAUD"]
+                   "Vascular Expansion Space (SMA+) - CAUD",
+                   "Vascular Expansion Space (SMA-) - CAUD",
+                   "Non-Vascular Space (SMA+) - CAUD",
+                   "Non-Vascular Space (SMA-) - CAUD", ]
 
     norm = matplotlib.colors.Normalize(-1, 1)
     colors = [[norm(-1.0), "black"],
@@ -1040,7 +1317,7 @@ def vessel_nonvessel_heatmap(all_samples_features: pd.DataFrame,
     h_line_idx = 0
 
     while h_line_idx < len(yticklabels):
-        h_line_idx += 4
+        h_line_idx += 6
         ax.axhline(h_line_idx, 0, len(markers_names), linewidth=3, c='w')
 
     output_dir = "%s/heatmaps" % config.visualization_results_dir

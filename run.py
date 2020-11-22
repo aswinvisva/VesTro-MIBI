@@ -4,7 +4,7 @@ from utils.markers_feature_gen import *
 from utils.visualizer import vessel_nonvessel_heatmap, point_region_plots, vessel_region_plots, brain_region_plots, \
     all_points_plots, brain_region_expansion_heatmap, marker_expression_masks, vessel_areas_histogram, \
     pixel_expansion_ring_plots, removed_vessel_expression_boxplot, biaxial_scatter_plot, obtain_expanded_vessel_masks, \
-    obtain_embedded_vessel_masks, spatial_probability_maps
+    obtain_embedded_vessel_masks, spatial_probability_maps, expression_histogram, violin_plot_brain_expansion
 import config.config_settings as config
 
 '''
@@ -195,6 +195,12 @@ def run_vis():
         all_points_vessel_regions_of_interest.append(vessel_regions_of_interest)
         all_points_removed_vessel_contours.append(removed_contours)
 
+    # Expression Histograms
+    if config.create_expression_histogram:
+        expression_histogram(all_points_vessel_contours,
+                             all_points_marker_data,
+                             markers_names)
+
     # Spatial Probability Maps
     if config.create_spatial_probability_maps:
         spatial_probability_maps(all_points_marker_data,
@@ -250,6 +256,12 @@ def run_vis():
                                            markers_names,
                                            x + 1,
                                            interval)
+
+        # Violin Plots
+        if config.create_expansion_violin_plots:
+            violin_plot_brain_expansion(all_expansions_features,
+                                        x)
+
         # Mask/Non-mask heatmaps
         if config.create_vessel_nonvessel_heatmaps:
             vessel_nonvessel_heatmap(all_expansions_features,
