@@ -944,7 +944,7 @@ def violin_plot_brain_expansion(all_expansions_features: pd.DataFrame,
 
     extracted_features = all_expansions_features.loc[idx[:,
                                                      :,
-                                                     0:n_expansions,
+                                                     0:n_expansions-1,
                                                      "Data"], :]
 
     extracted_features = extracted_features.stack().to_frame()
@@ -968,10 +968,11 @@ def violin_plot_brain_expansion(all_expansions_features: pd.DataFrame,
         color_idx = 2
 
         for marker, marker_name in enumerate(marker_clusters[key]):
-            marker_features = extracted_features[(extracted_features["Marker"] == marker_name) &
-                                                 (extracted_features["Expression"] <= 1.0)]
+            marker_features = extracted_features[(extracted_features["Marker"] == marker_name)]
 
             plt.figure(figsize=(22, 10))
+            plt.ylim(0, 1)
+
             ax = sns.violinplot(x='Pixels Expanded',
                                 y="Expression",
                                 palette=[colors_clusters[color_idx]],
@@ -991,12 +992,13 @@ def violin_plot_brain_expansion(all_expansions_features: pd.DataFrame,
             color_idx += 1
 
     for key in marker_clusters.keys():
-        marker_features = extracted_features.loc[(extracted_features["Marker"].isin(marker_clusters[key])) &
-                                                 (extracted_features["Expression"] <= 1.0)]
+        marker_features = extracted_features.loc[(extracted_features["Marker"].isin(marker_clusters[key]))]
 
         color = config.line_plots_bin_colors[key]
 
         plt.figure(figsize=(22, 10))
+        plt.ylim(0, 1)
+
         ax = sns.violinplot(x='Pixels Expanded',
                             y="Expression",
                             palette=[color],

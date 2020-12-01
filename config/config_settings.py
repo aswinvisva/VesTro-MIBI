@@ -126,7 +126,7 @@ show_vessel_masks_when_generating_expression = False
 
 visualization_results_dir = "hires"
 pixel_interval = 5.0 / pixel_area_scaler
-expansion_to_run = [1]
+expansion_to_run = [1, 2, 4, 8, 12]
 max_expansions = None  # Set to None to select max_expansions automatically
 
 if max_expansions is None:
@@ -141,9 +141,9 @@ create_vessel_nonvessel_mask = False
 create_marker_expression_overlay_masks = False
 create_vessel_areas_histograms_and_boxplots = False
 create_brain_region_expansion_heatmaps = False
-create_vessel_nonvessel_heatmaps = True
+create_vessel_nonvessel_heatmaps = False
 create_brain_region_expansion_line_plots = False
-create_point_expansion_line_plots = False
+create_point_expansion_line_plots = True
 create_vessel_expansion_line_plots = False
 create_allpoints_expansion_line_plots = False
 create_expansion_ring_plots = False
@@ -151,7 +151,9 @@ create_embedded_vessel_id_masks = False
 create_removed_vessels_expression_boxplot = False
 create_biaxial_scatter_plot = False
 create_expanded_vessel_masks = False
-create_spatial_probability_maps = True
+create_spatial_probability_maps = False
+create_expression_histogram = False
+create_expansion_violin_plots = True
 
 if create_vessel_areas_histograms_and_boxplots:
     show_boxplot_outliers = False

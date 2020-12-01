@@ -260,7 +260,7 @@ def run_vis():
         # Violin Plots
         if config.create_expansion_violin_plots:
             violin_plot_brain_expansion(all_expansions_features,
-                                        x)
+                                        x + 1)
 
         # Mask/Non-mask heatmaps
         if config.create_vessel_nonvessel_heatmaps:
