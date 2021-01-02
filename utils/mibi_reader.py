@@ -3,6 +3,8 @@ import json
 import os
 import random
 from collections import Counter
+import logging
+from tqdm import tqdm
 
 import numpy as np
 import cv2 as cv
@@ -98,7 +100,7 @@ def get_all_point_data() -> (list, list, list):
                 segmentation_mask, marker_data, marker_names = read(data_loc, mask_loc)
                 end = datetime.datetime.now()
 
-                print("Finished reading %s in %s" % (fov, str(end - start)))
+                logging.debug("Finished reading %s in %s" % (fov, str(end - start)))
 
                 all_points_segmentation_masks.append(segmentation_mask)
                 all_points_marker_data.append(marker_data)
@@ -118,7 +120,7 @@ def get_all_point_data() -> (list, list, list):
             segmentation_mask, marker_data, marker_names = read(data_loc, mask_loc)
             end = datetime.datetime.now()
 
-            print("Finished reading %s in %s" % (fov, str(end - start)))
+            logging.debug("Finished reading %s in %s" % (fov, str(end - start)))
 
             all_points_segmentation_masks.append(segmentation_mask)
             all_points_marker_data.append(marker_data)

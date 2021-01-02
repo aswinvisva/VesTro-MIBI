@@ -8,6 +8,8 @@ trained_models/
 runs/
 dnn_vessel_heterogeneity/topic_generation/
 image_segmentation/
+hires/
+medres/
 *.tif
 *.png
 *.pyc

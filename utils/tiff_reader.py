@@ -1,4 +1,5 @@
 import os
+import logging
 
 import numpy as np
 from tifffile.tifffile import TiffFile
@@ -18,8 +19,8 @@ def read(path: str, describe: bool = False) -> np.ndarray:
         img = tif.asarray()
 
         if describe:
-            print(tif)
-            print("Pages:", len(tif.pages))
+            logging.debug(tif)
+            logging.debug("Pages:", len(tif.pages))
 
             cv.imshow("Marker", img * 255)
             cv.waitKey(0)

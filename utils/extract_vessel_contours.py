@@ -2,6 +2,8 @@ import json
 import os
 import random
 from collections import Counter
+import logging
+
 import numpy as np
 import cv2 as cv
 import matplotlib.pyplot as plt
@@ -89,7 +91,7 @@ def extract(img: np.ndarray,
             continue
 
         if show:
-            print("(x1: %s, x2: %s, y1: %s, y2: %s), w: %s, h: %s" % (x, x + w, y, y + h, w, h))
+            logging.debug("(x1: %s, x2: %s, y1: %s, y2: %s), w: %s, h: %s" % (x, x + w, y, y + h, w, h))
 
             cv.imshow("Vessel", roi)
             cv.waitKey(0)

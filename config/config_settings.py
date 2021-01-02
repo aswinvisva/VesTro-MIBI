@@ -6,10 +6,10 @@ import matplotlib.pylab as pl
 # High-Level Settings
 
 data_resolution = "hires"
-save_to_csv = False
+save_to_csv = True
 
 if save_to_csv:
-    csv_loc = "medres/medres_data.csv"
+    csv_loc = "hires/hires_data.csv"
 
 # Marker settings for reading data
 
@@ -64,6 +64,10 @@ if data_resolution == "hires":
 elif data_resolution == "medres":
     segmentation_mask_size = (512, 512)
 
+data_resolution_size = (500, 500)
+data_resolution_units = "μm"
+pixels_to_distance = float(data_resolution_size[0]) / float(segmentation_mask_size[0])
+
 brain_region_names = ["MFG", "HIP", "CAUD"]
 
 selected_segmentation_mask_type = "allvessels"
@@ -95,13 +99,8 @@ describe_markers_when_reading = False
 
 # Settings for extracting vessels from segmentation mask
 
-if data_resolution == "hires":
-    pixel_area_scaler = 1.0
-elif data_resolution == "medres":
-    pixel_area_scaler = 2.0
-
 show_vessel_contours_when_extracting = False
-minimum_contour_area_to_remove = 30 * (pixel_area_scaler ** 2)
+minimum_contour_area_to_remove = float(125) / float((1.0/pixels_to_distance) ** 2)
 use_guassian_blur_when_extracting_vessels = True
 create_removed_vessels_mask = False
 create_blurred_vessels_mask = False
@@ -125,27 +124,46 @@ show_vessel_masks_when_generating_expression = False
 # Visualization settings for plotting data
 
 visualization_results_dir = "hires"
-pixel_interval = 5.0 / pixel_area_scaler
-expansion_to_run = [1, 2, 4, 8, 12]
+
+distance_interval = 0.5
+
+if distance_interval is None:
+    pixel_interval = 2.0
+else:
+    pixel_interval = distance_interval / pixels_to_distance
+
+expansion_to_run = [2]
+perform_inward_expansions = True
+
+if perform_inward_expansions:
+    max_inward_expansion = 10
+
 max_expansions = None  # Set to None to select max_expansions automatically
+
+# Split settings
+
+splits = ["Vessel Size", "SMA Presence"]  # "Large Vessel", "SMA Presence"
+primary_categorical_splitter = "Vessel Size"
+secondary_categorical_splitter = "SMA Presence"
+
+SMA_positive_threshold = 0.1
+large_vessel_threshold = 500
 
 if max_expansions is None:
     max_expansions = max(expansion_to_run)
 
-perform_inward_expansions = False
-
 # Figures to generate
 
 create_vessel_id_plot = False
-create_vessel_nonvessel_mask = False
+create_vessel_nonvessel_mask = False  #
 create_marker_expression_overlay_masks = False
 create_vessel_areas_histograms_and_boxplots = False
-create_brain_region_expansion_heatmaps = False
-create_vessel_nonvessel_heatmaps = False
-create_brain_region_expansion_line_plots = False
-create_point_expansion_line_plots = True
+create_brain_region_expansion_heatmaps = False  #
+create_vessel_nonvessel_heatmaps = False  #
+create_brain_region_expansion_line_plots = False  #
+create_point_expansion_line_plots = False  #
 create_vessel_expansion_line_plots = False
-create_allpoints_expansion_line_plots = False
+create_allpoints_expansion_line_plots = True  #
 create_expansion_ring_plots = False
 create_embedded_vessel_id_masks = False
 create_removed_vessels_expression_boxplot = False
@@ -153,7 +171,7 @@ create_biaxial_scatter_plot = False
 create_expanded_vessel_masks = False
 create_spatial_probability_maps = False
 create_expression_histogram = False
-create_expansion_violin_plots = True
+create_expansion_violin_plots = True  #
 
 if create_vessel_areas_histograms_and_boxplots:
     show_boxplot_outliers = False

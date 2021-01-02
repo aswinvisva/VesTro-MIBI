@@ -2,6 +2,9 @@ import datetime
 import random
 from collections import Counter
 import os
+import logging
+
+import cv2 as cv
 
 
 def mkdir_p(mypath: str):
@@ -20,3 +23,14 @@ def mkdir_p(mypath: str):
             pass
         else:
             raise
+
+
+def get_contour_areas_list(contours: list) -> list:
+    """
+    Get list of contour areas given contours
+
+    :param contours: list, [n_contours] -> Contours to get areas from
+    :return:
+    """
+
+    return [cv.contourArea(cnt) for cnt in contours]

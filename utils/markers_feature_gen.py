@@ -3,6 +3,7 @@ import math
 import os
 import random
 from collections import Counter
+import logging
 
 import numpy as np
 import cv2 as cv
@@ -132,6 +133,7 @@ def expand_vessel_region(cnt: np.ndarray, img_shape: (int, int),
 
 
 def normalize_expression_data(expression_data_df: pd.DataFrame,
+                              markers_names: list,
                               transformation: str = "arcsinh",
                               normalization: str = "percentile",
                               scaling_factor: int = 100,
@@ -139,6 +141,7 @@ def normalize_expression_data(expression_data_df: pd.DataFrame,
     """
     Normalize expression vectors
 
+    :param markers_names: array_like, [n_markers] -> List of marker names
     :param expression_data_df: pd.DataFrame, [n_vessels, n_markers] -> Marker expression data per vessel
     :param transformation: str, Transformation type
     :param normalization: str, Normalization type
@@ -147,7 +150,8 @@ def normalize_expression_data(expression_data_df: pd.DataFrame,
     :return:
     """
 
-    expression_data = expression_data_df.to_numpy()
+    expression_data = expression_data_df[markers_names].to_numpy()
+    logging.debug(expression_data.shape)
 
     if scaling_factor > 0:
         expression_data = expression_data * scaling_factor
@@ -169,7 +173,7 @@ def normalize_expression_data(expression_data_df: pd.DataFrame,
 
     elif transformation == "arcsinh":
         # Apply arcsinh transformation
-        expression_data = arcsinh(np.array(expression_data))
+        expression_data = arcsinh(expression_data)
 
     elif transformation == "square":
         expression_data = np.square(expression_data)
@@ -182,18 +186,16 @@ def normalize_expression_data(expression_data_df: pd.DataFrame,
             expression_data = np.nan_to_num(expression_data)
 
         except IndexError:
-            print("Caught Exception!", len(expression_data), n_markers)
+            logging.warning("Caught Exception!", len(expression_data), n_markers)
             expression_data = np.zeros((1, n_markers))
 
     elif normalization == "normalizer":
         # Scale data by Sklearn normalizer
         expression_data = normalize(expression_data, axis=0)
 
-    scaled_expression_df = pd.DataFrame(expression_data,
-                                        columns=list(expression_data_df),
-                                        index=expression_data_df.index)
+    expression_data_df[markers_names] = expression_data
 
-    return scaled_expression_df
+    return expression_data_df
 
 
 def preprocess_marker_data(marker_data: np.ndarray,
@@ -217,7 +219,7 @@ def preprocess_marker_data(marker_data: np.ndarray,
     elif expression_type == "area_normalized_counts":
         # Get cell area normalized count of marker
         if cv.countNonZero(marker_data) != 0:
-            marker_data = np.sum(marker_data, axis=None) / (cv.countNonZero(mask) * (config.pixel_area_scaler ** 2))
+            marker_data = np.sum(marker_data, axis=None) / cv.countNonZero(mask)
         else:
             marker_data = 0
 
@@ -320,13 +322,64 @@ def get_microenvironment_masks(per_point_marker_data: np.ndarray,
         microenvironment_masks.append(microenvironment_mask)
 
 
+def vessel_nonvessel_masks(all_points_vessel_contours: list,
+                           n_expansions: int = 5,
+                           ):
+    """
+    Get Vessel nonvessel masks
+
+    :param all_points_vessel_contours: array_like, [n_points, n_vessels] -> list of vessel contours for each point
+    :param n_expansions: int, Number of expansions
+    """
+
+    img_shape = config.segmentation_mask_size
+    n_expansions -= 1
+
+    example_img = np.zeros(img_shape, np.uint8)
+    example_img = cv.cvtColor(example_img, cv.COLOR_GRAY2BGR)
+
+    for point_num, per_point_vessel_contours in enumerate(all_points_vessel_contours):
+
+        regions = get_assigned_regions(per_point_vessel_contours, img_shape)
+
+        output_dir = "%s/vessel_nonvessel_masks/%s_%s_expansion" % (config.visualization_results_dir,
+                                                                    str(math.ceil(n_expansions *
+                                                                                  config.pixel_interval *
+                                                                                  config.pixels_to_distance)),
+                                                                    config.data_resolution_units)
+        mkdir_p(output_dir)
+
+        for idx, cnt in enumerate(per_point_vessel_contours):
+            mask_expanded = expand_vessel_region(cnt, img_shape, upper_bound=config.pixel_interval * n_expansions)
+            mask_expanded = cv.bitwise_and(mask_expanded, regions[idx].astype(np.uint8))
+            dark_space_mask = regions[idx].astype(np.uint8) - mask_expanded
+
+            example_img[np.where(dark_space_mask == 1)] = config.nonvessel_mask_colour  # red
+            example_img[np.where(mask_expanded == 1)] = config.vessel_space_colour  # green
+            cv.drawContours(example_img, [cnt], -1, config.vessel_mask_colour, cv.FILLED)  # blue
+
+            vesselnonvessel_label = "Point %s" % str(point_num)
+
+            cv.imwrite(os.path.join(output_dir, "vessel_non_vessel_point_%s.png" % vesselnonvessel_label), example_img)
+
+
 def calculate_inward_microenvironment_marker_expression(per_point_marker_data: np.ndarray,
+                                                        point_num: int,
+                                                        expansion_num: int,
+                                                        stopped_vessel_lookup: set,
                                                         per_point_vessel_contours: list,
+                                                        per_point_vessel_areas: list,
+                                                        marker_names: list,
                                                         pixel_expansion_upper_bound: int = 5,
                                                         pixel_expansion_lower_bound: int = 0) -> (np.ndarray, int):
     """
     Get normalized expression of markers in given cells
 
+    :param per_point_vessel_areas: list, Vessel areas
+    :param marker_names: list, Marker names
+    :param expansion_num: int, Expansion number
+    :param point_num: int, Point number
+    :param stopped_vessel_lookup: set, Dictionary of stopped vessels, indexed by (Point #, Vessel ID)
     :param pixel_expansion_lower_bound: int, Lower bound to expand
     :param pixel_expansion_upper_bound: int, Upper bound to expand
     :param per_point_marker_data: array_like, [n_markers, point_size[0], point_size[1]] -> Pixel data for each marker
@@ -335,32 +388,36 @@ def calculate_inward_microenvironment_marker_expression(per_point_marker_data: n
     stopped_vessels: int, Number of vessels which couldn't expand inwards
     """
 
-    scaling_factor = config.scaling_factor
     expression_type = config.expression_type
-    transformation = config.transformation_type
-    normalization = config.normalization_type
     plot = config.show_probability_distribution_for_expression
     n_markers = config.n_markers
 
-    per_point_vessel_expression_data = []
+    per_point_features = []
 
     img_shape = per_point_marker_data[0].shape
 
     stopped_vessels = 0
 
     for idx, cnt in enumerate(per_point_vessel_contours):
+        stopped = False
+
+        if (point_num, idx) in stopped_vessel_lookup:
+            continue
+
+        if not stopped:
+            result_mask = contract_vessel_region(cnt, img_shape, upper_bound=pixel_expansion_upper_bound,
+                                                 lower_bound=pixel_expansion_lower_bound)
+
+            if config.show_vessel_masks_when_generating_expression and point_num == 1 and idx == 1:
+                cv.imshow("Vessel Mask", result_mask * 255)
+                cv.waitKey(0)
+
+            if cv.countNonZero(result_mask) == 0:
+                stopped_vessels += 1
+                continue
+
         data_vec = []
         expression_image = []
-
-        result_mask = contract_vessel_region(cnt, img_shape, upper_bound=pixel_expansion_upper_bound,
-                                             lower_bound=pixel_expansion_lower_bound)
-
-        if config.show_vessel_masks_when_generating_expression:
-            cv.imshow("Vessel Mask", result_mask * 255)
-            cv.waitKey(0)
-
-        if cv.countNonZero(result_mask) == 0:
-            stopped_vessels += 1
 
         for marker in per_point_marker_data:
             x, y, w, h = cv.boundingRect(cnt)
@@ -376,28 +433,39 @@ def calculate_inward_microenvironment_marker_expression(per_point_marker_data: n
                                                  expression_type=expression_type)
             data_vec.append(marker_data)
 
-        per_point_vessel_expression_data.append(np.array(data_vec))
+        inward_microenvironment_features = pd.DataFrame(np.array([data_vec]), columns=marker_names)
+        inward_microenvironment_features.index = map(lambda a: (point_num, idx, expansion_num, "Data"),
+                                                     inward_microenvironment_features.index)
 
-    per_point_vessel_expression_data = normalize_expression_data(per_point_vessel_expression_data,
-                                                                 transformation=transformation,
-                                                                 normalization=normalization,
-                                                                 scaling_factor=scaling_factor,
-                                                                 n_markers=n_markers)
+        inward_microenvironment_features["Contour Area"] = per_point_vessel_areas[idx]
+        inward_microenvironment_features["Vessel Size"] = "Large"\
+            if per_point_vessel_areas[idx] > config.large_vessel_threshold else "Small"
 
-    flat_list = sorted([item for sublist in per_point_vessel_expression_data for item in sublist])
+        per_point_features.append(inward_microenvironment_features)
+
+    if len(per_point_features) > 0:
+        inward_microenvironment_features = pd.concat(per_point_features).fillna(0)
+        inward_microenvironment_features.index = pd.MultiIndex.from_tuples(inward_microenvironment_features.index)
+    else:
+        inward_microenvironment_features = None
 
     if plot:
-        plt.plot(np.array(flat_list), stats.norm.pdf(np.array(flat_list)))
-        plt.xlabel('Area Normalized Marker Expression')
-        plt.ylabel('Probability')
-        plt.title('PDF of Marker Expression')
-        plt.show()
+        if inward_microenvironment_features is not None:
+            idx = pd.IndexSlice
+            d = inward_microenvironment_features.loc[idx[:, :, :, "Data"], :].to_numpy().flatten()
+            plt.plot(np.array(d), stats.norm.pdf(np.array(d)))
 
-    return per_point_vessel_expression_data, stopped_vessels
+            plt.xlabel('Area Normalized Marker Expression')
+            plt.ylabel('Probability')
+            plt.title('PDF of Marker Expression')
+            plt.show()
+
+    return inward_microenvironment_features, stopped_vessels
 
 
 def calculate_microenvironment_marker_expression(per_point_marker_data: np.ndarray,
                                                  per_point_vessel_contours: list,
+                                                 per_point_vessel_areas: list,
                                                  marker_names: list,
                                                  pixel_expansion_upper_bound: int = 5,
                                                  pixel_expansion_lower_bound: int = 0,
@@ -410,6 +478,7 @@ def calculate_microenvironment_marker_expression(per_point_marker_data: np.ndarr
     """
     Get normalized expression of markers in given cells
 
+    :param per_point_vessel_areas: list, Vessel areas
     :param marker_names: list, Marker names
     :param expansion_num: int, Current expansion number
     :param pixel_expansion_lower_bound: int, Lower bound to expand
@@ -426,7 +495,6 @@ def calculate_microenvironment_marker_expression(per_point_marker_data: np.ndarr
 
     expression_type = config.expression_type
     plot = config.show_probability_distribution_for_expression
-    plot_vesselnonvessel_mask = config.create_vessel_nonvessel_mask
 
     per_point_features = []
     expression_images = []
@@ -436,14 +504,11 @@ def calculate_microenvironment_marker_expression(per_point_marker_data: np.ndarr
 
     stopped_vessels = 0
 
-    if plot_vesselnonvessel_mask:
-        example_img = np.zeros(img_shape, np.uint8)
-        example_img = cv.cvtColor(example_img, cv.COLOR_GRAY2BGR)
-
     for idx, cnt in enumerate(per_point_vessel_contours):
         data_vec = []
         dark_space_vec = []
         vessel_space_vec = []
+        area = cv.contourArea(cnt)
 
         expression_image = []
 
@@ -464,11 +529,6 @@ def calculate_microenvironment_marker_expression(per_point_marker_data: np.ndarr
             cv.imshow("Dark Space Mask", dark_space_mask * 255)
             cv.imshow("Expanded Mask", mask_expanded * 255)
             cv.waitKey(0)
-
-        if plot_vesselnonvessel_mask:
-            example_img[np.where(dark_space_mask == 1)] = config.nonvessel_mask_colour  # red
-            example_img[np.where(mask_expanded == 1)] = config.vessel_space_colour  # green
-            cv.drawContours(example_img, [cnt], -1, config.vessel_mask_colour, cv.FILLED)  # blue
 
         if cv.countNonZero(result_mask) == 0:
             stopped_vessels += 1
@@ -518,6 +578,10 @@ def calculate_microenvironment_marker_expression(per_point_marker_data: np.ndarr
         features.append(vascular_features)
 
         all_features = pd.concat(features).fillna(0)
+        all_features["Contour Area"] = per_point_vessel_areas[idx]
+        all_features["Vessel Size"] = "Large" if per_point_vessel_areas[idx] > config.large_vessel_threshold \
+            else "Small"
+
         per_point_features.append(all_features)
 
         expression_images.append(expression_image)
@@ -535,24 +599,18 @@ def calculate_microenvironment_marker_expression(per_point_marker_data: np.ndarr
         plt.title('PDF of Marker Expression')
         plt.show()
 
-    if plot_vesselnonvessel_mask:
-        vesselnonvessel_label = "Point %s" % point_num
-
-        output_dir = "%s/vessel_nonvessel_masks/%s_pixel_expansion" % (config.visualization_results_dir,
-                                                                       str(pixel_expansion_upper_bound))
-        mkdir_p(output_dir)
-        cv.imwrite(os.path.join(output_dir, "vessel_non_vessel_point_%s.png" % vesselnonvessel_label), example_img)
-
     return all_samples_features, expression_images, stopped_vessels
 
 
 def calculate_composition_marker_expression(per_point_marker_data: np.ndarray,
                                             per_point_vessel_contours: list,
+                                            per_point_vessel_areas: list,
                                             marker_names: list,
                                             point_num: int = 1) -> np.ndarray:
     """
     Get normalized expression of markers in given cells
 
+    :param per_point_vessel_areas: list, Vessel areas
     :param marker_names: list, Marker Names
     :param point_num: int, Point number for vessel ID plot
     :param per_point_marker_data: array_like, [n_markers, point_size[0], point_size[1]] -> Pixel data for each marker
@@ -609,6 +667,10 @@ def calculate_composition_marker_expression(per_point_marker_data: np.ndarray,
         vessel_features = pd.DataFrame(np.array([data_vec]), columns=marker_names)
         vessel_features.index = map(lambda a: (point_num, idx, 0, "Data"),
                                     vessel_features.index)
+
+        vessel_features["Contour Area"] = per_point_vessel_areas[idx]
+        vessel_features["Vessel Size"] = "Large" if per_point_vessel_areas[idx] > config.large_vessel_threshold \
+            else "Small"
 
         per_point_features.append(vessel_features)
 
