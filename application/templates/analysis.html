@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<link rel="stylesheet" href="/static/css/styles.css" type="text/css">
+
+<head>
+    <title>MIBI Analysis</title>
+</head>
+
+<body>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
+    <script type="text/javascript" src="https://code.jquery.com/jquery-3.0.0.js"></script>
+
+    <div class="topnav">
+        <a href="/">Home</a>
+        <a href="/analyze">Analyze</a>
+    </div>
+
+    <div class=header>
+        <h1>Generate Analysis</h1>
+        <h3>Please enter the information below.</h3>
+
+        <form action="/api/v1/analyze" method="post">
+            <label for="data_dir">Data Directory</label>
+            <input type="text" id="data_dir" name="data_dir"><br><br>
+            <label for="mask_dir">Mask Directory</label>
+            <input type="text" id="mask_dir" name="mask_dir"><br><br>
+            <label for="output_dir">Output Directory Directory</label>
+            <input type="text" id="output_dir" name="output_dir"><br><br>
+            <label for="interval">Expansion Interval (μm):</label>
+            <input type="number" id="interval" name="interval" min="0" step="0.01"><br><br>
+            <label for="inward_distance">Maximum Inward Expansion Distance (μm):</label>
+            <input type="number" id="inward_distance" name="inward_distance" min="0" step="0.01"><br><br>
+            <label for="outward_distance">Maximum Outward Expansion Distance (μm):</label>
+            <input type="number" id="outward_distance" name="outward_distance" min="0" step="0.01"><br><br>
+
+            <input type="submit" name="Generate" value="Generate"/>
+        </form>
+    </div>
+</body>
+
+</html>

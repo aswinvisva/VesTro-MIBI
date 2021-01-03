@@ -18,7 +18,7 @@ from PIL import Image
 import pandas as pd
 
 from utils.utils_functions import mkdir_p
-import config.config_settings as config
+from config.config_settings import Config
 
 '''
 Authors: Aswin Visva, John-Paul Oliveria, Ph.D
@@ -132,7 +132,8 @@ def expand_vessel_region(cnt: np.ndarray, img_shape: (int, int),
     return ring
 
 
-def normalize_expression_data(expression_data_df: pd.DataFrame,
+def normalize_expression_data(config: Config,
+                              expression_data_df: pd.DataFrame,
                               markers_names: list,
                               transformation: str = "arcsinh",
                               normalization: str = "percentile",
@@ -141,6 +142,7 @@ def normalize_expression_data(expression_data_df: pd.DataFrame,
     """
     Normalize expression vectors
 
+    :param config: Config, configuration settings
     :param markers_names: array_like, [n_markers] -> List of marker names
     :param expression_data_df: pd.DataFrame, [n_vessels, n_markers] -> Marker expression data per vessel
     :param transformation: str, Transformation type
@@ -322,48 +324,8 @@ def get_microenvironment_masks(per_point_marker_data: np.ndarray,
         microenvironment_masks.append(microenvironment_mask)
 
 
-def vessel_nonvessel_masks(all_points_vessel_contours: list,
-                           n_expansions: int = 5,
-                           ):
-    """
-    Get Vessel nonvessel masks
-
-    :param all_points_vessel_contours: array_like, [n_points, n_vessels] -> list of vessel contours for each point
-    :param n_expansions: int, Number of expansions
-    """
-
-    img_shape = config.segmentation_mask_size
-    n_expansions -= 1
-
-    example_img = np.zeros(img_shape, np.uint8)
-    example_img = cv.cvtColor(example_img, cv.COLOR_GRAY2BGR)
-
-    for point_num, per_point_vessel_contours in enumerate(all_points_vessel_contours):
-
-        regions = get_assigned_regions(per_point_vessel_contours, img_shape)
-
-        output_dir = "%s/vessel_nonvessel_masks/%s_%s_expansion" % (config.visualization_results_dir,
-                                                                    str(math.ceil(n_expansions *
-                                                                                  config.pixel_interval *
-                                                                                  config.pixels_to_distance)),
-                                                                    config.data_resolution_units)
-        mkdir_p(output_dir)
-
-        for idx, cnt in enumerate(per_point_vessel_contours):
-            mask_expanded = expand_vessel_region(cnt, img_shape, upper_bound=config.pixel_interval * n_expansions)
-            mask_expanded = cv.bitwise_and(mask_expanded, regions[idx].astype(np.uint8))
-            dark_space_mask = regions[idx].astype(np.uint8) - mask_expanded
-
-            example_img[np.where(dark_space_mask == 1)] = config.nonvessel_mask_colour  # red
-            example_img[np.where(mask_expanded == 1)] = config.vessel_space_colour  # green
-            cv.drawContours(example_img, [cnt], -1, config.vessel_mask_colour, cv.FILLED)  # blue
-
-            vesselnonvessel_label = "Point %s" % str(point_num)
-
-            cv.imwrite(os.path.join(output_dir, "vessel_non_vessel_point_%s.png" % vesselnonvessel_label), example_img)
-
-
-def calculate_inward_microenvironment_marker_expression(per_point_marker_data: np.ndarray,
+def calculate_inward_microenvironment_marker_expression(config: Config,
+                                                        per_point_marker_data: np.ndarray,
                                                         point_num: int,
                                                         expansion_num: int,
                                                         stopped_vessel_lookup: set,
@@ -375,6 +337,7 @@ def calculate_inward_microenvironment_marker_expression(per_point_marker_data: n
     """
     Get normalized expression of markers in given cells
 
+    :param config: Config, configuration settings
     :param per_point_vessel_areas: list, Vessel areas
     :param marker_names: list, Marker names
     :param expansion_num: int, Expansion number
@@ -438,7 +401,7 @@ def calculate_inward_microenvironment_marker_expression(per_point_marker_data: n
                                                      inward_microenvironment_features.index)
 
         inward_microenvironment_features["Contour Area"] = per_point_vessel_areas[idx]
-        inward_microenvironment_features["Vessel Size"] = "Large"\
+        inward_microenvironment_features["Vessel Size"] = "Large" \
             if per_point_vessel_areas[idx] > config.large_vessel_threshold else "Small"
 
         per_point_features.append(inward_microenvironment_features)
@@ -463,7 +426,8 @@ def calculate_inward_microenvironment_marker_expression(per_point_marker_data: n
     return inward_microenvironment_features, stopped_vessels
 
 
-def calculate_microenvironment_marker_expression(per_point_marker_data: np.ndarray,
+def calculate_microenvironment_marker_expression(config: Config,
+                                                 per_point_marker_data: np.ndarray,
                                                  per_point_vessel_contours: list,
                                                  per_point_vessel_areas: list,
                                                  marker_names: list,
@@ -478,6 +442,7 @@ def calculate_microenvironment_marker_expression(per_point_marker_data: np.ndarr
     """
     Get normalized expression of markers in given cells
 
+    :param config: Config, configuration settings
     :param per_point_vessel_areas: list, Vessel areas
     :param marker_names: list, Marker names
     :param expansion_num: int, Current expansion number
@@ -602,7 +567,8 @@ def calculate_microenvironment_marker_expression(per_point_marker_data: np.ndarr
     return all_samples_features, expression_images, stopped_vessels
 
 
-def calculate_composition_marker_expression(per_point_marker_data: np.ndarray,
+def calculate_composition_marker_expression(config: Config,
+                                            per_point_marker_data: np.ndarray,
                                             per_point_vessel_contours: list,
                                             per_point_vessel_areas: list,
                                             marker_names: list,
@@ -610,6 +576,7 @@ def calculate_composition_marker_expression(per_point_marker_data: np.ndarray,
     """
     Get normalized expression of markers in given cells
 
+    :param config: Config, configuration settings
     :param per_point_vessel_areas: list, Vessel areas
     :param marker_names: list, Marker Names
     :param point_num: int, Point number for vessel ID plot

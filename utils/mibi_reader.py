@@ -10,119 +10,128 @@ import numpy as np
 import cv2 as cv
 from PIL import Image
 
+from config.config_settings import Config
 from utils import tiff_reader
-import config.config_settings as config
 
 '''
 Authors: Aswin Visva, John-Paul Oliveria, Ph.D
 '''
 
 
-def read(data_loc: str, mask_loc: str) -> (np.ndarray, np.ndarray, list):
-    """
-    Read the MIBI data from a single point
+class MIBIReader:
 
-    :param mask_loc: str -> Directory pointing to the segmentation masks
-    :param data_loc: str -> Directory pointing to the marker data
-    :return: array_like, [n_markers, point_size[0], point_size[1]] -> Marker data,
-    array_like, [point_size[0], point_size[1]] -> Segmentation mask
-    """
+    def __init__(self, config: Config):
+        """
+        MIBI Reader class
+        :param config: Config -> configuration settings
+        """
+        self.config = config
 
-    # Get marker clusters, markers to ignore etc.
-    markers_to_ignore = config.markers_to_ignore
-    marker_clusters = config.marker_clusters
-    plot = config.show_segmentation_masks_when_reading
-    plot_markers = config.describe_markers_when_reading
+    def read(self, data_loc: str, mask_loc: str) -> (np.ndarray, np.ndarray, list):
+        """
+        Read the MIBI data from a single point
 
-    marker_names = []
-    marker_images = []
+        :param mask_loc: str -> Directory pointing to the segmentation masks
+        :param data_loc: str -> Directory pointing to the marker data
+        :return: array_like, [n_markers, point_size[0], point_size[1]] -> Marker data,
+        array_like, [point_size[0], point_size[1]] -> Segmentation mask
+        """
 
-    for key in marker_clusters.keys():
-        for marker_name in marker_clusters[key]:
+        # Get marker clusters, markers to ignore etc.
+        markers_to_ignore = self.config.markers_to_ignore
+        marker_clusters = self.config.marker_clusters
+        plot = self.config.show_segmentation_masks_when_reading
+        plot_markers = self.config.describe_markers_when_reading
 
-            # Path to marker tif file
-            path = os.path.join(data_loc, "%s.tif" % marker_name)
-            img = tiff_reader.read(path, describe=plot_markers)
+        marker_names = []
+        marker_images = []
 
-            if marker_name not in markers_to_ignore:
-                marker_images.append(img.copy())
-                marker_names.append(marker_name)
+        for key in marker_clusters.keys():
+            for marker_name in marker_clusters[key]:
 
-    markers_img = np.array(marker_images)
+                # Path to marker tif file
+                path = os.path.join(data_loc, "%s.tif" % marker_name)
+                img = tiff_reader.read(path, describe=plot_markers)
 
-    try:
-        segmentation_mask = np.array(Image.open(mask_loc).convert("RGB"))
-    except FileNotFoundError:
-        # If there is no segmentation mask, return a blank image
-        segmentation_mask = np.zeros((config.segmentation_mask_size[0], config.segmentation_mask_size[1], 3), np.uint8)
+                if marker_name not in markers_to_ignore:
+                    marker_images.append(img.copy())
+                    marker_names.append(marker_name)
 
-    if plot:
-        cv.imshow("Segmentation Mask", segmentation_mask)
-        cv.waitKey(0)
+        markers_img = np.array(marker_images)
 
-    return segmentation_mask, markers_img, marker_names
+        try:
+            segmentation_mask = np.array(Image.open(mask_loc).convert("RGB"))
+        except FileNotFoundError:
+            # If there is no segmentation mask, return a blank image
+            segmentation_mask = np.zeros((self.config.segmentation_mask_size[0], self.config.segmentation_mask_size[1], 3),
+                                         np.uint8)
 
+        if plot:
+            cv.imshow("Segmentation Mask", segmentation_mask)
+            cv.waitKey(0)
 
-def get_all_point_data() -> (list, list, list):
-    """
-    Collect all points marker data, segmentation masks and marker names
+        return segmentation_mask, markers_img, marker_names
 
-    :return: array_like, [n_points, n_markers, point_size[0], point_size[1]] -> Marker data,
-    array_like, [n_points, point_size[0], point_size[1]] -> Segmentation masks,
-    array_like, [n_points, n_markers] -> Names of markers
-    """
+    def get_all_point_data(self) -> (list, list, list):
+        """
+        Collect all points marker data, segmentation masks and marker names
 
-    fovs = [config.point_dir + str(i + 1) for i in range(config.n_points_per_dir)]
+        :return: array_like, [n_points, n_markers, point_size[0], point_size[1]] -> Marker data,
+        array_like, [n_points, point_size[0], point_size[1]] -> Segmentation masks,
+        array_like, [n_points, n_markers] -> Names of markers
+        """
 
-    all_points_segmentation_masks = []
-    all_points_marker_data = []
-    segmentation_type = config.selected_segmentation_mask_type
+        fovs = [self.config.point_dir + str(i + 1) for i in range(self.config.n_points_per_dir)]
 
-    if config.caud_hip_mfg_separate_dir:
+        all_points_segmentation_masks = []
+        all_points_marker_data = []
+        segmentation_type = self.config.selected_segmentation_mask_type
 
-        brain_region_directories = [config.mfg_dir, config.hip_dir, config.caud_dir]
+        if self.config.caud_hip_mfg_separate_dir:
 
-        for brain_region_directory in brain_region_directories:
+            brain_region_directories = [self.config.mfg_dir, self.config.hip_dir, self.config.caud_dir]
+
+            for brain_region_directory in brain_region_directories:
+                for fov in fovs:
+                    # Get path to data selected through configuration settings
+                    data_loc = os.path.join(self.config.data_dir,
+                                            brain_region_directory,
+                                            fov,
+                                            self.config.tifs_dir)
+
+                    # Get path to mask selected through configuration settings
+                    mask_loc = os.path.join(self.config.masks_dir,
+                                            brain_region_directory,
+                                            fov,
+                                            segmentation_type + '.tif')
+
+                    start = datetime.datetime.now()
+                    segmentation_mask, marker_data, marker_names = self.read(data_loc, mask_loc)
+                    end = datetime.datetime.now()
+
+                    logging.debug("Finished reading %s in %s" % (fov, str(end - start)))
+
+                    all_points_segmentation_masks.append(segmentation_mask)
+                    all_points_marker_data.append(marker_data)
+        else:
             for fov in fovs:
                 # Get path to data selected through configuration settings
-                data_loc = os.path.join(config.data_dir,
-                                        brain_region_directory,
+                data_loc = os.path.join(self.config.data_dir,
                                         fov,
-                                        config.tifs_dir)
+                                        self.config.tifs_dir)
 
                 # Get path to mask selected through configuration settings
-                mask_loc = os.path.join(config.masks_dr,
-                                        brain_region_directory,
+                mask_loc = os.path.join(self.config.masks_dir,
                                         fov,
                                         segmentation_type + '.tif')
 
                 start = datetime.datetime.now()
-                segmentation_mask, marker_data, marker_names = read(data_loc, mask_loc)
+                segmentation_mask, marker_data, marker_names = self.read(data_loc, mask_loc)
                 end = datetime.datetime.now()
 
                 logging.debug("Finished reading %s in %s" % (fov, str(end - start)))
 
                 all_points_segmentation_masks.append(segmentation_mask)
                 all_points_marker_data.append(marker_data)
-    else:
-        for fov in fovs:
-            # Get path to data selected through configuration settings
-            data_loc = os.path.join(config.data_dir,
-                                    fov,
-                                    config.tifs_dir)
 
-            # Get path to mask selected through configuration settings
-            mask_loc = os.path.join(config.masks_dr,
-                                    fov,
-                                    segmentation_type + '.tif')
-
-            start = datetime.datetime.now()
-            segmentation_mask, marker_data, marker_names = read(data_loc, mask_loc)
-            end = datetime.datetime.now()
-
-            logging.debug("Finished reading %s in %s" % (fov, str(end - start)))
-
-            all_points_segmentation_masks.append(segmentation_mask)
-            all_points_marker_data.append(marker_data)
-
-    return all_points_segmentation_masks, all_points_marker_data, marker_names
+        return all_points_segmentation_masks, all_points_marker_data, marker_names

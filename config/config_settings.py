@@ -3,204 +3,214 @@ import os
 import matplotlib
 import matplotlib.pylab as pl
 
-# High-Level Settings
 
-data_resolution = "hires"
-save_to_csv = True
+class Config:
+    # High-Level Settings
 
-if save_to_csv:
-    csv_loc = "hires/hires_data.csv"
+    data_resolution = "hires"
+    save_to_csv = False
 
-# Marker settings for reading data
+    if save_to_csv:
+        csv_loc = "hires/hires_data.csv"
 
-markers_to_ignore = [
-    "GAD",
-    "Neurogranin",
-    "ABeta40",
-    "pTDP43",
-    "polyubik63",
-    "Background",
-    "Au197",
-    "Ca40",
-    "Fe56",
-    "Na23",
-    "Si28",
-    "La139",
-    "Ta181",
-    "C12"
-]
+    # Marker settings for reading data
 
-marker_clusters = {
-    "Nucleus": ["HH3"],
-    "Microglia": ["CD45", "HLADR", "Iba1"],
-    "Disease": ["CD47", "ABeta42", "polyubiK48", "PHFTau", "8OHGuanosine"],
-    "Vessels": ["SMA", "CD31", "CollagenIV", "TrkA", "GLUT1", "Desmin", "vWF", "CD105"],
-    "Astrocytes": ["S100b", "GlnSyn", "Cx30", "EAAT2", "CD44", "GFAP", "Cx43"],
-    "Synapse": ["CD56", "Synaptophysin", "VAMP2", "PSD95"],
-    "Oligodendrocytes": ["MOG", "MAG"],
-    "Neurons": ["Calretinin", "Parvalbumin", "MAP2", "Gephyrin"]
-}
+    markers_to_ignore = [
+        "GAD",
+        "Neurogranin",
+        "ABeta40",
+        "pTDP43",
+        "polyubik63",
+        "Background",
+        "Au197",
+        "Ca40",
+        "Fe56",
+        "Na23",
+        "Si28",
+        "La139",
+        "Ta181",
+        "C12"
+    ]
 
-all_masks = [
-    'astrocytes',
-    'BBB',
-    'largevessels',
-    'microglia',
-    'myelin',
-    'plaques',
-    'tangles',
-    'allvessels'
-]
+    marker_clusters = {
+        "Nucleus": ["HH3"],
+        "Microglia": ["CD45", "HLADR", "Iba1"],
+        "Disease": ["CD47", "ABeta42", "polyubiK48", "PHFTau", "8OHGuanosine"],
+        "Vessels": ["SMA", "CD31", "CollagenIV", "TrkA", "GLUT1", "Desmin", "vWF", "CD105"],
+        "Astrocytes": ["S100b", "GlnSyn", "Cx30", "EAAT2", "CD44", "GFAP", "Cx43"],
+        "Synapse": ["CD56", "Synaptophysin", "VAMP2", "PSD95"],
+        "Oligodendrocytes": ["MOG", "MAG"],
+        "Neurons": ["Calretinin", "Parvalbumin", "MAP2", "Gephyrin"]
+    }
 
-n_markers = 34
+    all_masks = [
+        'astrocytes',
+        'BBB',
+        'largevessels',
+        'microglia',
+        'myelin',
+        'plaques',
+        'tangles',
+        'allvessels'
+    ]
 
-if data_resolution == "hires":
-    brain_region_point_ranges = [(1, 16), (17, 32), (33, 48)]
-elif data_resolution == "medres":
-    brain_region_point_ranges = [(1, 100), (101, 200), (201, 300)]
+    n_markers = 34
 
-if data_resolution == "hires":
-    segmentation_mask_size = (1024, 1024)
-elif data_resolution == "medres":
-    segmentation_mask_size = (512, 512)
+    if data_resolution == "hires":
+        brain_region_point_ranges = [(1, 16), (17, 32), (33, 48)]
+    elif data_resolution == "medres":
+        brain_region_point_ranges = [(1, 100), (101, 200), (201, 300)]
 
-data_resolution_size = (500, 500)
-data_resolution_units = "μm"
-pixels_to_distance = float(data_resolution_size[0]) / float(segmentation_mask_size[0])
+    if data_resolution == "hires":
+        segmentation_mask_size = (1024, 1024)
+    elif data_resolution == "medres":
+        segmentation_mask_size = (512, 512)
 
-brain_region_names = ["MFG", "HIP", "CAUD"]
+    data_resolution_size = (500, 500)
+    data_resolution_units = "μm"
+    pixels_to_distance = float(data_resolution_size[0]) / float(segmentation_mask_size[0])
 
-selected_segmentation_mask_type = "allvessels"
+    brain_region_names = ["MFG", "HIP", "CAUD"]
 
-data_dir = os.path.join("/home/aswinvisva/oliveria_data/data", data_resolution)
-masks_dr = os.path.join("/home/aswinvisva/oliveria_data/masks", data_resolution)
-point_dir = "Point"
-tifs_dir = "TIFs"
+    selected_segmentation_mask_type = "allvessels"
 
-caud_hip_mfg_separate_dir = data_resolution == "medres"
+    data_dir = os.path.join("/home/aswinvisva/oliveria_data/data", data_resolution)
+    masks_dir = os.path.join("/home/aswinvisva/oliveria_data/masks", data_resolution)
+    point_dir = "Point"
+    tifs_dir = "TIFs"
 
-if caud_hip_mfg_separate_dir:
-    caud_dir = "CAUD"
-    hip_dir = "HIP"
-    mfg_dir = "MFG"
+    caud_hip_mfg_separate_dir = data_resolution == "medres"
 
-if data_resolution == "hires":
-    n_points = 48
-elif data_resolution == "medres":
-    n_points = 300
+    if caud_hip_mfg_separate_dir:
+        caud_dir = "CAUD"
+        hip_dir = "HIP"
+        mfg_dir = "MFG"
 
-if caud_hip_mfg_separate_dir:
-    n_points_per_dir = 100
-else:
-    n_points_per_dir = n_points
+    if data_resolution == "hires":
+        n_points = 48
+    elif data_resolution == "medres":
+        n_points = 300
 
-show_segmentation_masks_when_reading = False
-describe_markers_when_reading = False
+    if caud_hip_mfg_separate_dir:
+        n_points_per_dir = 100
+    else:
+        n_points_per_dir = n_points
 
-# Settings for extracting vessels from segmentation mask
+    show_segmentation_masks_when_reading = False
+    describe_markers_when_reading = False
 
-show_vessel_contours_when_extracting = False
-minimum_contour_area_to_remove = float(125) / float((1.0/pixels_to_distance) ** 2)
-use_guassian_blur_when_extracting_vessels = True
-create_removed_vessels_mask = False
-create_blurred_vessels_mask = False
+    # Settings for extracting vessels from segmentation mask
 
-if use_guassian_blur_when_extracting_vessels:
-    guassian_blur = (2, 2)
+    show_vessel_contours_when_extracting = False
+    minimum_contour_area_to_remove = float(125) / float((1.0 / pixels_to_distance) ** 2)
+    use_guassian_blur_when_extracting_vessels = True
+    create_removed_vessels_mask = False
+    create_blurred_vessels_mask = False
 
-# Settings for calculation marker expression
+    if use_guassian_blur_when_extracting_vessels:
+        guassian_blur = (2, 2)
 
-scaling_factor = 100
-expression_type = "area_normalized_counts"
-transformation_type = "arcsinh"
-normalization_type = "percentile"
+    # Settings for calculation marker expression
 
-if normalization_type == "percentile":
-    percentile_to_normalize = 99
+    scaling_factor = 100
+    expression_type = "area_normalized_counts"
+    transformation_type = "arcsinh"
+    normalization_type = "percentile"
 
-show_probability_distribution_for_expression = False
-show_vessel_masks_when_generating_expression = False
+    if normalization_type == "percentile":
+        percentile_to_normalize = 99
 
-# Visualization settings for plotting data
+    show_probability_distribution_for_expression = False
+    show_vessel_masks_when_generating_expression = False
 
-visualization_results_dir = "hires"
+    # Visualization settings for plotting data
 
-distance_interval = 0.5
+    visualization_results_dir = "results/hires"
 
-if distance_interval is None:
-    pixel_interval = 2.0
-else:
-    pixel_interval = distance_interval / pixels_to_distance
+    distance_interval = 0.5
 
-expansion_to_run = [2]
-perform_inward_expansions = True
+    if distance_interval is None:
+        pixel_interval = 2.0
+    else:
+        pixel_interval = distance_interval / pixels_to_distance
 
-if perform_inward_expansions:
-    max_inward_expansion = 10
+    expansion_to_run = [1]
+    perform_inward_expansions = False
 
-max_expansions = None  # Set to None to select max_expansions automatically
+    if perform_inward_expansions:
+        max_inward_expansion = 1
 
-# Split settings
+    max_expansions = None  # Set to None to select max_expansions automatically
 
-splits = ["Vessel Size", "SMA Presence"]  # "Large Vessel", "SMA Presence"
-primary_categorical_splitter = "Vessel Size"
-secondary_categorical_splitter = "SMA Presence"
+    # Split settings
 
-SMA_positive_threshold = 0.1
-large_vessel_threshold = 500
+    splits = ["Vessel Size", "SMA Presence"]  # "Large Vessel", "SMA Presence"
+    primary_categorical_splitter = "Vessel Size"
+    secondary_categorical_splitter = "SMA Presence"
 
-if max_expansions is None:
-    max_expansions = max(expansion_to_run)
+    SMA_positive_threshold = 0.1
+    large_vessel_threshold = 500
 
-# Figures to generate
+    if max_expansions is None:
+        max_expansions = max(expansion_to_run)
 
-create_vessel_id_plot = False
-create_vessel_nonvessel_mask = False  #
-create_marker_expression_overlay_masks = False
-create_vessel_areas_histograms_and_boxplots = False
-create_brain_region_expansion_heatmaps = False  #
-create_vessel_nonvessel_heatmaps = False  #
-create_brain_region_expansion_line_plots = False  #
-create_point_expansion_line_plots = False  #
-create_vessel_expansion_line_plots = False
-create_allpoints_expansion_line_plots = True  #
-create_expansion_ring_plots = False
-create_embedded_vessel_id_masks = False
-create_removed_vessels_expression_boxplot = False
-create_biaxial_scatter_plot = False
-create_expanded_vessel_masks = False
-create_spatial_probability_maps = False
-create_expression_histogram = False
-create_expansion_violin_plots = True  #
+    # Figures to generate
+    create_vessel_id_plot = False
+    create_vessel_nonvessel_mask = True  #
+    create_marker_expression_overlay_masks = False
+    create_vessel_areas_histograms_and_boxplots = False
+    create_brain_region_expansion_heatmaps = True  #
+    create_vessel_nonvessel_heatmaps = True  #
+    create_brain_region_expansion_line_plots = True  #
+    create_point_expansion_line_plots = True  #
+    create_vessel_expansion_line_plots = False
+    create_allpoints_expansion_line_plots = True  #
+    create_expansion_ring_plots = False
+    create_embedded_vessel_id_masks = False
+    create_removed_vessels_expression_boxplot = False
+    create_biaxial_scatter_plot = False
+    create_expanded_vessel_masks = False
+    create_spatial_probability_maps = False
+    create_expression_histogram = False
+    create_expansion_violin_plots = True  #
 
-if create_vessel_areas_histograms_and_boxplots:
-    show_boxplot_outliers = False
+    if create_vessel_areas_histograms_and_boxplots:
+        show_boxplot_outliers = False
 
-if create_vessel_nonvessel_mask:
-    vessel_space_colour = (51, 153, 0)
-    nonvessel_mask_colour = (0, 0, 179)
-    vessel_mask_colour = (153, 51, 0)
+    if create_vessel_nonvessel_mask:
+        vessel_space_colour = (51, 153, 0)
+        nonvessel_mask_colour = (0, 0, 179)
+        vessel_mask_colour = (153, 51, 0)
 
-line_plots_color_maps = {
-    "Nucleus": matplotlib.colors.LinearSegmentedColormap.from_list("", ["white", "yellow"]),
-    "Microglia": pl.cm.Greens,
-    "Disease": pl.cm.Greys,
-    "Vessels": pl.cm.Blues,
-    "Astrocytes": pl.cm.Reds,
-    "Synapse": pl.cm.Purples,
-    "Oligodendrocytes": pl.cm.Oranges,
-    "Neurons": matplotlib.colors.LinearSegmentedColormap.from_list("", ["white", "darkmagenta"])
-}
+    line_plots_color_maps = {
+        "Nucleus": matplotlib.colors.LinearSegmentedColormap.from_list("", ["white", "yellow"]),
+        "Microglia": pl.cm.Greens,
+        "Disease": pl.cm.Greys,
+        "Vessels": pl.cm.Blues,
+        "Astrocytes": pl.cm.Reds,
+        "Synapse": pl.cm.Purples,
+        "Oligodendrocytes": pl.cm.Oranges,
+        "Neurons": matplotlib.colors.LinearSegmentedColormap.from_list("", ["white", "darkmagenta"])
+    }
 
-line_plots_bin_colors = {
-    "Nucleus": "y",
-    "Microglia": "g",
-    "Disease": "k",
-    "Vessels": "b",
-    "Astrocytes": "r",
-    "Synapse": "rebeccapurple",
-    "Oligodendrocytes": "darkorange",
-    "Neurons": "m"
-}
+    line_plots_bin_colors = {
+        "Nucleus": "y",
+        "Microglia": "g",
+        "Disease": "k",
+        "Vessels": "b",
+        "Astrocytes": "r",
+        "Synapse": "rebeccapurple",
+        "Oligodendrocytes": "darkorange",
+        "Neurons": "m"
+    }
 
-vessel_line_plots_points = [1, 7, 26, 30, 43, 48]
+    vessel_line_plots_points = [1, 7, 26, 30, 43, 48]
+
+    def display(self):
+        """Display Configurations."""
+
+        print("Configuration:")
+        for a in dir(self):
+            if not a.startswith("__") and not callable(getattr(self, a)):
+                print("\t{:30} = {}".format(a, getattr(self, a)))
+        print()
