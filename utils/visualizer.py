@@ -876,9 +876,7 @@ class Visualizer:
         """
         Violin Plots for Expansion Data
 
-        :param self.markers_names: array_like, [n_markers] -> List of marker names
         :param n_expansions: int, Number of expansions
-        :param all_expansions_features: pd.DataFrame, all expansion features
 
         :return:
         """

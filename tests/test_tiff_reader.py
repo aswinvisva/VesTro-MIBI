@@ -1,15 +1,15 @@
 import unittest
 import os
 
+from config.config_settings import Config
 from utils import tiff_reader
 
 
 class TestTiffReader(unittest.TestCase):
 
     def test_read(self):
-        path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-                            'data',
-                            'hires',
+        config = Config()
+        path = os.path.join(config.data_dir,
                             "Point16",
                             'TIFs',
                             'ABeta42.tif'

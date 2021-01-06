@@ -74,8 +74,8 @@ class Config:
 
     selected_segmentation_mask_type = "allvessels"
 
-    data_dir = os.path.join("/home/aswinvisva/oliveria_data/data", data_resolution)
-    masks_dir = os.path.join("/home/aswinvisva/oliveria_data/masks", data_resolution)
+    data_dir = os.path.join("/media/large_storage/oliveria_data/data", data_resolution)
+    masks_dir = os.path.join("/media/large_storage/oliveria_data/masks", data_resolution)
     point_dir = "Point"
     tifs_dir = "TIFs"
 

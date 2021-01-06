@@ -65,7 +65,7 @@ class ObjectExtractor:
                            imgray)
 
         # Perform vessel contour extraction using OpenCV
-        im2, contours, hierarchy = cv.findContours(imgray, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
+        contours, hierarchy = cv.findContours(imgray, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
 
         images = []
         usable_contours = []

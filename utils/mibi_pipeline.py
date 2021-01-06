@@ -66,13 +66,13 @@ class MIBIPipeline:
 
         return all_expansions_features
 
-    def get_outward_expansion_data(self,
-                                   all_points_vessel_contours: list,
-                                   all_points_vessel_contours_areas: list,
-                                   all_points_marker_data: list,
-                                   marker_names: list,
-                                   pixel_interval: int,
-                                   n_expansions: int) -> (list, list, list):
+    def _get_outward_expansion_data(self,
+                                    all_points_vessel_contours: list,
+                                    all_points_vessel_contours_areas: list,
+                                    all_points_marker_data: list,
+                                    marker_names: list,
+                                    pixel_interval: int,
+                                    n_expansions: int) -> (list, list, list):
         """
         Collect outward expansion data for each expansion, for each point, for each vessel
 
@@ -162,11 +162,11 @@ class MIBIPipeline:
 
         return all_expansions_features
 
-    def get_inward_expansion_data(self,
-                                  all_points_vessel_contours: list,
-                                  all_points_vessel_contours_areas: list,
-                                  all_points_marker_data: list,
-                                  markers_names: list) -> (list, int):
+    def _get_inward_expansion_data(self,
+                                   all_points_vessel_contours: list,
+                                   all_points_vessel_contours_areas: list,
+                                   all_points_marker_data: list,
+                                   markers_names: list) -> (list, int):
         """
         Collect inward expansion data for each expansion, for each point, for each vessel
 
@@ -346,7 +346,7 @@ class MIBIPipeline:
             if self.config.create_allpoints_expansion_line_plots:
                 self.visualizer.all_points_plots(x + 1)
 
-    def preprocess_data(self):
+    def load_preprocess_data(self):
         """
         Create the visualizations for inward and outward vessel expansions and populate all results in the directory
         set in the configuration settings.
@@ -384,7 +384,7 @@ class MIBIPipeline:
 
         # Inward expansion data
         if self.config.perform_inward_expansions:
-            all_inward_expansions_features, current_expansion_no = self.get_inward_expansion_data(
+            all_inward_expansions_features, current_expansion_no = self._get_inward_expansion_data(
                 all_points_vessel_contours,
                 all_points_vessel_contours_areas,
                 all_points_marker_data,
@@ -398,12 +398,12 @@ class MIBIPipeline:
 
         # Collect outward microenvironment expansion data, nonvessel space expansion data and vessel space expansion
         # data
-        all_expansions_features = self.get_outward_expansion_data(all_points_vessel_contours,
-                                                                  all_points_vessel_contours_areas,
-                                                                  all_points_marker_data,
-                                                                  markers_names,
-                                                                  interval,
-                                                                  n_expansions)
+        all_expansions_features = self._get_outward_expansion_data(all_points_vessel_contours,
+                                                                   all_points_vessel_contours_areas,
+                                                                   all_points_marker_data,
+                                                                   markers_names,
+                                                                   interval,
+                                                                   n_expansions)
 
         if self.config.perform_inward_expansions:
             all_expansions_features = all_expansions_features.append(all_inward_expansions_features)

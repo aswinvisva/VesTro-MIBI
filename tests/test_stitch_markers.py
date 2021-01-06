@@ -1,14 +1,16 @@
 import unittest
 import os
 
-import config.config_settings as config
-from utils import mibi_reader
-from utils.mibi_reader import read
+from config.config_settings import Config
+from utils.mibi_reader import MIBIReader
 
 
 class TestStitchMarkersMethods(unittest.TestCase):
 
     def test_stitch_markers(self):
+        config = Config()
+        mibi_reader = MIBIReader(config)
+
         # Get path to data selected through configuration settings
         data_loc = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                                 config.data_dir,
@@ -17,11 +19,11 @@ class TestStitchMarkersMethods(unittest.TestCase):
 
         # Get path to mask selected through configuration settings
         mask_loc = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-                                config.masks_dr,
+                                config.masks_dir,
                                 "Point16",
                                 "allvessels" + '.tif')
 
-        segmentation_mask, markers_img, marker_names = read(data_loc, mask_loc)
+        segmentation_mask, markers_img, marker_names = mibi_reader.read(data_loc, mask_loc)
 
         # Ensure the correct number of markers
         self.assertEqual(len(markers_img), len(marker_names))
@@ -34,6 +36,8 @@ class TestStitchMarkersMethods(unittest.TestCase):
         self.assertIsNotNone(marker_names)
 
     def test_concatenate_multiple_markers(self):
+        config = Config()
+        mibi_reader = MIBIReader(config)
         flattened_marker_images, markers_data, markers_names = mibi_reader.get_all_point_data()
 
         self.assertEqual(len(flattened_marker_images), len(markers_data))

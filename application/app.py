@@ -17,13 +17,6 @@ def analyze_landing():
     return render_template('analysis.html')
 
 
-@app.route("/results/<visualizer>", methods=['GET', 'POST'])
-def visualize(visualizer):
-    for i, obj in objs:
-        print(objs[i].attr)
-    return "something {}".format(objs)
-
-
 @app.route('/api/v1/analyze', methods=['POST'])
 def analyze():
     conf = Config()
@@ -67,7 +60,7 @@ def analyze():
 
     try:
         pipe = MIBIPipeline(conf)
-        pipe.preprocess_data()
+        pipe.load_preprocess_data()
         pipe.generate_visualizations()
     except FileNotFoundError:
         print("Could not find file!")

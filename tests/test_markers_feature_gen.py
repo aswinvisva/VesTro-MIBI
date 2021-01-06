@@ -3,15 +3,18 @@ import unittest
 
 import numpy as np
 
-import config.config_settings as config
-from utils.extract_vessel_contours import extract
+from config.config_settings import Config
+from utils.object_extractor import ObjectExtractor
 from utils.markers_feature_gen import calculate_composition_marker_expression
-from utils.mibi_reader import read
+from utils.mibi_reader import MIBIReader
+from utils.utils_functions import get_contour_areas_list
 
 
 class TestMarkersFeatureGen(unittest.TestCase):
 
     def test_calculate_protein_expression(self):
+        config = Config()
+
         # Get path to data selected through configuration settings
         data_loc = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                                 config.data_dir,
@@ -20,17 +23,23 @@ class TestMarkersFeatureGen(unittest.TestCase):
 
         # Get path to mask selected through configuration settings
         mask_loc = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-                                config.masks_dr,
+                                config.masks_dir,
                                 "Point16",
                                 "allvessels" + '.tif')
 
-        image, marker_data, marker_names = read(data_loc, mask_loc)
-        images, contours, removed_contours = extract(image)
+        mibi_reader = MIBIReader(config)
+        object_extractor = ObjectExtractor(config)
+        image, marker_data, marker_names = mibi_reader.read(data_loc, mask_loc)
+        images, contours, removed_contours = object_extractor.extract(image)
+        contour_areas = get_contour_areas_list(contours)
 
-        data = calculate_composition_marker_expression(marker_data, contours)
+        data = calculate_composition_marker_expression(config,
+                                                       marker_data,
+                                                       contours,
+                                                       contour_areas,
+                                                       marker_names)
 
         self.assertEqual(len(data), len(contours))
-        self.assertEqual(np.array(data).shape[1], len(marker_names))
 
 
 if __name__ == '__main__':
