@@ -134,8 +134,8 @@ class Config:
     else:
         pixel_interval = distance_interval / pixels_to_distance
 
-    expansion_to_run = [2]
-    perform_inward_expansions = True
+    expansion_to_run = [1]
+    perform_inward_expansions = False
 
     if perform_inward_expansions:
         max_inward_expansion = 10

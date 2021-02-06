@@ -2,7 +2,7 @@ from tqdm import tqdm
 
 from src.data_loading.mibi_data_feed import MIBIDataFeed
 from src.data_loading.mibi_reader import MIBIReader
-from src.markers_feature_gen import *
+from src.data_preprocessing.markers_feature_gen import *
 
 logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
 

@@ -1,17 +1,13 @@
 import datetime
-import json
 import os
-import random
-from collections import Counter
 import logging
-from tqdm import tqdm
 
 import numpy as np
 import cv2 as cv
 from PIL import Image
 
 from config.config_settings import Config
-from src import tiff_reader
+from src.data_loading import tiff_reader
 
 '''
 Authors: Aswin Visva, John-Paul Oliveria, Ph.D

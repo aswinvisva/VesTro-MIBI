@@ -34,6 +34,7 @@ def hires_example():
     pipe.add_feed(hires_feed)
 
     pipe.load_preprocess_data()
+    pipe.analyze_data()
     pipe.generate_visualizations()
 
 

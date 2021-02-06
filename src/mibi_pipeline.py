@@ -1,12 +1,14 @@
+import datetime
 from multiprocessing import Pool
 
 from tqdm import tqdm
 
+from src.data_analysis.mibi_data_analysis import MIBIAnalyzer
 from src.data_loading.mibi_data_feed import MIBIDataFeed
 from src.data_loading.mibi_loader import MIBILoader
 from src.data_loading.mibi_point_contours import MIBIPointContours
-from src.markers_feature_gen import *
-from src.visualizer import Visualizer
+from src.data_preprocessing.markers_feature_gen import *
+from src.data_visualization.visualizer import Visualizer
 from config.config_settings import Config
 
 logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
@@ -29,6 +31,7 @@ class MIBIPipeline:
         self.mibi_loader = MIBILoader(self.config)
 
         self.visualizer = None
+        self.analyzer = None
 
         self.marker_names = None
         self.all_feeds_metadata = None
@@ -48,6 +51,15 @@ class MIBIPipeline:
             self.mibi_loader.add_feed(data_feed)
         else:
             raise Exception("Duplicate feed trying to be processed, please rename feed!")
+
+    def analyze_data(self):
+        """
+        Analyze MIBI data
+
+        :return:
+        """
+
+        self.analyzer.vessel_contiguity_analysis()
 
     def normalize_data(self,
                        all_expansions_features: pd.DataFrame,
@@ -426,6 +438,15 @@ class MIBIPipeline:
                                                       self.marker_names)
 
         self.visualizer = Visualizer(
+            self.config,
+            all_expansions_features,
+            self.marker_names,
+            self.all_feeds_contour_data,
+            self.all_feeds_metadata,
+            self.all_feeds_data
+        )
+
+        self.analyzer = MIBIAnalyzer(
             self.config,
             all_expansions_features,
             self.marker_names,

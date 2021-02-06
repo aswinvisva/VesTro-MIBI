@@ -1,13 +1,8 @@
-import os
 import unittest
 
 from config.config_settings import Config
 from src.data_loading.mibi_data_feed import MIBIDataFeed
 from src.data_loading.mibi_loader import MIBILoader
-from src.object_extractor import ObjectExtractor
-from src.markers_feature_gen import calculate_composition_marker_expression
-from src.data_loading.mibi_reader import MIBIReader
-from src.utils_functions import get_contour_areas_list
 
 
 class TestMIBILoader(unittest.TestCase):

@@ -1,16 +1,11 @@
-import json
 import os
-import random
-from collections import Counter
 import logging
 
 import numpy as np
 import cv2 as cv
-import matplotlib.pyplot as plt
-import pandas as pd
 
 from config.config_settings import Config
-from src.utils_functions import mkdir_p
+from src.utils.utils_functions import mkdir_p
 
 '''
 Authors: Aswin Visva, John-Paul Oliveria, Ph.D
