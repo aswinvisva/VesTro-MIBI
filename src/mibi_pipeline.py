@@ -25,6 +25,7 @@ class MIBIPipeline:
         :param config: configuration settings
         """
         self.config = config
+
         self.mibi_loader = MIBILoader(self.config)
 
         self.visualizer = None
@@ -43,7 +44,10 @@ class MIBIPipeline:
         :return:
         """
 
-        self.mibi_loader.add_feed(data_feed)
+        if data_feed.name not in self.mibi_loader.feeds.keys():
+            self.mibi_loader.add_feed(data_feed)
+        else:
+            raise Exception("Duplicate feed trying to be processed, please rename feed!")
 
     def normalize_data(self,
                        all_expansions_features: pd.DataFrame,
@@ -364,8 +368,6 @@ class MIBIPipeline:
         set in the configuration settings.
         """
 
-        self.config.display()
-
         n_expansions = self.config.max_expansions
         expansions = self.config.expansion_to_run  # Expansions that you want to run
 
@@ -377,6 +379,8 @@ class MIBIPipeline:
 
         self.all_feeds_metadata, self.all_feeds_data, self.all_feeds_mask, self.marker_names = self.mibi_loader.read()
         # Collect all marker and mask data
+
+        self.config.display()
 
         # Collect vessel contours from each segmentation mask
         all_feeds_contour_data = []

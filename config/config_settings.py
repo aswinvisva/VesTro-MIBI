@@ -125,7 +125,7 @@ class Config:
 
     # Visualization settings for plotting data
 
-    visualization_results_dir = "results/hires"
+    visualization_results_dir = "test/"
 
     distance_interval = 0.5
 
@@ -134,7 +134,7 @@ class Config:
     else:
         pixel_interval = distance_interval / pixels_to_distance
 
-    expansion_to_run = [2, 4, 10, 20]
+    expansion_to_run = [2]
     perform_inward_expansions = True
 
     if perform_inward_expansions:
