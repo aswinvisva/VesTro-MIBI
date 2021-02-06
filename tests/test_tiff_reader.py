@@ -2,7 +2,7 @@ import unittest
 import os
 
 from config.config_settings import Config
-from utils import tiff_reader
+from src import tiff_reader
 
 
 class TestTiffReader(unittest.TestCase):

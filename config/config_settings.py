@@ -6,12 +6,12 @@ import matplotlib.pylab as pl
 
 class Config:
     # High-Level Settings
-
+    n_workers = 5
     data_resolution = "hires"
-    save_to_csv = False
+    save_to_csv = True
 
     if save_to_csv:
-        csv_loc = "hires/hires_data.csv"
+        csv_loc = "results/hires_data.csv"
 
     # Marker settings for reading data
 
@@ -134,17 +134,16 @@ class Config:
     else:
         pixel_interval = distance_interval / pixels_to_distance
 
-    expansion_to_run = [1]
-    perform_inward_expansions = False
+    expansion_to_run = [2, 4, 10, 20]
+    perform_inward_expansions = True
 
     if perform_inward_expansions:
-        max_inward_expansion = 1
+        max_inward_expansion = 10
 
     max_expansions = None  # Set to None to select max_expansions automatically
 
     # Split settings
 
-    splits = ["Vessel Size", "SMA Presence"]  # "Large Vessel", "SMA Presence"
     primary_categorical_splitter = "Vessel Size"
     secondary_categorical_splitter = "SMA Presence"
 
@@ -170,9 +169,10 @@ class Config:
     create_removed_vessels_expression_boxplot = False
     create_biaxial_scatter_plot = False
     create_expanded_vessel_masks = False
-    create_spatial_probability_maps = False
+    create_spatial_probability_maps = True  #
     create_expression_histogram = False
     create_expansion_violin_plots = True  #
+    create_expansion_box_plots = True  #
 
     if create_vessel_areas_histograms_and_boxplots:
         show_boxplot_outliers = False

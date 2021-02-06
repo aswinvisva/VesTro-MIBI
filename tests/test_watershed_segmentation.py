@@ -2,8 +2,8 @@ import unittest
 import os
 
 from config.config_settings import Config
-from utils.object_extractor import ObjectExtractor
-from utils.mibi_reader import MIBIReader
+from src.object_extractor import ObjectExtractor
+from src.data_loading.mibi_reader import MIBIReader
 
 
 class TestWatershedSegmentation(unittest.TestCase):

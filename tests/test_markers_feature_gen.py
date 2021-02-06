@@ -1,13 +1,11 @@
 import os
 import unittest
 
-import numpy as np
-
 from config.config_settings import Config
-from utils.object_extractor import ObjectExtractor
-from utils.markers_feature_gen import calculate_composition_marker_expression
-from utils.mibi_reader import MIBIReader
-from utils.utils_functions import get_contour_areas_list
+from src.object_extractor import ObjectExtractor
+from src.markers_feature_gen import calculate_composition_marker_expression
+from src.data_loading.mibi_reader import MIBIReader
+from src.utils_functions import get_contour_areas_list
 
 
 class TestMarkersFeatureGen(unittest.TestCase):
