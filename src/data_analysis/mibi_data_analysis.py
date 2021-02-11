@@ -46,7 +46,6 @@ class MIBIAnalyzer:
         :return:
         """
         img_shape = self.config.segmentation_mask_size
-        kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, (kernel_size, kernel_size))
 
         for feed_idx in self.all_feeds_contour_data.index.get_level_values('Feed Index').unique():
             feed_data = self.all_feeds_contour_data.loc[feed_idx]
@@ -60,13 +59,15 @@ class MIBIAnalyzer:
                         mask = np.zeros(img_shape, np.uint8)
                         cv.drawContours(mask, [cnt], -1, (1, 1, 1), cv.FILLED)
 
-                        processed_mask = cv.morphologyEx(mask, cv.MORPH_CLOSE, kernel)
+                        ellipse = cv.fitEllipse(cnt)
+                        processed_mask = np.zeros(img_shape, np.uint8)
+                        processed_mask = cv.ellipse(processed_mask, ellipse, (255, 255, 255), -1)
 
                         contiguity_score = float(cv.countNonZero(mask)) / float(cv.countNonZero(processed_mask))
 
                         print("%s:%s - Score: %s" % (str(feed_idx), str(point_idx), str(contiguity_score)))
 
-                        if contiguity_score < 0.8:
+                        if contiguity_score < 0.75:
                             cv.imshow("mask", mask * 255)
-                            cv.imshow("processed_mask", processed_mask * 255)
+                            cv.imshow("processed_mask", processed_mask)
                             cv.waitKey(0)
