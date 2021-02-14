@@ -1,4 +1,5 @@
 import datetime
+from collections import Counter
 from multiprocessing import Pool
 
 from tqdm import tqdm
@@ -38,6 +39,7 @@ class MIBIPipeline:
         self.all_feeds_data = None
         self.all_feeds_mask = None
         self.all_feeds_contour_data = None
+        self.all_expansions_features = None
 
     def add_feed(self, data_feed: MIBIDataFeed):
         """
@@ -434,12 +436,12 @@ class MIBIPipeline:
             all_expansions_features = all_expansions_features.append(all_inward_expansions_features)
 
         # Normalize all features
-        all_expansions_features = self.normalize_data(all_expansions_features,
-                                                      self.marker_names)
+        self.all_expansions_features = self.normalize_data(all_expansions_features,
+                                                           self.marker_names)
 
         self.visualizer = Visualizer(
             self.config,
-            all_expansions_features,
+            self.all_expansions_features,
             self.marker_names,
             self.all_feeds_contour_data,
             self.all_feeds_metadata,
@@ -448,7 +450,7 @@ class MIBIPipeline:
 
         self.analyzer = MIBIAnalyzer(
             self.config,
-            all_expansions_features,
+            self.all_expansions_features,
             self.marker_names,
             self.all_feeds_contour_data,
             self.all_feeds_metadata,

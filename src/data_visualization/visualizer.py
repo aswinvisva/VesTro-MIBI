@@ -93,10 +93,7 @@ class Visualizer:
                                                       "Data"], :]
 
         plot_features = pd.melt(plot_features,
-                                id_vars=["Contour Area",
-                                         "Vessel Size",
-                                         "SMA Presence",
-                                         "Data Type"],
+                                id_vars=self.config.categorical_vars,
                                 ignore_index=False)
 
         plot_features = plot_features.rename(columns={'variable': 'Marker',
@@ -238,10 +235,7 @@ class Visualizer:
                                                       "Data"], :]
 
         plot_features = pd.melt(plot_features,
-                                id_vars=["Contour Area",
-                                         "Vessel Size",
-                                         "SMA Presence",
-                                         "Data Type"],
+                                id_vars=self.config.categorical_vars,
                                 ignore_index=False)
 
         plot_features = plot_features.rename(columns={'variable': 'Marker',
@@ -377,10 +371,7 @@ class Visualizer:
                                                       "Data"], :]
 
         plot_features = pd.melt(plot_features,
-                                id_vars=["Contour Area",
-                                         "Vessel Size",
-                                         "SMA Presence",
-                                         "Data Type"],
+                                id_vars=self.config.categorical_vars,
                                 ignore_index=False)
 
         plot_features = plot_features.rename(columns={'variable': 'Marker',
@@ -520,10 +511,7 @@ class Visualizer:
                                                       "Data"], :]
 
         plot_features = pd.melt(plot_features,
-                                id_vars=["Contour Area",
-                                         "Vessel Size",
-                                         "SMA Presence",
-                                         "Data Type"],
+                                id_vars=self.config.categorical_vars,
                                 ignore_index=False)
 
         plot_features = plot_features.rename(columns={'variable': 'Marker',
@@ -993,10 +981,7 @@ class Visualizer:
                                                       "Data"], :]
 
         plot_features = pd.melt(plot_features,
-                                id_vars=["Contour Area",
-                                         "Vessel Size",
-                                         "SMA Presence",
-                                         "Data Type"],
+                                id_vars=self.config.categorical_vars,
                                 ignore_index=False)
 
         plot_features = plot_features.rename(columns={'variable': 'Marker',
@@ -1150,10 +1135,7 @@ class Visualizer:
                                                       "Data"], :]
 
         plot_features = pd.melt(plot_features,
-                                id_vars=["Contour Area",
-                                         "Vessel Size",
-                                         "SMA Presence",
-                                         "Data Type"],
+                                id_vars=self.config.categorical_vars,
                                 ignore_index=False)
 
         plot_features = plot_features.rename(columns={'variable': 'Marker',

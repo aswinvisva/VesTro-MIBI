@@ -54,6 +54,12 @@ class Config:
         'allvessels'
     ]
 
+    categorical_vars = ["Contour Area",
+                        "Vessel Size",
+                        "SMA Presence",
+                        "Data Type",
+                        "Breakage"]
+
     n_markers = 34
 
     if data_resolution == "hires":
@@ -144,7 +150,7 @@ class Config:
 
     # Split settings
 
-    primary_categorical_splitter = "Vessel Size"
+    primary_categorical_splitter = "Breakage"
     secondary_categorical_splitter = "SMA Presence"
 
     SMA_positive_threshold = 0.1
@@ -169,10 +175,10 @@ class Config:
     create_removed_vessels_expression_boxplot = False
     create_biaxial_scatter_plot = False
     create_expanded_vessel_masks = False
-    create_spatial_probability_maps = True  #
+    create_spatial_probability_maps = False  #
     create_expression_histogram = False
     create_expansion_violin_plots = True  #
-    create_expansion_box_plots = True  #
+    create_expansion_box_plots = False  #
 
     if create_vessel_areas_histograms_and_boxplots:
         show_boxplot_outliers = False
