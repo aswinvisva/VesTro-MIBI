@@ -3,6 +3,7 @@ import datetime
 import matplotlib
 import matplotlib.pylab as pl
 import seaborn as sns
+from matplotlib import patches
 from scipy.ndimage import gaussian_filter
 from scipy.stats import gaussian_kde
 from seaborn.utils import axis_ticklabels_overlap
@@ -922,6 +923,62 @@ class Visualizer:
         plt.savefig(output_dir + '/%s_%s.png' % (x, y), bbox_inches='tight')
         plt.clf()
 
+    def categorical_violin_plot(self):
+        """
+        Categorical Violin Plot
+        """
+
+        parent_dir = "%s/Categorical Violin Plots" % self.config.visualization_results_dir
+        mkdir_p(parent_dir)
+
+        marker_clusters = self.config.marker_clusters
+
+        for feed_idx in range(self.all_feeds_data.shape[0]):
+            idx = pd.IndexSlice
+            feed_name = self.all_feeds_metadata.loc[idx[feed_idx, 0], "Feed Name"]
+
+            feed_dir = "%s/%s" % (parent_dir, feed_name)
+            mkdir_p(feed_dir)
+            feed_features = self.all_samples_features.loc[self.all_samples_features["Data Type"] == feed_name]
+
+            feed_features = feed_features.loc[idx[:, :, :0, "Data"], :]
+
+            feed_features = pd.melt(feed_features,
+                                    id_vars=self.config.categorical_vars,
+                                    ignore_index=False)
+
+            feed_features = feed_features.rename(columns={'variable': 'Marker',
+                                                          'value': 'Expression'})
+
+            feed_features['Size'] = pd.cut(feed_features['Contour Area'],
+                                           bins=[0,
+                                                 self.config.small_vessel_threshold,
+                                                 self.config.medium_vessel_threshold,
+                                                 self.config.large_vessel_threshold,
+                                                 float('Inf')],
+                                           labels=["Excluded",
+                                                   "Small",
+                                                   "Medium",
+                                                   "Large"])
+
+            for key in marker_clusters.keys():
+                marker_cluster_dir = "%s/%s" % (feed_dir, key)
+                mkdir_p(marker_cluster_dir)
+
+                for marker, marker_name in enumerate(marker_clusters[key]):
+                    marker_features = feed_features[(feed_features["Marker"] == marker_name)]
+
+                    ax = sns.violinplot(x="Size",
+                                        y="Expression",
+                                        hue=self.config.primary_categorical_splitter,
+                                        inner=None,
+                                        data=marker_features,
+                                        bw=0.2)
+
+                    plt.savefig(marker_cluster_dir + '/%s.png' % str(marker_name),
+                                bbox_inches='tight')
+                    plt.clf()
+
     def violin_plot_brain_expansion(self, n_expansions: int):
         """
         Violin Plots for Expansion Data
@@ -940,7 +997,7 @@ class Visualizer:
         mkdir_p(bins_dir)
 
         per_bin_expansions_dir = "%s/%s%s Expansion" % (bins_dir,
-                                                        str(round_to_nearest_half((n_expansions) *
+                                                        str(round_to_nearest_half(n_expansions *
                                                                                   self.config.pixel_interval *
                                                                                   self.config.pixels_to_distance)),
                                                         self.config.data_resolution_units)
@@ -1236,6 +1293,8 @@ class Visualizer:
             all_markers_dir = "%s/All Markers" % output_dir
             mkdir_p(all_markers_dir)
 
+            feed_contours = self.all_feeds_contour_data.loc[feed_idx]
+
             for point_idx in range(self.config.n_points):
 
                 marker_data = self.all_feeds_data[feed_idx, point_idx]
@@ -1254,6 +1313,24 @@ class Visualizer:
                 plt.savefig("%s/Point%s" % (vessels_dir, str(point_idx + 1)))
                 plt.clf()
 
+                point_contours = feed_contours.loc[point_idx, "Contours"].contours
+
+                point_dir = "%s/Point %s" % (vessels_dir, str(point_idx + 1))
+                mkdir_p(point_dir)
+
+                for contour_idx, c in enumerate(point_contours):
+                    mask = np.zeros(self.config.segmentation_mask_size, np.uint8)
+                    cv.drawContours(mask, [c], -1, (1, 1, 1), cv.FILLED)
+
+                    my_cm = matplotlib.cm.get_cmap('jet')
+                    normed_data = (blurred_data - np.min(blurred_data)) / (np.max(blurred_data) - np.min(blurred_data))
+                    mapped_data = my_cm(normed_data)
+
+                    result = (cv.bitwise_and(mapped_data, mapped_data, mask=mask) * 255).astype("uint8")
+                    result = cv.cvtColor(result, cv.COLOR_RGBA2BGR)
+
+                    cv.imwrite(os.path.join(point_dir, "Vessel_ID_%s.png" % str(contour_idx + 1)), result)
+
             for point_idx in range(self.config.n_points):
 
                 marker_data = self.all_feeds_data[feed_idx, point_idx]
@@ -1269,8 +1346,27 @@ class Visualizer:
                 color_map = plt.imshow(blurred_data)
                 color_map.set_cmap("jet")
                 plt.colorbar()
+
+                point_contours = feed_contours.loc[point_idx, "Contours"].contours
+
                 plt.savefig("%s/Point%s" % (astrocytes_dir, str(point_idx + 1)))
                 plt.clf()
+
+                point_dir = "%s/Point %s" % (astrocytes_dir, str(point_idx + 1))
+                mkdir_p(point_dir)
+
+                for contour_idx, c in enumerate(point_contours):
+                    mask = np.zeros(self.config.segmentation_mask_size, np.uint8)
+                    cv.drawContours(mask, [c], -1, (1, 1, 1), cv.FILLED)
+
+                    my_cm = matplotlib.cm.get_cmap('jet')
+                    normed_data = (blurred_data - np.min(blurred_data)) / (np.max(blurred_data) - np.min(blurred_data))
+                    mapped_data = my_cm(normed_data)
+
+                    result = (cv.bitwise_and(mapped_data, mapped_data, mask=mask) * 255).astype("uint8")
+                    result = cv.cvtColor(result, cv.COLOR_RGBA2BGR)
+
+                    cv.imwrite(os.path.join(point_dir, "Vessel_ID_%s.png" % str(contour_idx + 1)), result)
 
             for point_idx in range(self.config.n_points):
 
@@ -1289,8 +1385,281 @@ class Visualizer:
                     color_map = plt.imshow(blurred_data)
                     color_map.set_cmap("jet")
                     plt.colorbar()
+
+                    point_contours = feed_contours.loc[point_idx, "Contours"].contours
+
+                    for contour_idx, c in enumerate(point_contours):
+                        M = cv.moments(c)
+                        cX = int(M["m10"] / M["m00"])
+                        cY = int(M["m01"] / M["m00"])
+
+                        plt.text(cX, cY, "ID: %s" % str(contour_idx + 1), fontsize='xx-small', color="w")
+
                     plt.savefig("%s/%s" % (point_dir, marker_name))
                     plt.clf()
+
+    def _vessel_nonvessel_heatmap(self,
+                                  n_expansions: int,
+                                  feed_features: pd.DataFrame,
+                                  brain_regions: list,
+                                  marker_clusters: list,
+                                  feed_dir: str):
+        """
+        Vessel/Non-vessel heatmaps helper method
+
+        :param n_expansions:
+        :param feed_features:
+        :return:
+        """
+
+        # Vessel Space (SMA Positive)
+        positve_sma = feed_features.loc[
+            feed_features["SMA"] >= self.config.SMA_positive_threshold]
+
+        idx = pd.IndexSlice
+        all_vessels_sma_data = positve_sma.loc[idx[:, :,
+                                               :n_expansions,
+                                               "Data"], self.markers_names].to_numpy()
+        mfg_vessels_sma_data = positve_sma.loc[idx[brain_regions[0][0]:brain_regions[0][1],
+                                               :,
+                                               :n_expansions,
+                                               "Data"], self.markers_names].to_numpy()
+        hip_vessels_sma_data = positve_sma.loc[idx[brain_regions[1][0]:brain_regions[1][1],
+                                               :,
+                                               :n_expansions,
+                                               "Data"], self.markers_names].to_numpy()
+        caud_vessels_sma_data = positve_sma.loc[idx[brain_regions[2][0]:brain_regions[2][1],
+                                                :,
+                                                :n_expansions,
+                                                "Data"], self.markers_names].to_numpy()
+
+        all_vessels_sma_data = np.mean(all_vessels_sma_data, axis=0)
+        mfg_vessels_sma_data = np.mean(mfg_vessels_sma_data, axis=0)
+        hip_vessels_sma_data = np.mean(hip_vessels_sma_data, axis=0)
+        caud_vessels_sma_data = np.mean(caud_vessels_sma_data, axis=0)
+
+        # Vessel Space (SMA Negative)
+        negative_sma = feed_features.loc[
+            feed_features["SMA"] < self.config.SMA_positive_threshold]
+
+        idx = pd.IndexSlice
+        all_vessels_non_sma_data = negative_sma.loc[idx[:, :,
+                                                    :n_expansions,
+                                                    "Data"], self.markers_names].to_numpy()
+        mfg_vessels_non_sma_data = negative_sma.loc[idx[brain_regions[0][0]:brain_regions[0][1],
+                                                    :,
+                                                    :n_expansions,
+                                                    "Data"], self.markers_names].to_numpy()
+        hip_vessels_non_sma_data = negative_sma.loc[idx[brain_regions[1][0]:brain_regions[1][1],
+                                                    :,
+                                                    :n_expansions,
+                                                    "Data"], self.markers_names].to_numpy()
+        caud_vessels_non_sma_data = negative_sma.loc[idx[brain_regions[2][0]:brain_regions[2][1],
+                                                     :,
+                                                     :n_expansions,
+                                                     "Data"], self.markers_names].to_numpy()
+
+        all_vessels_non_sma_data = np.mean(all_vessels_non_sma_data, axis=0)
+        mfg_vessels_non_sma_data = np.mean(mfg_vessels_non_sma_data, axis=0)
+        hip_vessels_non_sma_data = np.mean(hip_vessels_non_sma_data, axis=0)
+        caud_vessels_non_sma_data = np.mean(caud_vessels_non_sma_data, axis=0)
+
+        # Non-vessel Space
+
+        all_nonmask_sma_data = positve_sma.loc[idx[:, :, :,
+                                               "Non-Vascular Space"], self.markers_names].to_numpy()
+        mfg_nonmask_sma_data = positve_sma.loc[idx[brain_regions[0][0]:brain_regions[0][1],
+                                               :,
+                                               :n_expansions,
+                                               "Non-Vascular Space"], self.markers_names].to_numpy()
+        hip_nonmask_sma_data = positve_sma.loc[idx[brain_regions[1][0]:brain_regions[1][1],
+                                               :,
+                                               :n_expansions,
+                                               "Non-Vascular Space"], self.markers_names].to_numpy()
+        caud_nonmask_sma_data = positve_sma.loc[idx[brain_regions[2][0]:brain_regions[2][1],
+                                                :,
+                                                :n_expansions,
+                                                "Non-Vascular Space"], self.markers_names].to_numpy()
+
+        all_nonmask_sma_data = np.mean(all_nonmask_sma_data, axis=0)
+        mfg_nonmask_sma_data = np.mean(mfg_nonmask_sma_data, axis=0)
+        hip_nonmask_sma_data = np.mean(hip_nonmask_sma_data, axis=0)
+        caud_nonmask_sma_data = np.mean(caud_nonmask_sma_data, axis=0)
+
+        all_nonmask_non_sma_data = negative_sma.loc[idx[:, :, :,
+                                                    "Non-Vascular Space"], self.markers_names].to_numpy()
+        mfg_nonmask_non_sma_data = negative_sma.loc[idx[brain_regions[0][0]:brain_regions[0][1],
+                                                    :,
+                                                    :n_expansions,
+                                                    "Non-Vascular Space"], self.markers_names].to_numpy()
+        hip_nonmask_non_sma_data = negative_sma.loc[idx[brain_regions[1][0]:brain_regions[1][1],
+                                                    :,
+                                                    :n_expansions,
+                                                    "Non-Vascular Space"], self.markers_names].to_numpy()
+        caud_nonmask_non_sma_data = negative_sma.loc[idx[brain_regions[2][0]:brain_regions[2][1],
+                                                     :,
+                                                     :n_expansions,
+                                                     "Non-Vascular Space"], self.markers_names].to_numpy()
+
+        all_nonmask_non_sma_data = np.mean(all_nonmask_non_sma_data, axis=0)
+        mfg_nonmask_non_sma_data = np.mean(mfg_nonmask_non_sma_data, axis=0)
+        hip_nonmask_non_sma_data = np.mean(hip_nonmask_non_sma_data, axis=0)
+        caud_nonmask_non_sma_data = np.mean(caud_nonmask_non_sma_data, axis=0)
+
+        # Vessel environment space
+
+        all_vessels_environment_sma_data = positve_sma.loc[idx[:, :,
+                                                           :n_expansions,
+                                                           "Vascular Space"], self.markers_names].to_numpy()
+        mfg_vessels_environment_sma_data = positve_sma.loc[idx[brain_regions[0][0]:brain_regions[0][1],
+                                                           :,
+                                                           :n_expansions,
+                                                           "Vascular Space"], self.markers_names].to_numpy()
+        hip_vessels_environment_sma_data = positve_sma.loc[idx[brain_regions[1][0]:brain_regions[1][1],
+                                                           :,
+                                                           :n_expansions,
+                                                           "Vascular Space"], self.markers_names].to_numpy()
+        caud_vessels_environment_sma_data = positve_sma.loc[idx[brain_regions[2][0]:brain_regions[2][1],
+                                                            :,
+                                                            :n_expansions,
+                                                            "Vascular Space"], self.markers_names].to_numpy()
+
+        all_vessels_environment_sma_data = np.mean(all_vessels_environment_sma_data, axis=0)
+        mfg_vessels_environment_sma_data = np.mean(mfg_vessels_environment_sma_data, axis=0)
+        hip_vessels_environment_sma_data = np.mean(hip_vessels_environment_sma_data, axis=0)
+        caud_vessels_environment_sma_data = np.mean(caud_vessels_environment_sma_data, axis=0)
+
+        all_vessels_environment_non_sma_data = negative_sma.loc[idx[:, :,
+                                                                :n_expansions,
+                                                                "Vascular Space"], self.markers_names].to_numpy()
+        mfg_vessels_environment_non_sma_data = negative_sma.loc[idx[brain_regions[0][0]:brain_regions[0][1],
+                                                                :,
+                                                                :n_expansions,
+                                                                "Vascular Space"], self.markers_names].to_numpy()
+        hip_vessels_environment_non_sma_data = negative_sma.loc[idx[brain_regions[1][0]:brain_regions[1][1],
+                                                                :,
+                                                                :n_expansions,
+                                                                "Vascular Space"], self.markers_names].to_numpy()
+        caud_vessels_environment_non_sma_data = negative_sma.loc[idx[brain_regions[2][0]:brain_regions[2][1],
+                                                                 :,
+                                                                 :n_expansions,
+                                                                 "Vascular Space"], self.markers_names].to_numpy()
+
+        all_vessels_environment_non_sma_data = np.mean(all_vessels_environment_non_sma_data, axis=0)
+        mfg_vessels_environment_non_sma_data = np.mean(mfg_vessels_environment_non_sma_data, axis=0)
+        hip_vessels_environment_non_sma_data = np.mean(hip_vessels_environment_non_sma_data, axis=0)
+        caud_vessels_environment_non_sma_data = np.mean(caud_vessels_environment_non_sma_data, axis=0)
+
+        all_data = [all_vessels_sma_data,
+                    all_vessels_non_sma_data,
+                    all_vessels_environment_sma_data,
+                    all_vessels_environment_non_sma_data,
+                    all_nonmask_sma_data,
+                    all_nonmask_non_sma_data,
+                    mfg_vessels_sma_data,
+                    mfg_vessels_non_sma_data,
+                    mfg_vessels_environment_sma_data,
+                    mfg_vessels_environment_non_sma_data,
+                    mfg_nonmask_sma_data,
+                    mfg_nonmask_non_sma_data,
+                    hip_vessels_sma_data,
+                    hip_vessels_non_sma_data,
+                    hip_vessels_environment_sma_data,
+                    hip_vessels_environment_non_sma_data,
+                    hip_nonmask_sma_data,
+                    hip_nonmask_non_sma_data,
+                    caud_vessels_sma_data,
+                    caud_vessels_non_sma_data,
+                    caud_vessels_environment_sma_data,
+                    caud_vessels_environment_non_sma_data,
+                    caud_nonmask_sma_data,
+                    caud_nonmask_non_sma_data]
+
+        yticklabels = ["Vascular Space (SMA+) - All Points",
+                       "Vascular Space (SMA-) - All Points",
+                       "Vascular Expansion Space (SMA+) - All Points",
+                       "Vascular Expansion Space (SMA-) - All Points",
+                       "Non-Vascular Space (SMA+) - All Points",
+                       "Non-Vascular Space (SMA-) - All Points",
+                       "Vascular Space (SMA+) - MFG",
+                       "Vascular Space (SMA-) - MFG",
+                       "Vascular Expansion Space (SMA+) - MFG",
+                       "Vascular Expansion Space (SMA-) - MFG",
+                       "Non-Vascular Space (SMA+) - MFG",
+                       "Non-Vascular Space (SMA-) - MFG",
+                       "Vascular Space (SMA+) - HIP",
+                       "Vascular Space (SMA-) - HIP",
+                       "Vascular Expansion Space (SMA+) - HIP",
+                       "Vascular Expansion Space (SMA-) - HIP",
+                       "Non-Vascular Space (SMA+) - HIP",
+                       "Non-Vascular Space (SMA-) - HIP",
+                       "Vascular Space (SMA+) - CAUD",
+                       "Vascular Space (SMA-) - CAUD",
+                       "Vascular Expansion Space (SMA+) - CAUD",
+                       "Vascular Expansion Space (SMA-) - CAUD",
+                       "Non-Vascular Space (SMA+) - CAUD",
+                       "Non-Vascular Space (SMA-) - CAUD", ]
+
+        norm = matplotlib.colors.Normalize(-1, 1)
+        colors = [[norm(-1.0), "black"],
+                  [norm(-0.5), "indigo"],
+                  [norm(0), "firebrick"],
+                  [norm(0.5), "orange"],
+                  [norm(1.0), "khaki"]]
+
+        cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", colors)
+
+        plt.figure(figsize=(22, 10))
+
+        ax = sns.heatmap(all_data,
+                         cmap=cmap,
+                         xticklabels=self.markers_names,
+                         yticklabels=yticklabels,
+                         linewidths=0,
+                         )
+
+        ax.set_xticklabels(ax.get_xticklabels(), rotation=45, ha="right")
+
+        v_line_idx = 0
+
+        for key in marker_clusters.keys():
+            if v_line_idx != 0:
+                ax.axvline(v_line_idx, 0, len(yticklabels), linewidth=3, c='w')
+
+            for _ in marker_clusters[key]:
+                v_line_idx += 1
+
+        h_line_idx = 0
+
+        while h_line_idx < len(yticklabels):
+            h_line_idx += 6
+            ax.axhline(h_line_idx, 0, len(self.markers_names), linewidth=3, c='w')
+
+        output_dir = "%s/Heatmaps" % feed_dir
+        mkdir_p(output_dir)
+
+        plt.savefig(output_dir + '/Expansion_%s.png' % str((n_expansions)), bbox_inches='tight')
+        plt.clf()
+
+        ax = sns.clustermap(all_data,
+                            cmap=cmap,
+                            row_cluster=False,
+                            col_cluster=True,
+                            linewidths=0,
+                            xticklabels=self.markers_names,
+                            yticklabels=yticklabels,
+                            figsize=(20, 10)
+                            )
+
+        output_dir = "%s/Clustermaps" % feed_dir
+        mkdir_p(output_dir)
+
+        ax.ax_heatmap.set_xticklabels(ax.ax_heatmap.get_xticklabels(), rotation=45, ha="right")
+        ax.ax_heatmap.yaxis.tick_left()
+        ax.ax_heatmap.yaxis.set_label_position("left")
+
+        ax.savefig(output_dir + '/Expansion_%s.png' % str(n_expansions))
+        plt.clf()
 
     def vessel_nonvessel_heatmap(self, n_expansions: int):
         """
@@ -1314,291 +1683,323 @@ class Visualizer:
 
             feed_features = self.all_samples_features.loc[self.all_samples_features["Data Type"] == feed_name]
 
-            # Vessel Space (SMA Positive)
-            positve_sma = feed_features.loc[
-                feed_features["SMA"] >= self.config.SMA_positive_threshold]
+            if self.config.primary_categorical_splitter is None:
+                self._vessel_nonvessel_heatmap(n_expansions, feed_features, brain_regions, marker_clusters, feed_dir)
+            else:
+                for i in feed_features[self.config.primary_categorical_splitter].unique():
+                    split_dir = "%s/%s: %s" % (feed_dir, self.config.primary_categorical_splitter, i)
+                    mkdir_p(split_dir)
 
+                    split_features = feed_features.loc[feed_features[self.config.primary_categorical_splitter] == i]
+
+                    self._vessel_nonvessel_heatmap(n_expansions, split_features, brain_regions, marker_clusters,
+                                                   split_dir)
+
+    def _categorical_split_expansion_heatmap_helper(self,
+                                                    n_expansions: int,
+                                                    expansion_features: pd.DataFrame,
+                                                    heatmaps_dir: str,
+                                                    primary_splitter: str,
+                                                    secondary_splitter: str = None,
+                                                    marker_cluster: str = "Astrocytes"
+                                                    ):
+        """
+        Helper method to generate categorical split expansion heatmap
+
+        :param n_expansions: int, Number of expansions
+        :param expansion_features: pd.DataFrame, Features across all expansions
+        :param heatmaps_dir: str, Directory of heatmaps
+        :return:
+        """
+
+        heatmap_data = []
+        y_tick_labels = []
+        pixel_interval = round_to_nearest_half(abs(self.config.pixel_interval) * self.config.pixels_to_distance)
+
+        classes_to_ignore = ["NA"]
+
+        for split_val in expansion_features[self.config.primary_categorical_splitter].unique():
+
+            if split_val in classes_to_ignore:
+                continue
+
+            y_lab_split = "%s : %s" % (primary_splitter, split_val)
+            y_tick_labels.append(y_lab_split)
+
+            split_features = expansion_features.loc[expansion_features[
+                                                        self.config.primary_categorical_splitter]
+                                                    == split_val]
+
+            curr_split_data = []
+
+            for i in sorted(expansion_features.index.unique("Expansion").tolist()):
+
+                try:
+                    curr_expansion = split_features.loc[pd.IndexSlice[:,
+                                                        :,
+                                                        i,
+                                                        "Data"],
+                                                        self.config.marker_clusters[marker_cluster]].to_numpy()
+                except KeyError:
+                    curr_expansion = np.array([])
+
+                if curr_expansion.size > 0:
+                    curr_split_data.append(np.mean(np.array(curr_expansion)))
+                else:
+                    curr_split_data.append(0)
+
+            heatmap_data.append(curr_split_data)
+
+        if secondary_splitter is not None:
+
+            for split_val in expansion_features[self.config.primary_categorical_splitter].unique():
+
+                if split_val in classes_to_ignore:
+                    continue
+
+                y_lab_split_first_level = "%s : %s" % (primary_splitter, split_val)
+
+                split_features = expansion_features.loc[expansion_features[
+                                                            self.config.primary_categorical_splitter]
+                                                        == split_val]
+
+                for split_idx, secondary_split_val in \
+                        enumerate(expansion_features[self.config.secondary_categorical_splitter].unique()):
+
+                    secondary_split_features = split_features.loc[expansion_features[
+                                                                      self.config.secondary_categorical_splitter]
+                                                                  == secondary_split_val]
+
+                    curr_split_data = []
+
+                    for i in sorted(expansion_features.index.unique("Expansion").tolist()):
+                        y_lab_split_second_level = "%s : %s" % (secondary_splitter, secondary_split_val)
+
+                        try:
+                            curr_expansion = secondary_split_features.loc[pd.IndexSlice[:,
+                                                                          :,
+                                                                          i,
+                                                                          "Data"],
+                                                                          self.config.marker_clusters[
+                                                                              marker_cluster]].to_numpy()
+                        except KeyError:
+                            curr_expansion = np.array([])
+
+                        if curr_expansion.size > 0:
+                            curr_split_data.append(np.mean(np.array(curr_expansion)))
+                        else:
+                            curr_split_data.append(0)
+
+                    heatmap_data.append(curr_split_data)
+
+                    if split_idx == 0:
+                        y_tick_labels.append("%s  %s" % (y_lab_split_first_level, y_lab_split_second_level))
+                    else:
+                        y_tick_labels.append("%s" % y_lab_split_second_level)
+
+        norm = matplotlib.colors.Normalize(-1, 1)
+        colors = [[norm(-1.0), "black"],
+                  [norm(-0.5), "indigo"],
+                  [norm(0), "firebrick"],
+                  [norm(0.5), "orange"],
+                  [norm(1.0), "khaki"]]
+
+        cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", colors)
+
+        plt.figure(figsize=(22, 10))
+
+        x_tick_labels = np.array(sorted(expansion_features.index.unique("Expansion").tolist())) * pixel_interval
+        x_tick_labels = x_tick_labels.tolist()
+        x_tick_labels = [str(x) for x in x_tick_labels]
+
+        ax = sns.heatmap(heatmap_data,
+                         cmap=cmap,
+                         xticklabels=x_tick_labels,
+                         yticklabels=y_tick_labels,
+                         linewidths=0,
+                         )
+
+        ax.set_xticklabels(ax.get_xticklabels(), rotation="horizontal")
+
+        if axis_ticklabels_overlap(ax.get_xticklabels()):
+            ax.set_xticklabels(ax.get_xticklabels(), rotation=45, ha="right")
+
+        plt.xlabel("Distance Expanded (%s)" % self.config.data_resolution_units)
+        plt.title("%s Markers" % marker_cluster)
+
+        output_dir = "%s/%s%s Expansion" % (heatmaps_dir,
+                                            str(round_to_nearest_half(n_expansions *
+                                                                      self.config.pixel_interval *
+                                                                      self.config.pixels_to_distance)),
+                                            self.config.data_resolution_units)
+        mkdir_p(output_dir)
+
+        plt.savefig(output_dir + '/%s.png' % marker_cluster, bbox_inches='tight')
+        plt.clf()
+
+    def categorical_split_expansion_heatmap_clustermap(self,
+                                                       n_expansions: int):
+        """
+        Categorically split expansion heatmap
+
+        :param n_expansions: int, Number of expansions to run
+        :return:
+        """
+
+        parent_dir = "%s/Categorical Expansion Heatmaps & Clustermaps" % self.config.visualization_results_dir
+        mkdir_p(parent_dir)
+
+        assert self.config.primary_categorical_splitter is not None, "No categorical splitter selected!"
+
+        for feed_idx in range(self.all_feeds_data.shape[0]):
             idx = pd.IndexSlice
-            all_vessels_sma_data = positve_sma.loc[idx[:, :,
-                                                   :n_expansions,
-                                                   "Data"], self.markers_names].to_numpy()
-            mfg_vessels_sma_data = positve_sma.loc[idx[brain_regions[0][0]:brain_regions[0][1],
-                                                   :,
-                                                   :n_expansions,
-                                                   "Data"], self.markers_names].to_numpy()
-            hip_vessels_sma_data = positve_sma.loc[idx[brain_regions[1][0]:brain_regions[1][1],
-                                                   :,
-                                                   :n_expansions,
-                                                   "Data"], self.markers_names].to_numpy()
-            caud_vessels_sma_data = positve_sma.loc[idx[brain_regions[2][0]:brain_regions[2][1],
-                                                    :,
-                                                    :n_expansions,
-                                                    "Data"], self.markers_names].to_numpy()
+            feed_name = self.all_feeds_metadata.loc[idx[feed_idx, 0], "Feed Name"]
 
-            all_vessels_sma_data = np.mean(all_vessels_sma_data, axis=0)
-            mfg_vessels_sma_data = np.mean(mfg_vessels_sma_data, axis=0)
-            hip_vessels_sma_data = np.mean(hip_vessels_sma_data, axis=0)
-            caud_vessels_sma_data = np.mean(caud_vessels_sma_data, axis=0)
+            feed_dir = "%s/%s" % (parent_dir, feed_name)
+            mkdir_p(feed_dir)
 
-            # Vessel Space (SMA Negative)
-            negative_sma = feed_features.loc[
-                feed_features["SMA"] < self.config.SMA_positive_threshold]
+            feed_features = self.all_samples_features.loc[self.all_samples_features["Data Type"] == feed_name]
 
-            idx = pd.IndexSlice
-            all_vessels_non_sma_data = negative_sma.loc[idx[:, :,
-                                                        :n_expansions,
-                                                        "Data"], self.markers_names].to_numpy()
-            mfg_vessels_non_sma_data = negative_sma.loc[idx[brain_regions[0][0]:brain_regions[0][1],
-                                                        :,
-                                                        :n_expansions,
-                                                        "Data"], self.markers_names].to_numpy()
-            hip_vessels_non_sma_data = negative_sma.loc[idx[brain_regions[1][0]:brain_regions[1][1],
-                                                        :,
-                                                        :n_expansions,
-                                                        "Data"], self.markers_names].to_numpy()
-            caud_vessels_non_sma_data = negative_sma.loc[idx[brain_regions[2][0]:brain_regions[2][1],
-                                                         :,
-                                                         :n_expansions,
-                                                         "Data"], self.markers_names].to_numpy()
+            expansion_features = feed_features.loc[idx[:, :, :n_expansions, :], :]
 
-            all_vessels_non_sma_data = np.mean(all_vessels_non_sma_data, axis=0)
-            mfg_vessels_non_sma_data = np.mean(mfg_vessels_non_sma_data, axis=0)
-            hip_vessels_non_sma_data = np.mean(hip_vessels_non_sma_data, axis=0)
-            caud_vessels_non_sma_data = np.mean(caud_vessels_non_sma_data, axis=0)
+            heatmaps_dir = "%s/Categorical Split Expansion Heatmaps" % feed_dir
+            mkdir_p(heatmaps_dir)
 
-            # Non-vessel Space
+            self._categorical_split_expansion_heatmap_helper(n_expansions,
+                                                             expansion_features,
+                                                             heatmaps_dir,
+                                                             self.config.primary_categorical_splitter,
+                                                             self.config.secondary_categorical_splitter)
 
-            all_nonmask_sma_data = positve_sma.loc[idx[:, :, :,
-                                                   "Non-Vascular Space"], self.markers_names].to_numpy()
-            mfg_nonmask_sma_data = positve_sma.loc[idx[brain_regions[0][0]:brain_regions[0][1],
-                                                   :,
-                                                   :n_expansions,
-                                                   "Non-Vascular Space"], self.markers_names].to_numpy()
-            hip_nonmask_sma_data = positve_sma.loc[idx[brain_regions[1][0]:brain_regions[1][1],
-                                                   :,
-                                                   :n_expansions,
-                                                   "Non-Vascular Space"], self.markers_names].to_numpy()
-            caud_nonmask_sma_data = positve_sma.loc[idx[brain_regions[2][0]:brain_regions[2][1],
-                                                    :,
-                                                    :n_expansions,
-                                                    "Non-Vascular Space"], self.markers_names].to_numpy()
+    def _heatmap_clustermap_generator(self,
+                                      data,
+                                      x_tick_labels,
+                                      x_label,
+                                      cmap,
+                                      marker_clusters,
+                                      output_dir,
+                                      map_name,
+                                      cluster=False):
 
-            all_nonmask_sma_data = np.mean(all_nonmask_sma_data, axis=0)
-            mfg_nonmask_sma_data = np.mean(mfg_nonmask_sma_data, axis=0)
-            hip_nonmask_sma_data = np.mean(hip_nonmask_sma_data, axis=0)
-            caud_nonmask_sma_data = np.mean(caud_nonmask_sma_data, axis=0)
+        """
+        Helper method to save heatmap and clustermap output
 
-            all_nonmask_non_sma_data = negative_sma.loc[idx[:, :, :,
-                                                        "Non-Vascular Space"], self.markers_names].to_numpy()
-            mfg_nonmask_non_sma_data = negative_sma.loc[idx[brain_regions[0][0]:brain_regions[0][1],
-                                                        :,
-                                                        :n_expansions,
-                                                        "Non-Vascular Space"], self.markers_names].to_numpy()
-            hip_nonmask_non_sma_data = negative_sma.loc[idx[brain_regions[1][0]:brain_regions[1][1],
-                                                        :,
-                                                        :n_expansions,
-                                                        "Non-Vascular Space"], self.markers_names].to_numpy()
-            caud_nonmask_non_sma_data = negative_sma.loc[idx[brain_regions[2][0]:brain_regions[2][1],
-                                                         :,
-                                                         :n_expansions,
-                                                         "Non-Vascular Space"], self.markers_names].to_numpy()
+        :param data: array_like, data to plot
+        :param x_tick_labels: list[str], x tick labels
+        :param x_label: str, x-axis label
+        :param cmap: cmap, Colour map
+        :param marker_clusters: dict, Marker cluster names
+        :param output_dir: str, Output directory
+        :param map_name: str, Heatmap/Clustermap name
+        :param cluster: bool, should use clustermap?
+        :return:
+        """
 
-            all_nonmask_non_sma_data = np.mean(all_nonmask_non_sma_data, axis=0)
-            mfg_nonmask_non_sma_data = np.mean(mfg_nonmask_non_sma_data, axis=0)
-            hip_nonmask_non_sma_data = np.mean(hip_nonmask_non_sma_data, axis=0)
-            caud_nonmask_non_sma_data = np.mean(caud_nonmask_non_sma_data, axis=0)
-
-            # Vessel environment space
-
-            all_vessels_environment_sma_data = positve_sma.loc[idx[:, :,
-                                                               :n_expansions,
-                                                               "Vascular Space"], self.markers_names].to_numpy()
-            mfg_vessels_environment_sma_data = positve_sma.loc[idx[brain_regions[0][0]:brain_regions[0][1],
-                                                               :,
-                                                               :n_expansions,
-                                                               "Vascular Space"], self.markers_names].to_numpy()
-            hip_vessels_environment_sma_data = positve_sma.loc[idx[brain_regions[1][0]:brain_regions[1][1],
-                                                               :,
-                                                               :n_expansions,
-                                                               "Vascular Space"], self.markers_names].to_numpy()
-            caud_vessels_environment_sma_data = positve_sma.loc[idx[brain_regions[2][0]:brain_regions[2][1],
-                                                                :,
-                                                                :n_expansions,
-                                                                "Vascular Space"], self.markers_names].to_numpy()
-
-            all_vessels_environment_sma_data = np.mean(all_vessels_environment_sma_data, axis=0)
-            mfg_vessels_environment_sma_data = np.mean(mfg_vessels_environment_sma_data, axis=0)
-            hip_vessels_environment_sma_data = np.mean(hip_vessels_environment_sma_data, axis=0)
-            caud_vessels_environment_sma_data = np.mean(caud_vessels_environment_sma_data, axis=0)
-
-            all_vessels_environment_non_sma_data = negative_sma.loc[idx[:, :,
-                                                                    :n_expansions,
-                                                                    "Vascular Space"], self.markers_names].to_numpy()
-            mfg_vessels_environment_non_sma_data = negative_sma.loc[idx[brain_regions[0][0]:brain_regions[0][1],
-                                                                    :,
-                                                                    :n_expansions,
-                                                                    "Vascular Space"], self.markers_names].to_numpy()
-            hip_vessels_environment_non_sma_data = negative_sma.loc[idx[brain_regions[1][0]:brain_regions[1][1],
-                                                                    :,
-                                                                    :n_expansions,
-                                                                    "Vascular Space"], self.markers_names].to_numpy()
-            caud_vessels_environment_non_sma_data = negative_sma.loc[idx[brain_regions[2][0]:brain_regions[2][1],
-                                                                     :,
-                                                                     :n_expansions,
-                                                                     "Vascular Space"], self.markers_names].to_numpy()
-
-            all_vessels_environment_non_sma_data = np.mean(all_vessels_environment_non_sma_data, axis=0)
-            mfg_vessels_environment_non_sma_data = np.mean(mfg_vessels_environment_non_sma_data, axis=0)
-            hip_vessels_environment_non_sma_data = np.mean(hip_vessels_environment_non_sma_data, axis=0)
-            caud_vessels_environment_non_sma_data = np.mean(caud_vessels_environment_non_sma_data, axis=0)
-
-            all_data = [all_vessels_sma_data,
-                        all_vessels_non_sma_data,
-                        all_vessels_environment_sma_data,
-                        all_vessels_environment_non_sma_data,
-                        all_nonmask_sma_data,
-                        all_nonmask_non_sma_data,
-                        mfg_vessels_sma_data,
-                        mfg_vessels_non_sma_data,
-                        mfg_vessels_environment_sma_data,
-                        mfg_vessels_environment_non_sma_data,
-                        mfg_nonmask_sma_data,
-                        mfg_nonmask_non_sma_data,
-                        hip_vessels_sma_data,
-                        hip_vessels_non_sma_data,
-                        hip_vessels_environment_sma_data,
-                        hip_vessels_environment_non_sma_data,
-                        hip_nonmask_sma_data,
-                        hip_nonmask_non_sma_data,
-                        caud_vessels_sma_data,
-                        caud_vessels_non_sma_data,
-                        caud_vessels_environment_sma_data,
-                        caud_vessels_environment_non_sma_data,
-                        caud_nonmask_sma_data,
-                        caud_nonmask_non_sma_data]
-
-            yticklabels = ["Vascular Space (SMA+) - All Points",
-                           "Vascular Space (SMA-) - All Points",
-                           "Vascular Expansion Space (SMA+) - All Points",
-                           "Vascular Expansion Space (SMA-) - All Points",
-                           "Non-Vascular Space (SMA+) - All Points",
-                           "Non-Vascular Space (SMA-) - All Points",
-                           "Vascular Space (SMA+) - MFG",
-                           "Vascular Space (SMA-) - MFG",
-                           "Vascular Expansion Space (SMA+) - MFG",
-                           "Vascular Expansion Space (SMA-) - MFG",
-                           "Non-Vascular Space (SMA+) - MFG",
-                           "Non-Vascular Space (SMA-) - MFG",
-                           "Vascular Space (SMA+) - HIP",
-                           "Vascular Space (SMA-) - HIP",
-                           "Vascular Expansion Space (SMA+) - HIP",
-                           "Vascular Expansion Space (SMA-) - HIP",
-                           "Non-Vascular Space (SMA+) - HIP",
-                           "Non-Vascular Space (SMA-) - HIP",
-                           "Vascular Space (SMA+) - CAUD",
-                           "Vascular Space (SMA-) - CAUD",
-                           "Vascular Expansion Space (SMA+) - CAUD",
-                           "Vascular Expansion Space (SMA-) - CAUD",
-                           "Non-Vascular Space (SMA+) - CAUD",
-                           "Non-Vascular Space (SMA-) - CAUD", ]
-
-            norm = matplotlib.colors.Normalize(-1, 1)
-            colors = [[norm(-1.0), "black"],
-                      [norm(-0.5), "indigo"],
-                      [norm(0), "firebrick"],
-                      [norm(0.5), "orange"],
-                      [norm(1.0), "khaki"]]
-
-            cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", colors)
+        if not cluster:
 
             plt.figure(figsize=(22, 10))
 
-            ax = sns.heatmap(all_data,
+            ax = sns.heatmap(data,
                              cmap=cmap,
-                             xticklabels=self.markers_names,
-                             yticklabels=yticklabels,
+                             xticklabels=x_tick_labels,
+                             yticklabels=self.markers_names,
                              linewidths=0,
                              )
 
-            ax.set_xticklabels(ax.get_xticklabels(), rotation=45, ha="right")
+            ax.set_xticklabels(ax.get_xticklabels(), rotation="horizontal")
 
-            v_line_idx = 0
+            if axis_ticklabels_overlap(ax.get_xticklabels()):
+                ax.set_xticklabels(ax.get_xticklabels(), rotation=45, ha="right")
 
-            for key in marker_clusters.keys():
-                if v_line_idx != 0:
-                    ax.axvline(v_line_idx, 0, len(yticklabels), linewidth=3, c='w')
-
-                for _ in marker_clusters[key]:
-                    v_line_idx += 1
+            plt.xlabel("%s" % x_label)
 
             h_line_idx = 0
 
-            while h_line_idx < len(yticklabels):
-                h_line_idx += 6
-                ax.axhline(h_line_idx, 0, len(self.markers_names), linewidth=3, c='w')
+            for key in marker_clusters.keys():
+                if h_line_idx != 0:
+                    ax.axhline(h_line_idx, 0, len(self.markers_names), linewidth=3, c='w')
 
-            output_dir = "%s/Heatmaps" % feed_dir
-            mkdir_p(output_dir)
+                for _ in marker_clusters[key]:
+                    h_line_idx += 1
 
-            plt.savefig(output_dir + '/Expansion_%s.png' % str((n_expansions)), bbox_inches='tight')
+            plt.savefig(output_dir + '/%s.png' % map_name, bbox_inches='tight')
             plt.clf()
 
-            ax = sns.clustermap(all_data,
+        else:
+            ax = sns.clustermap(data,
                                 cmap=cmap,
-                                row_cluster=False,
-                                col_cluster=True,
+                                row_cluster=True,
+                                col_cluster=False,
                                 linewidths=0,
-                                xticklabels=self.markers_names,
-                                yticklabels=yticklabels,
+                                xticklabels=x_tick_labels,
+                                yticklabels=self.markers_names,
                                 figsize=(20, 10)
                                 )
+            ax_ax = ax.ax_heatmap
+            ax_ax.set_xlabel("%s" % x_label)
 
-            output_dir = "%s/Clustermaps" % feed_dir
-            mkdir_p(output_dir)
+            ax_ax.set_xticklabels(ax_ax.get_xticklabels(), rotation="horizontal")
 
-            ax.ax_heatmap.set_xticklabels(ax.ax_heatmap.get_xticklabels(), rotation=45, ha="right")
-            ax.ax_heatmap.yaxis.tick_left()
-            ax.ax_heatmap.yaxis.set_label_position("left")
+            if axis_ticklabels_overlap(ax_ax.get_xticklabels()):
+                ax_ax.set_xticklabels(ax_ax.get_xticklabels(), rotation=45, ha="right")
 
-            ax.savefig(output_dir + '/Expansion_%s.png' % str((n_expansions)))
+            ax.savefig(output_dir + '/%s.png' % map_name)
             plt.clf()
 
-    def brain_region_expansion_heatmap(self, n_expansions: int):
+    def _brain_region_expansion_heatmap(self,
+                                        n_expansions: int,
+                                        expansion_features: pd.DataFrame,
+                                        heatmaps_dir: str,
+                                        clustermaps_dir: str
+                                        ):
         """
-        Brain Region Expansion Heatmap
+        Brain region expansion heatmaps helper method
 
-        :param n_expansions: int, Number of expansions
+        :param n_expansions: int, Number of expansions to run
+        :return:
         """
-        pixel_interval = round_to_nearest_half(abs(self.config.pixel_interval) * self.config.pixels_to_distance)
-
-        brain_regions = self.config.brain_region_point_ranges
-        marker_clusters = self.config.marker_clusters
+        idx = pd.IndexSlice
 
         all_mask_data = []
         mfg_mask_data = []
         hip_mask_data = []
         caud_mask_data = []
+        pixel_interval = round_to_nearest_half(abs(self.config.pixel_interval) * self.config.pixels_to_distance)
 
-        idx = pd.IndexSlice
-        expansion_features = self.all_samples_features.loc[idx[:, :, :n_expansions, :], :]
+        brain_regions = self.config.brain_region_point_ranges
+        marker_clusters = self.config.marker_clusters
 
         for i in sorted(expansion_features.index.unique("Expansion").tolist()):
+            try:
+                current_expansion_all = expansion_features.loc[idx[:, :,
+                                                               i,
+                                                               "Data"], self.markers_names].to_numpy()
+            except KeyError:
+                current_expansion_all = np.array([])
 
-            current_expansion_all = expansion_features.loc[idx[:, :,
-                                                           i,
-                                                           "Data"], self.markers_names].to_numpy()
-            current_expansion_mfg = expansion_features.loc[idx[brain_regions[0][0]:brain_regions[0][1],
-                                                           :,
-                                                           i,
-                                                           "Data"], self.markers_names].to_numpy()
-            current_expansion_hip = expansion_features.loc[idx[brain_regions[1][0]:brain_regions[1][1],
-                                                           :,
-                                                           i,
-                                                           "Data"], self.markers_names].to_numpy()
-            current_expansion_caud = expansion_features.loc[idx[brain_regions[2][0]:brain_regions[2][1],
-                                                            :,
-                                                            i,
-                                                            "Data"], self.markers_names].to_numpy()
+            try:
+                current_expansion_mfg = expansion_features.loc[idx[brain_regions[0][0]:brain_regions[0][1],
+                                                               :,
+                                                               i,
+                                                               "Data"], self.markers_names].to_numpy()
+            except KeyError:
+                current_expansion_mfg = np.array([])
+
+            try:
+                current_expansion_hip = expansion_features.loc[idx[brain_regions[1][0]:brain_regions[1][1],
+                                                               :,
+                                                               i,
+                                                               "Data"], self.markers_names].to_numpy()
+            except KeyError:
+                current_expansion_hip = np.array([])
+
+            try:
+                current_expansion_caud = expansion_features.loc[idx[brain_regions[2][0]:brain_regions[2][1],
+                                                                :,
+                                                                i,
+                                                                "Data"], self.markers_names].to_numpy()
+            except KeyError:
+                current_expansion_caud = np.array([])
 
             if current_expansion_all.size > 0:
                 all_mask_data.append(np.mean(np.array(current_expansion_all), axis=0))
@@ -1674,223 +2075,137 @@ class Visualizer:
 
         cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", colors)
 
-        heatmaps_dir = "%s/Expansion Heatmaps" % self.config.visualization_results_dir
-        clustermaps_dir = "%s/Expansion Clustermaps" % self.config.visualization_results_dir
-
-        mkdir_p(heatmaps_dir)
-        mkdir_p(clustermaps_dir)
-
         # Heatmaps Output
 
         output_dir = "%s/%s%s Expansion" % (heatmaps_dir,
-                                            str(round_to_nearest_half((n_expansions) *
+                                            str(round_to_nearest_half(n_expansions *
                                                                       self.config.pixel_interval *
                                                                       self.config.pixels_to_distance)),
                                             self.config.data_resolution_units)
         mkdir_p(output_dir)
 
-        plt.figure(figsize=(22, 10))
+        self._heatmap_clustermap_generator(data=all_mask_data,
+                                           x_tick_labels=x_tick_labels,
+                                           x_label="Distance Expanded (%s)" % self.config.data_resolution_units,
+                                           cmap=cmap,
+                                           marker_clusters=marker_clusters,
+                                           output_dir=output_dir,
+                                           map_name="All_Points",
+                                           cluster=False)
 
-        ax = sns.heatmap(all_mask_data,
-                         cmap=cmap,
-                         xticklabels=x_tick_labels,
-                         yticklabels=self.markers_names,
-                         linewidths=0,
-                         )
+        self._heatmap_clustermap_generator(data=mfg_mask_data,
+                                           x_tick_labels=x_tick_labels,
+                                           x_label="Distance Expanded (%s)" % self.config.data_resolution_units,
+                                           cmap=cmap,
+                                           marker_clusters=marker_clusters,
+                                           output_dir=output_dir,
+                                           map_name="MFG_Region",
+                                           cluster=False)
 
-        ax.set_xticklabels(ax.get_xticklabels(), rotation="horizontal")
+        self._heatmap_clustermap_generator(data=hip_mask_data,
+                                           x_tick_labels=x_tick_labels,
+                                           x_label="Distance Expanded (%s)" % self.config.data_resolution_units,
+                                           cmap=cmap,
+                                           marker_clusters=marker_clusters,
+                                           output_dir=output_dir,
+                                           map_name="HIP_Region",
+                                           cluster=False)
 
-        if axis_ticklabels_overlap(ax.get_xticklabels()):
-            ax.set_xticklabels(ax.get_xticklabels(), rotation=45, ha="right")
-
-        plt.xlabel("Distance Expanded (%s)" % self.config.data_resolution_units)
-
-        h_line_idx = 0
-
-        for key in marker_clusters.keys():
-            if h_line_idx != 0:
-                ax.axhline(h_line_idx, 0, len(self.markers_names), linewidth=3, c='w')
-
-            for _ in marker_clusters[key]:
-                h_line_idx += 1
-
-        plt.savefig(output_dir + '/All_Points.png', bbox_inches='tight')
-        plt.clf()
-
-        plt.figure(figsize=(22, 10))
-
-        ax = sns.heatmap(mfg_mask_data,
-                         cmap=cmap,
-                         xticklabels=x_tick_labels,
-                         yticklabels=self.markers_names,
-                         linewidths=0,
-                         )
-
-        ax.set_xticklabels(ax.get_xticklabels(), rotation="horizontal")
-
-        if axis_ticklabels_overlap(ax.get_xticklabels()):
-            ax.set_xticklabels(ax.get_xticklabels(), rotation=45, ha="right")
-
-        plt.xlabel("Distance Expanded (%s)" % self.config.data_resolution_units)
-
-        h_line_idx = 0
-
-        for key in marker_clusters.keys():
-            if h_line_idx != 0:
-                ax.axhline(h_line_idx, 0, len(self.markers_names), linewidth=3, c='w')
-
-            for _ in marker_clusters[key]:
-                h_line_idx += 1
-
-        plt.savefig(output_dir + '/MFG_Region.png', bbox_inches='tight')
-        plt.clf()
-
-        plt.figure(figsize=(22, 10))
-
-        ax = sns.heatmap(hip_mask_data,
-                         cmap=cmap,
-                         xticklabels=x_tick_labels,
-                         yticklabels=self.markers_names,
-                         linewidths=0,
-                         )
-
-        ax.set_xticklabels(ax.get_xticklabels(), rotation="horizontal")
-
-        if axis_ticklabels_overlap(ax.get_xticklabels()):
-            ax.set_xticklabels(ax.get_xticklabels(), rotation=45, ha="right")
-
-        plt.xlabel("Distance Expanded (%s)" % self.config.data_resolution_units)
-
-        h_line_idx = 0
-
-        for key in marker_clusters.keys():
-            if h_line_idx != 0:
-                ax.axhline(h_line_idx, 0, len(self.markers_names), linewidth=3, c='w')
-
-            for _ in marker_clusters[key]:
-                h_line_idx += 1
-
-        plt.savefig(output_dir + '/HIP_Region.png', bbox_inches='tight')
-        plt.clf()
-
-        plt.figure(figsize=(22, 10))
-
-        ax = sns.heatmap(caud_mask_data,
-                         cmap=cmap,
-                         xticklabels=x_tick_labels,
-                         yticklabels=self.markers_names,
-                         linewidths=0,
-                         )
-
-        ax.set_xticklabels(ax.get_xticklabels(), rotation="horizontal")
-
-        if axis_ticklabels_overlap(ax.get_xticklabels()):
-            ax.set_xticklabels(ax.get_xticklabels(), rotation=45, ha="right")
-
-        plt.xlabel("Distance Expanded (%s)" % self.config.data_resolution_units)
-
-        h_line_idx = 0
-
-        for key in marker_clusters.keys():
-            if h_line_idx != 0:
-                ax.axhline(h_line_idx, 0, len(self.markers_names), linewidth=3, c='w')
-
-            for _ in marker_clusters[key]:
-                h_line_idx += 1
-
-        plt.savefig(output_dir + '/CAUD_Region.png', bbox_inches='tight')
-        plt.clf()
+        self._heatmap_clustermap_generator(data=caud_mask_data,
+                                           x_tick_labels=x_tick_labels,
+                                           x_label="Distance Expanded (%s)" % self.config.data_resolution_units,
+                                           cmap=cmap,
+                                           marker_clusters=marker_clusters,
+                                           output_dir=output_dir,
+                                           map_name="CAUD_Region",
+                                           cluster=False)
 
         # Clustermaps Outputs
 
-        output_dir = "%s/%s%s Expansion" % (clustermaps_dir, str(round_to_nearest_half((n_expansions) *
+        output_dir = "%s/%s%s Expansion" % (clustermaps_dir, str(round_to_nearest_half(n_expansions *
                                                                                        self.config.pixel_interval *
                                                                                        self.config.pixels_to_distance)),
                                             self.config.data_resolution_units)
         mkdir_p(output_dir)
 
-        ax = sns.clustermap(all_mask_data,
-                            cmap=cmap,
-                            row_cluster=True,
-                            col_cluster=False,
-                            linewidths=0,
-                            xticklabels=x_tick_labels,
-                            yticklabels=self.markers_names,
-                            figsize=(20, 10)
-                            )
-        ax_ax = ax.ax_heatmap
-        ax_ax.set_xlabel("Distance Expanded (%s)" % self.config.data_resolution_units)
+        self._heatmap_clustermap_generator(data=all_mask_data,
+                                           x_tick_labels=x_tick_labels,
+                                           x_label="Distance Expanded (%s)" % self.config.data_resolution_units,
+                                           cmap=cmap,
+                                           marker_clusters=marker_clusters,
+                                           output_dir=output_dir,
+                                           map_name="All_Points",
+                                           cluster=True)
 
-        ax_ax.set_xticklabels(ax_ax.get_xticklabels(), rotation="horizontal")
+        self._heatmap_clustermap_generator(data=mfg_mask_data,
+                                           x_tick_labels=x_tick_labels,
+                                           x_label="Distance Expanded (%s)" % self.config.data_resolution_units,
+                                           cmap=cmap,
+                                           marker_clusters=marker_clusters,
+                                           output_dir=output_dir,
+                                           map_name="MFG_Region",
+                                           cluster=True)
 
-        if axis_ticklabels_overlap(ax_ax.get_xticklabels()):
-            ax_ax.set_xticklabels(ax_ax.get_xticklabels(), rotation=45, ha="right")
+        self._heatmap_clustermap_generator(data=hip_mask_data,
+                                           x_tick_labels=x_tick_labels,
+                                           x_label="Distance Expanded (%s)" % self.config.data_resolution_units,
+                                           cmap=cmap,
+                                           marker_clusters=marker_clusters,
+                                           output_dir=output_dir,
+                                           map_name="HIP_Region",
+                                           cluster=True)
 
-        ax.savefig(output_dir + '/All_Points.png')
-        plt.clf()
+        self._heatmap_clustermap_generator(data=caud_mask_data,
+                                           x_tick_labels=x_tick_labels,
+                                           x_label="Distance Expanded (%s)" % self.config.data_resolution_units,
+                                           cmap=cmap,
+                                           marker_clusters=marker_clusters,
+                                           output_dir=output_dir,
+                                           map_name="CAUD_Region",
+                                           cluster=True)
 
-        ax = sns.clustermap(mfg_mask_data,
-                            cmap=cmap,
-                            row_cluster=True,
-                            col_cluster=False,
-                            linewidths=0,
-                            xticklabels=x_tick_labels,
-                            yticklabels=self.markers_names,
-                            figsize=(20, 10)
-                            )
+    def brain_region_expansion_heatmap(self, n_expansions: int):
+        """
+        Brain Region Expansion Heatmap
 
-        ax_ax = ax.ax_heatmap
-        ax_ax.set_xlabel("Distance Expanded (%s)" % self.config.data_resolution_units)
+        :param n_expansions: int, Number of expansions
+        """
+        parent_dir = "%s/Expansion Heatmaps & Clustermaps" % self.config.visualization_results_dir
+        mkdir_p(parent_dir)
 
-        ax_ax.set_xticklabels(ax_ax.get_xticklabels(), rotation="horizontal")
+        for feed_idx in range(self.all_feeds_data.shape[0]):
+            idx = pd.IndexSlice
+            feed_name = self.all_feeds_metadata.loc[idx[feed_idx, 0], "Feed Name"]
 
-        if axis_ticklabels_overlap(ax_ax.get_xticklabels()):
-            ax_ax.set_xticklabels(ax_ax.get_xticklabels(), rotation=45, ha="right")
+            feed_dir = "%s/%s" % (parent_dir, feed_name)
+            mkdir_p(feed_dir)
 
-        ax.savefig(output_dir + '/MFG_Region.png')
-        plt.clf()
+            feed_features = self.all_samples_features.loc[self.all_samples_features["Data Type"] == feed_name]
 
-        ax = sns.clustermap(hip_mask_data,
-                            cmap=cmap,
-                            row_cluster=True,
-                            col_cluster=False,
-                            linewidths=0,
-                            xticklabels=x_tick_labels,
-                            yticklabels=self.markers_names,
-                            figsize=(20, 10)
-                            )
+            expansion_features = feed_features.loc[idx[:, :, :n_expansions, :], :]
 
-        ax_ax = ax.ax_heatmap
-        ax_ax.set_xlabel("Distance Expanded (%s)" % self.config.data_resolution_units)
+            if self.config.primary_categorical_splitter is None:
+                heatmaps_dir = "%s/Expansion Heatmaps" % feed_dir
+                clustermaps_dir = "%s/Expansion Clustermaps" % feed_dir
 
-        ax_ax.set_xticklabels(ax_ax.get_xticklabels(), rotation="horizontal")
+                mkdir_p(heatmaps_dir)
+                mkdir_p(clustermaps_dir)
 
-        if axis_ticklabels_overlap(ax_ax.get_xticklabels()):
-            ax_ax.set_xticklabels(ax_ax.get_xticklabels(), rotation=45, ha="right")
+                self._brain_region_expansion_heatmap(n_expansions, expansion_features, heatmaps_dir, clustermaps_dir)
+            else:
+                for i in feed_features[self.config.primary_categorical_splitter].unique():
+                    split_dir = "%s/%s: %s" % (feed_dir, self.config.primary_categorical_splitter, i)
+                    mkdir_p(split_dir)
 
-        ax.savefig(output_dir + '/HIP_Region.png')
-        plt.clf()
+                    heatmaps_dir = "%s/Expansion Heatmaps" % split_dir
+                    clustermaps_dir = "%s/Expansion Clustermaps" % split_dir
 
-        ax = sns.clustermap(caud_mask_data,
-                            cmap=cmap,
-                            row_cluster=True,
-                            col_cluster=False,
-                            linewidths=0,
-                            xticklabels=x_tick_labels,
-                            yticklabels=self.markers_names,
-                            figsize=(20, 10)
-                            )
+                    mkdir_p(heatmaps_dir)
+                    mkdir_p(clustermaps_dir)
 
-        ax_ax = ax.ax_heatmap
-        ax_ax.set_xlabel("Distance Expanded (%s)" % self.config.data_resolution_units)
+                    split_features = feed_features.loc[feed_features[self.config.primary_categorical_splitter] == i]
 
-        ax_ax.set_xticklabels(ax_ax.get_xticklabels(), rotation="horizontal")
-
-        if axis_ticklabels_overlap(ax_ax.get_xticklabels()):
-            ax_ax.set_xticklabels(ax_ax.get_xticklabels(), rotation=45, ha="right")
-
-        ax.savefig(output_dir + '/CAUD_Region.png')
-        plt.clf()
+                    self._brain_region_expansion_heatmap(n_expansions, split_features, heatmaps_dir, clustermaps_dir)
 
     def marker_expression_masks(self):
         """
@@ -2153,6 +2468,105 @@ class Visualizer:
             patch.set(facecolor=colors[w])
 
         plt.savefig(os.path.join(output_dir, "Vessel_Areas_Histogram.png"))
+        plt.clf()
+
+    def vessel_asymmetry_area_spread_plot(self):
+        """
+        Vessel Asymmetry Area Spread Plot
+        :return:
+        """
+
+        assert "Asymmetry" in self.all_samples_features, "Asymmetry analysis has not been performed, please run " \
+                                                         "vessel_contiguity_analysis() first!"
+
+        output_dir = "%s/Vessel Areas Spread Boxplot" % self.config.visualization_results_dir
+        mkdir_p(output_dir)
+        idx = pd.IndexSlice
+
+        plot_features = self.all_samples_features.loc[idx[:,
+                                                      :,
+                                                      0,
+                                                      "Data"], :]
+
+        asymmetry_features = plot_features.loc[self.all_samples_features["Asymmetry"] != "NA"]
+
+        plot_features['Size'] = pd.cut(plot_features['Contour Area'],
+                                       bins=[0,
+                                             self.config.small_vessel_threshold,
+                                             self.config.medium_vessel_threshold,
+                                             self.config.large_vessel_threshold,
+                                             float('Inf')],
+                                       labels=["Excluded",
+                                               "Small",
+                                               "Medium",
+                                               "Large"])
+
+        asymmetry_features['Size'] = pd.cut(asymmetry_features['Contour Area'],
+                                            bins=[self.config.small_vessel_threshold,
+                                                  self.config.medium_vessel_threshold,
+                                                  self.config.large_vessel_threshold,
+                                                  float('Inf')],
+                                            labels=["Small",
+                                                    "Medium",
+                                                    "Large"])
+
+        asymmetry_features = asymmetry_features.rename(columns={'Contour Area': 'Pixel Area'})
+        plot_features = plot_features.rename(columns={'Contour Area': 'Pixel Area'})
+
+        nobs_split = asymmetry_features.groupby(['Size', 'Asymmetry']).apply(lambda x: 'n: {}'.format(len(x)))
+        nobs = plot_features.groupby(['Size']).apply(lambda x: 'n: {}'.format(len(x)))
+
+        ax = sns.boxplot(x="Size",
+                         y="Pixel Area",
+                         hue="Asymmetry",
+                         data=asymmetry_features,
+                         showfliers=False)
+
+        for tick, label in enumerate(ax.get_xticklabels()):
+            ax_size = label.get_text()
+
+            for j, ax_asymmetry in enumerate(ax.get_legend_handles_labels()[1]):
+                x_offset = (j - 0.5) * 2 / 5
+                num = nobs_split[ax_size, ax_asymmetry]
+
+                point_data_transform = (tick + x_offset, 0)
+
+                axis_to_data = ax.transAxes + ax.transData.inverted()
+                data_to_axis = axis_to_data.inverted()
+
+                point_axis_transform = data_to_axis.transform(point_data_transform)
+
+                ax.text(point_axis_transform[0], 0.005, str(num),
+                        horizontalalignment='center', size='x-small', color='k', weight='semibold',
+                        transform=ax.transAxes)
+
+        plt.savefig(output_dir + '/vessel_area_spread_asymmetry_split.png',
+                    bbox_inches='tight')
+        plt.clf()
+
+        ax = sns.boxplot(x="Size",
+                         y="Pixel Area",
+                         data=plot_features,
+                         showfliers=False)
+
+        for tick, label in enumerate(ax.get_xticklabels()):
+            ax_size = label.get_text()
+
+            num = nobs[ax_size]
+
+            point_data_transform = (tick, 0)
+
+            axis_to_data = ax.transAxes + ax.transData.inverted()
+            data_to_axis = axis_to_data.inverted()
+
+            point_axis_transform = data_to_axis.transform(point_data_transform)
+
+            ax.text(point_axis_transform[0], 0.005, str(num),
+                    horizontalalignment='center', size='x-small', color='k', weight='semibold',
+                    transform=ax.transAxes)
+
+        plt.savefig(output_dir + '/vessel_area_spread.png',
+                    bbox_inches='tight')
         plt.clf()
 
     def plot_vessel_areas(self,

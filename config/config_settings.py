@@ -1,7 +1,10 @@
 import os
+from datetime import datetime
 
 import matplotlib
 import matplotlib.pylab as pl
+
+from src.utils.utils_functions import mkdir_p
 
 
 class Config:
@@ -58,7 +61,7 @@ class Config:
                         "Vessel Size",
                         "SMA Presence",
                         "Data Type",
-                        "Breakage"]
+                        "Asymmetry"]
 
     n_markers = 34
 
@@ -130,8 +133,9 @@ class Config:
     show_vessel_masks_when_generating_expression = False
 
     # Visualization settings for plotting data
-
-    visualization_results_dir = "test/"
+    now = datetime.now().strftime("%d_%m_%Y_%H:%M:%S")
+    visualization_results_dir = "results/experiment_%s/" % now
+    mkdir_p(visualization_results_dir)
 
     distance_interval = 0.5
 
@@ -140,8 +144,8 @@ class Config:
     else:
         pixel_interval = distance_interval / pixels_to_distance
 
-    expansion_to_run = [1]
-    perform_inward_expansions = False
+    expansion_to_run = [1, 2, 4, 10]
+    perform_inward_expansions = True
 
     if perform_inward_expansions:
         max_inward_expansion = 10
@@ -150,26 +154,29 @@ class Config:
 
     # Split settings
 
-    primary_categorical_splitter = "Breakage"
-    secondary_categorical_splitter = "SMA Presence"
+    primary_categorical_splitter = "Asymmetry"
+    secondary_categorical_splitter = "Vessel Size"
 
     SMA_positive_threshold = 0.1
     large_vessel_threshold = 500
+    medium_vessel_threshold = 300
+    small_vessel_threshold = 50
 
     if max_expansions is None:
         max_expansions = max(expansion_to_run)
 
     # Figures to generate
     create_vessel_id_plot = False
-    create_vessel_nonvessel_mask = True  #
+    create_vessel_nonvessel_mask = False  #
     create_marker_expression_overlay_masks = False
     create_vessel_areas_histograms_and_boxplots = False
-    create_brain_region_expansion_heatmaps = True  #
-    create_vessel_nonvessel_heatmaps = True  #
-    create_brain_region_expansion_line_plots = True  #
-    create_point_expansion_line_plots = True  #
+    create_brain_region_expansion_heatmaps = False  #
+    create_vessel_nonvessel_heatmaps = False  #
+    create_categorical_split_expansion_heatmaps = True  #
+    create_brain_region_expansion_line_plots = False  #
+    create_point_expansion_line_plots = False  #
     create_vessel_expansion_line_plots = False
-    create_allpoints_expansion_line_plots = True  #
+    create_allpoints_expansion_line_plots = False  #
     create_expansion_ring_plots = False
     create_embedded_vessel_id_masks = False
     create_removed_vessels_expression_boxplot = False
@@ -177,8 +184,10 @@ class Config:
     create_expanded_vessel_masks = False
     create_spatial_probability_maps = False  #
     create_expression_histogram = False
-    create_expansion_violin_plots = True  #
+    create_expansion_violin_plots = False  #
+    create_categorical_violin_plot = True  #
     create_expansion_box_plots = False  #
+    create_vessel_asymmetry_area_spread_plot = True  #
 
     if create_vessel_areas_histograms_and_boxplots:
         show_boxplot_outliers = False

@@ -337,12 +337,22 @@ class MIBIPipeline:
         if self.config.create_embedded_vessel_id_masks:
             self.visualizer.obtain_embedded_vessel_masks()
 
+        if self.config.create_vessel_asymmetry_area_spread_plot:
+            self.visualizer.vessel_asymmetry_area_spread_plot()
+
+        if self.config.create_categorical_violin_plot:
+            self.visualizer.categorical_violin_plot()
+
         # Iterate through selected expansions to create heatmaps and line plots
         for x in expansions:
 
             # Brain region expansion heatmaps
             if self.config.create_brain_region_expansion_heatmaps:
                 self.visualizer.brain_region_expansion_heatmap(x)
+
+            # Categorical split expansion heatmaps
+            if self.config.create_categorical_split_expansion_heatmaps:
+                self.visualizer.categorical_split_expansion_heatmap_clustermap(x)
 
             # Per brain region line plots
             if self.config.create_brain_region_expansion_line_plots:

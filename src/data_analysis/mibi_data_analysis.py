@@ -41,14 +41,16 @@ class MIBIAnalyzer:
         self.all_feeds_metadata = all_feeds_metadata
         self.all_feeds_data = all_points_marker_data
 
-    def vessel_contiguity_analysis(self, area_threshold=50, defect_distance_threshold=3, n_defect_points_threshold=3):
+    def vessel_contiguity_analysis(self,
+                                   defect_distance_threshold=3,
+                                   n_defect_points_threshold=1):
         """
         Vessel Contiguity Analysis
         :return:
         """
 
         img_shape = self.config.segmentation_mask_size
-        parent_dir = "%s/Vessel Breakage" % self.config.visualization_results_dir
+        parent_dir = "%s/Vessel Asymmetry" % self.config.visualization_results_dir
 
         for feed_idx in self.all_feeds_contour_data.index.get_level_values('Feed Index').unique():
             feed_data = self.all_feeds_contour_data.loc[feed_idx]
@@ -58,11 +60,14 @@ class MIBIAnalyzer:
             output_dir = "%s/%s" % (parent_dir, feed_name)
             mkdir_p(output_dir)
 
-            breakage_dir = "%s/%s" % (output_dir, "Breakage")
-            mkdir_p(breakage_dir)
+            asymmetry_dir = "%s/%s" % (output_dir, "Asymmetry")
+            mkdir_p(asymmetry_dir)
 
-            non_breakage_dir = "%s/%s" % (output_dir, "Non-Breakage")
-            mkdir_p(non_breakage_dir)
+            non_asymmetry_dir = "%s/%s" % (output_dir, "Non-Asymmetry")
+            mkdir_p(non_asymmetry_dir)
+
+            na_dir = "%s/%s" % (output_dir, "Excluded")
+            mkdir_p(na_dir)
 
             for point_idx in feed_data.index.get_level_values('Point Index').unique():
                 point_data = feed_data.loc[point_idx, "Contours"]
@@ -72,9 +77,14 @@ class MIBIAnalyzer:
                     self.all_samples_features.loc[idx[point_idx + 1,
                                                   cnt_idx,
                                                   :,
-                                                  :], "Breakage"] = False
+                                                  :], "Asymmetry"] = "NA"
+                    cnt_area = cv.contourArea(cnt)
 
-                    if cv.contourArea(cnt) > area_threshold:
+                    mask = np.zeros((img_shape[0], img_shape[1], 3), np.uint8)
+
+                    cv.drawContours(mask, [cnt], -1, (255, 255, 255), cv.FILLED)
+
+                    if cnt_area > self.config.small_vessel_threshold:
                         hull = cv.convexHull(cnt, returnPoints=False)
                         point_hull = cv.convexHull(cnt)
 
@@ -84,10 +94,8 @@ class MIBIAnalyzer:
                             defect_distances = [d[0][3] / 256.0 for d in defects]
                             furthest_points = [d[0][2] for d in defects]
                             furthest_points = [cnt[i] for i in furthest_points]
-                            mask = np.zeros((img_shape[0], img_shape[1], 3), np.uint8)
 
-                            cv.drawContours(mask, [cnt], -1, (255, 255, 255), cv.FILLED)
-                            cv.drawContours(mask, [point_hull], -1, (0, 255, 0), 3)
+                            cv.drawContours(mask, [point_hull], -1, (0, 255, 0), 2)
 
                             n_defective = 0
 
@@ -96,24 +104,47 @@ class MIBIAnalyzer:
                                     x = point[0][0]
                                     y = point[0][1]
 
-                                    cv.circle(mask, (x, y), radius=3, color=(0, 0, 255), thickness=-1)
+                                    cv.circle(mask, (x, y), radius=1, color=(0, 0, 255), thickness=-1)
 
                                     n_defective += 1
 
-                            breakage = n_defective > n_defect_points_threshold
+                            asymmetry = n_defective >= n_defect_points_threshold
 
+                            if cnt_area > self.config.large_vessel_threshold:
+                                size = "Large"
+                            elif cnt_area > self.config.medium_vessel_threshold:
+                                size = "Medium"
+                            elif cnt_area > self.config.small_vessel_threshold:
+                                size = "Small"
+
+                            if asymmetry:
+                                cv.imwrite(os.path.join(asymmetry_dir,
+                                                        "Point_Num_%s_Vessel_ID_%s_%s.png" % (str(point_idx + 1),
+                                                                                              str(cnt_idx), size)),
+                                           mask)
+
+                                self.all_samples_features.loc[idx[point_idx + 1,
+                                                              cnt_idx,
+                                                              :,
+                                                              :], "Asymmetry"] = "Yes"
+                            else:
+                                cv.imwrite(os.path.join(non_asymmetry_dir,
+                                                        "Point_Num_%s_Vessel_ID_%s_%s.png" % (str(point_idx + 1),
+                                                                                              str(cnt_idx),
+                                                                                              size)),
+                                           mask)
+
+                                self.all_samples_features.loc[idx[point_idx + 1,
+                                                              cnt_idx,
+                                                              :,
+                                                              :], "Asymmetry"] = "No"
+                        else:
                             self.all_samples_features.loc[idx[point_idx + 1,
                                                           cnt_idx,
                                                           :,
-                                                          :], "Breakage"] = breakage
-
-                            if breakage:
-                                cv.imwrite(os.path.join(breakage_dir,
-                                                        "Point_Num_%s_Vessel_ID_%s.png" % (str(point_idx + 1),
-                                                                                           str(cnt_idx))),
-                                           mask)
-                            else:
-                                cv.imwrite(os.path.join(non_breakage_dir,
-                                                        "Point_Num_%s_Vessel_ID_%s.png" % (str(point_idx + 1),
-                                                                                           str(cnt_idx))),
-                                           mask)
+                                                          :], "Asymmetry"] = "No"
+                    else:
+                        cv.imwrite(os.path.join(na_dir,
+                                                "Point_Num_%s_Vessel_ID_%s.png" % (str(point_idx + 1),
+                                                                                   str(cnt_idx))),
+                                   mask)
