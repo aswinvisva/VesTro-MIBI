@@ -4,6 +4,8 @@ import matplotlib
 import matplotlib.pylab as pl
 import seaborn as sns
 from matplotlib import patches
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+from numpy import median
 from scipy.ndimage import gaussian_filter
 from scipy.stats import gaussian_kde
 from seaborn.utils import axis_ticklabels_overlap
@@ -923,7 +925,8 @@ class Visualizer:
         plt.savefig(output_dir + '/%s_%s.png' % (x, y), bbox_inches='tight')
         plt.clf()
 
-    def categorical_violin_plot(self):
+    def categorical_violin_plot(self,
+                                inward_expansions_only: bool = True):
         """
         Categorical Violin Plot
         """
@@ -941,7 +944,10 @@ class Visualizer:
             mkdir_p(feed_dir)
             feed_features = self.all_samples_features.loc[self.all_samples_features["Data Type"] == feed_name]
 
-            feed_features = feed_features.loc[idx[:, :, :0, "Data"], :]
+            if inward_expansions_only:
+                feed_features = feed_features.loc[idx[:, :, :0, "Data"], :]
+            else:
+                feed_features = feed_features.loc[idx[:, :, 0:, "Data"], :]
 
             feed_features = pd.melt(feed_features,
                                     id_vars=self.config.categorical_vars,
@@ -971,7 +977,7 @@ class Visualizer:
                     ax = sns.violinplot(x="Size",
                                         y="Expression",
                                         hue=self.config.primary_categorical_splitter,
-                                        inner=None,
+                                        inner="box",
                                         data=marker_features,
                                         bw=0.2)
 
@@ -1007,7 +1013,7 @@ class Visualizer:
         mkdir_p(markers_dir)
 
         per_marker_expansions_dir = "%s/%s%s Expansion" % (markers_dir,
-                                                           str(round_to_nearest_half((n_expansions) *
+                                                           str(round_to_nearest_half(n_expansions *
                                                                                      self.config.pixel_interval *
                                                                                      self.config.pixels_to_distance)),
                                                            self.config.data_resolution_units)
@@ -1302,7 +1308,7 @@ class Visualizer:
                 marker_dict = dict(zip(self.markers_names, marker_data))
                 data = []
 
-                for marker in self.config.marker_clusters["Vessels"]:
+                for marker in self.config.mask_marker_clusters["Vessels"]:
                     data.append(marker_dict[marker])
 
                 data = np.nanmean(np.array(data), axis=0)
@@ -1327,9 +1333,19 @@ class Visualizer:
                     mapped_data = my_cm(normed_data)
 
                     result = (cv.bitwise_and(mapped_data, mapped_data, mask=mask) * 255).astype("uint8")
-                    result = cv.cvtColor(result, cv.COLOR_RGBA2BGR)
+                    result = cv.cvtColor(result, cv.COLOR_RGBA2RGB)
 
-                    cv.imwrite(os.path.join(point_dir, "Vessel_ID_%s.png" % str(contour_idx + 1)), result)
+                    x, y, w, h = cv.boundingRect(c)
+                    roi = result[y:y + h, x:x + w]
+
+                    color_map = plt.imshow(roi)
+                    divider = make_axes_locatable(plt.gca())
+                    ax_cb = divider.new_horizontal(size="5%", pad=0.05)
+                    cb1 = matplotlib.colorbar.ColorbarBase(ax_cb, cmap=matplotlib.cm.jet, orientation='vertical')
+                    plt.gcf().add_axes(ax_cb)
+                    plt.savefig(os.path.join(point_dir, "Vessel_ID_%s.png" % str(contour_idx + 1)))
+
+                    plt.clf()
 
             for point_idx in range(self.config.n_points):
 
@@ -1364,9 +1380,19 @@ class Visualizer:
                     mapped_data = my_cm(normed_data)
 
                     result = (cv.bitwise_and(mapped_data, mapped_data, mask=mask) * 255).astype("uint8")
-                    result = cv.cvtColor(result, cv.COLOR_RGBA2BGR)
+                    result = cv.cvtColor(result, cv.COLOR_RGBA2RGB)
 
-                    cv.imwrite(os.path.join(point_dir, "Vessel_ID_%s.png" % str(contour_idx + 1)), result)
+                    x, y, w, h = cv.boundingRect(c)
+                    roi = result[y:y + h, x:x + w]
+
+                    color_map = plt.imshow(roi)
+                    divider = make_axes_locatable(plt.gca())
+                    ax_cb = divider.new_horizontal(size="5%", pad=0.05)
+                    cb1 = matplotlib.colorbar.ColorbarBase(ax_cb, cmap=matplotlib.cm.jet, orientation='vertical')
+                    plt.gcf().add_axes(ax_cb)
+                    plt.savefig(os.path.join(point_dir, "Vessel_ID_%s.png" % str(contour_idx + 1)))
+
+                    plt.clf()
 
             for point_idx in range(self.config.n_points):
 
@@ -1701,7 +1727,8 @@ class Visualizer:
                                                     heatmaps_dir: str,
                                                     primary_splitter: str,
                                                     secondary_splitter: str = None,
-                                                    marker_cluster: str = "Astrocytes"
+                                                    marker: str = "Astrocytes",
+                                                    cluster=True
                                                     ):
         """
         Helper method to generate categorical split expansion heatmap
@@ -1711,6 +1738,10 @@ class Visualizer:
         :param heatmaps_dir: str, Directory of heatmaps
         :return:
         """
+        title = marker
+
+        if cluster:
+            marker = self.config.marker_clusters[marker]
 
         heatmap_data = []
         y_tick_labels = []
@@ -1739,7 +1770,7 @@ class Visualizer:
                                                         :,
                                                         i,
                                                         "Data"],
-                                                        self.config.marker_clusters[marker_cluster]].to_numpy()
+                                                        marker].to_numpy()
                 except KeyError:
                     curr_expansion = np.array([])
 
@@ -1752,23 +1783,22 @@ class Visualizer:
 
         if secondary_splitter is not None:
 
-            for split_val in expansion_features[self.config.primary_categorical_splitter].unique():
-
-                if split_val in classes_to_ignore:
-                    continue
-
-                y_lab_split_first_level = "%s : %s" % (primary_splitter, split_val)
-
-                split_features = expansion_features.loc[expansion_features[
-                                                            self.config.primary_categorical_splitter]
-                                                        == split_val]
-
-                for split_idx, secondary_split_val in \
-                        enumerate(expansion_features[self.config.secondary_categorical_splitter].unique()):
-
-                    secondary_split_features = split_features.loc[expansion_features[
+            for split_idx, secondary_split_val in \
+                    enumerate(expansion_features[self.config.secondary_categorical_splitter].unique()):
+                secondary_split_features = expansion_features.loc[expansion_features[
                                                                       self.config.secondary_categorical_splitter]
                                                                   == secondary_split_val]
+
+                for split_val in expansion_features[self.config.primary_categorical_splitter].unique():
+
+                    if split_val in classes_to_ignore:
+                        continue
+
+                    y_lab_split_first_level = "%s : %s" % (primary_splitter, split_val)
+
+                    split_features = secondary_split_features.loc[expansion_features[
+                                                                      self.config.primary_categorical_splitter]
+                                                                  == split_val]
 
                     curr_split_data = []
 
@@ -1776,12 +1806,11 @@ class Visualizer:
                         y_lab_split_second_level = "%s : %s" % (secondary_splitter, secondary_split_val)
 
                         try:
-                            curr_expansion = secondary_split_features.loc[pd.IndexSlice[:,
-                                                                          :,
-                                                                          i,
-                                                                          "Data"],
-                                                                          self.config.marker_clusters[
-                                                                              marker_cluster]].to_numpy()
+                            curr_expansion = split_features.loc[pd.IndexSlice[:,
+                                                                :,
+                                                                i,
+                                                                "Data"],
+                                                                marker].to_numpy()
                         except KeyError:
                             curr_expansion = np.array([])
 
@@ -1792,10 +1821,7 @@ class Visualizer:
 
                     heatmap_data.append(curr_split_data)
 
-                    if split_idx == 0:
-                        y_tick_labels.append("%s  %s" % (y_lab_split_first_level, y_lab_split_second_level))
-                    else:
-                        y_tick_labels.append("%s" % y_lab_split_second_level)
+                    y_tick_labels.append("%s  %s" % (y_lab_split_first_level, y_lab_split_second_level))
 
         norm = matplotlib.colors.Normalize(-1, 1)
         colors = [[norm(-1.0), "black"],
@@ -1825,7 +1851,7 @@ class Visualizer:
             ax.set_xticklabels(ax.get_xticklabels(), rotation=45, ha="right")
 
         plt.xlabel("Distance Expanded (%s)" % self.config.data_resolution_units)
-        plt.title("%s Markers" % marker_cluster)
+        plt.title("%s" % title)
 
         output_dir = "%s/%s%s Expansion" % (heatmaps_dir,
                                             str(round_to_nearest_half(n_expansions *
@@ -1834,7 +1860,7 @@ class Visualizer:
                                             self.config.data_resolution_units)
         mkdir_p(output_dir)
 
-        plt.savefig(output_dir + '/%s.png' % marker_cluster, bbox_inches='tight')
+        plt.savefig(output_dir + '/%s.png' % title, bbox_inches='tight')
         plt.clf()
 
     def categorical_split_expansion_heatmap_clustermap(self,
@@ -1865,11 +1891,29 @@ class Visualizer:
             heatmaps_dir = "%s/Categorical Split Expansion Heatmaps" % feed_dir
             mkdir_p(heatmaps_dir)
 
-            self._categorical_split_expansion_heatmap_helper(n_expansions,
-                                                             expansion_features,
-                                                             heatmaps_dir,
-                                                             self.config.primary_categorical_splitter,
-                                                             self.config.secondary_categorical_splitter)
+            cluster_dir = "%s/Marker Clusters" % heatmaps_dir
+            mkdir_p(cluster_dir)
+
+            markers_dir = "%s/Individual Markers" % heatmaps_dir
+            mkdir_p(markers_dir)
+
+            for cluster in self.config.marker_clusters.keys():
+                self._categorical_split_expansion_heatmap_helper(n_expansions,
+                                                                 expansion_features,
+                                                                 cluster_dir,
+                                                                 self.config.primary_categorical_splitter,
+                                                                 self.config.secondary_categorical_splitter,
+                                                                 marker=cluster,
+                                                                 cluster=True)
+
+                for marker in self.config.marker_clusters[cluster]:
+                    self._categorical_split_expansion_heatmap_helper(n_expansions,
+                                                                     expansion_features,
+                                                                     markers_dir,
+                                                                     self.config.primary_categorical_splitter,
+                                                                     self.config.secondary_categorical_splitter,
+                                                                     marker=marker,
+                                                                     cluster=False)
 
     def _heatmap_clustermap_generator(self,
                                       data,

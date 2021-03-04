@@ -46,6 +46,10 @@ class Config:
         "Neurons": ["Calretinin", "Parvalbumin", "MAP2", "Gephyrin"]
     }
 
+    mask_marker_clusters = {
+        "Vessels": ["GLUT1", "vWF", "CD31", "SMA"]
+    }
+
     all_masks = [
         'astrocytes',
         'BBB',
@@ -144,7 +148,7 @@ class Config:
     else:
         pixel_interval = distance_interval / pixels_to_distance
 
-    expansion_to_run = [1, 2, 4, 10]
+    expansion_to_run = [1, 2, 4, 10, 20]
     perform_inward_expansions = True
 
     if perform_inward_expansions:
@@ -171,7 +175,7 @@ class Config:
     create_marker_expression_overlay_masks = False
     create_vessel_areas_histograms_and_boxplots = False
     create_brain_region_expansion_heatmaps = False  #
-    create_vessel_nonvessel_heatmaps = False  #
+    create_vessel_nonvessel_heatmaps = True  #
     create_categorical_split_expansion_heatmaps = True  #
     create_brain_region_expansion_line_plots = False  #
     create_point_expansion_line_plots = False  #
