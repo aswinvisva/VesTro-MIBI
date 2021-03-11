@@ -1,23 +1,17 @@
-import datetime
-import math
 import os
-import random
-from collections import Counter
 import logging
 
 import numpy as np
 import cv2 as cv
-import sklearn
-from scipy.special import softmax
 from scipy.stats import boxcox
 from sklearn import preprocessing
-from sklearn.preprocessing import StandardScaler, Normalizer, normalize
+from sklearn.preprocessing import normalize
 import scipy.stats as stats
 import matplotlib.pyplot as plt
 from PIL import Image
 import pandas as pd
 
-from src.utils_functions import mkdir_p
+from src.utils.utils_functions import mkdir_p
 from config.config_settings import Config
 
 '''
@@ -402,8 +396,14 @@ def calculate_inward_microenvironment_marker_expression(config: Config,
                                                      inward_microenvironment_features.index)
 
         inward_microenvironment_features["Contour Area"] = per_point_vessel_areas[idx]
-        inward_microenvironment_features["Vessel Size"] = "Large" \
-            if per_point_vessel_areas[idx] > config.large_vessel_threshold else "Small"
+
+        if per_point_vessel_areas[idx] > config.large_vessel_threshold:
+            inward_microenvironment_features["Vessel Size"] = "Large"
+        elif per_point_vessel_areas[idx] > config.medium_vessel_threshold:
+            inward_microenvironment_features["Vessel Size"] = "Medium"
+        else:
+            inward_microenvironment_features["Vessel Size"] = "Small"
+
         inward_microenvironment_features["Data Type"] = data_name
 
         per_point_features.append(inward_microenvironment_features)
@@ -547,8 +547,14 @@ def calculate_microenvironment_marker_expression(config: Config,
 
         all_features = pd.concat(features).fillna(0)
         all_features["Contour Area"] = per_point_vessel_areas[idx]
-        all_features["Vessel Size"] = "Large" if per_point_vessel_areas[idx] > config.large_vessel_threshold \
-            else "Small"
+
+        if per_point_vessel_areas[idx] > config.large_vessel_threshold:
+            all_features["Vessel Size"] = "Large"
+        elif per_point_vessel_areas[idx] > config.medium_vessel_threshold:
+            all_features["Vessel Size"] = "Medium"
+        else:
+            all_features["Vessel Size"] = "Small"
+
         all_features["Data Type"] = data_name
 
         per_point_features.append(all_features)
@@ -641,8 +647,14 @@ def calculate_composition_marker_expression(config: Config,
                                     vessel_features.index)
 
         vessel_features["Contour Area"] = per_point_vessel_areas[idx]
-        vessel_features["Vessel Size"] = "Large" if per_point_vessel_areas[idx] > config.large_vessel_threshold \
-            else "Small"
+
+        if per_point_vessel_areas[idx] > config.large_vessel_threshold:
+            vessel_features["Vessel Size"] = "Large"
+        elif per_point_vessel_areas[idx] > config.medium_vessel_threshold:
+            vessel_features["Vessel Size"] = "Medium"
+        else:
+            vessel_features["Vessel Size"] = "Small"
+
         vessel_features["Data Type"] = data_name
 
         per_point_features.append(vessel_features)

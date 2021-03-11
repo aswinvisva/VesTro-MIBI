@@ -1,4 +1,5 @@
 from config.config_settings import Config
+from src.data_analysis.vessel_asymmetry_analyzer import VesselAsymmetryAnalyzer
 from src.data_loading.mibi_data_feed import MIBIDataFeed
 from src.data_loading.mibi_loader import MIBILoader
 from src.mibi_pipeline import MIBIPipeline
@@ -32,8 +33,11 @@ def hires_example():
 
     pipe = MIBIPipeline(conf)
     pipe.add_feed(hires_feed)
-
     pipe.load_preprocess_data()
+
+    pipe.add_analyzer(VesselAsymmetryAnalyzer)
+
+    pipe.analyze_data()
     pipe.generate_visualizations()
 
 

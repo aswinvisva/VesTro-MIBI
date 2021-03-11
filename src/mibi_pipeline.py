@@ -1,12 +1,16 @@
+import datetime
+from collections import Counter
 from multiprocessing import Pool
 
 from tqdm import tqdm
 
+from src.data_analysis.base_analyzer import BaseAnalyzer
+from src.data_analysis.vessel_asymmetry_analyzer import VesselAsymmetryAnalyzer
 from src.data_loading.mibi_data_feed import MIBIDataFeed
 from src.data_loading.mibi_loader import MIBILoader
 from src.data_loading.mibi_point_contours import MIBIPointContours
-from src.markers_feature_gen import *
-from src.visualizer import Visualizer
+from src.data_preprocessing.markers_feature_gen import *
+from src.data_visualization.visualizer import Visualizer
 from config.config_settings import Config
 
 logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
@@ -29,12 +33,15 @@ class MIBIPipeline:
         self.mibi_loader = MIBILoader(self.config)
 
         self.visualizer = None
+        self.analyzer = None
+        self.analyzers = []
 
         self.marker_names = None
         self.all_feeds_metadata = None
         self.all_feeds_data = None
         self.all_feeds_mask = None
         self.all_feeds_contour_data = None
+        self.all_expansions_features = None
 
     def add_feed(self, data_feed: MIBIDataFeed):
         """
@@ -48,6 +55,35 @@ class MIBIPipeline:
             self.mibi_loader.add_feed(data_feed)
         else:
             raise Exception("Duplicate feed trying to be processed, please rename feed!")
+
+    def add_analyzer(self, analyzer_type: BaseAnalyzer):
+        """
+        Add an analyzer to the pipeline
+
+        :param analyzer_type: BaseAnalyzer, analyzer to add
+        :return:
+        """
+
+        analyzer = analyzer_type(
+            self.config,
+            self.all_expansions_features,
+            self.marker_names,
+            self.all_feeds_contour_data,
+            self.all_feeds_metadata,
+            self.all_feeds_data
+        )
+
+        self.analyzers.append(analyzer)
+
+    def analyze_data(self):
+        """
+        Analyze MIBI data
+
+        :return:
+        """
+
+        for analyzer in self.analyzers:
+            analyzer.analyze()
 
     def normalize_data(self,
                        all_expansions_features: pd.DataFrame,
@@ -323,12 +359,25 @@ class MIBIPipeline:
         if self.config.create_embedded_vessel_id_masks:
             self.visualizer.obtain_embedded_vessel_masks()
 
+        if self.config.create_vessel_asymmetry_area_spread_plot:
+            self.visualizer.vessel_asymmetry_area_spread_plot()
+
+        if self.config.create_categorical_violin_plot:
+            self.visualizer.categorical_violin_plot()
+
+        if self.config.create_categorical_scatter_plots:
+            self.visualizer.continuous_scatter_plot()
+
         # Iterate through selected expansions to create heatmaps and line plots
         for x in expansions:
 
             # Brain region expansion heatmaps
             if self.config.create_brain_region_expansion_heatmaps:
                 self.visualizer.brain_region_expansion_heatmap(x)
+
+            # Categorical split expansion heatmaps
+            if self.config.create_categorical_split_expansion_heatmaps:
+                self.visualizer.categorical_split_expansion_heatmap_clustermap(x)
 
             # Per brain region line plots
             if self.config.create_brain_region_expansion_line_plots:
@@ -422,12 +471,12 @@ class MIBIPipeline:
             all_expansions_features = all_expansions_features.append(all_inward_expansions_features)
 
         # Normalize all features
-        all_expansions_features = self.normalize_data(all_expansions_features,
-                                                      self.marker_names)
+        self.all_expansions_features = self.normalize_data(all_expansions_features,
+                                                           self.marker_names)
 
         self.visualizer = Visualizer(
             self.config,
-            all_expansions_features,
+            self.all_expansions_features,
             self.marker_names,
             self.all_feeds_contour_data,
             self.all_feeds_metadata,
