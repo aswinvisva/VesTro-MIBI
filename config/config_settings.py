@@ -65,7 +65,8 @@ class Config:
                         "Vessel Size",
                         "SMA Presence",
                         "Data Type",
-                        "Asymmetry"]
+                        "Asymmetry",
+                        "Asymmetry Score"]
 
     n_markers = 34
 
@@ -148,7 +149,7 @@ class Config:
     else:
         pixel_interval = distance_interval / pixels_to_distance
 
-    expansion_to_run = [1, 2, 4, 10, 20]
+    expansion_to_run = [1]
     perform_inward_expansions = True
 
     if perform_inward_expansions:
@@ -192,6 +193,7 @@ class Config:
     create_categorical_violin_plot = True  #
     create_expansion_box_plots = False  #
     create_vessel_asymmetry_area_spread_plot = True  #
+    create_categorical_scatter_plots = True  #
 
     if create_vessel_areas_histograms_and_boxplots:
         show_boxplot_outliers = False

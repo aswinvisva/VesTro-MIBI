@@ -1,4 +1,6 @@
 import datetime
+import math
+import warnings
 
 import matplotlib
 import matplotlib.pylab as pl
@@ -14,6 +16,8 @@ from src.data_loading.mibi_reader import MIBIReader
 from src.data_preprocessing.object_extractor import ObjectExtractor
 from src.data_preprocessing.markers_feature_gen import *
 from src.utils.utils_functions import mkdir_p
+
+warnings.filterwarnings("ignore")
 
 '''
 Authors: Aswin Visva, John-Paul Oliveria, Ph.D
@@ -1686,6 +1690,122 @@ class Visualizer:
 
         ax.savefig(output_dir + '/Expansion_%s.png' % str(n_expansions))
         plt.clf()
+
+    def continuous_scatter_plot(self, analysis_variable="Asymmetry Score"):
+        """
+        Plot marker expressions as a function of some continuous variable
+
+        :return:
+        """
+
+        assert self.config.primary_categorical_splitter is not None, "Must have a primary categorical variable"
+        assert self.config.secondary_categorical_splitter is not None, "Must have a secondary categorical variable"
+
+        parent_dir = "%s/%s Scatter Plots" % (self.config.visualization_results_dir, analysis_variable)
+        mkdir_p(parent_dir)
+
+        for feed_idx in range(self.all_feeds_data.shape[0]):
+            idx = pd.IndexSlice
+            feed_name = self.all_feeds_metadata.loc[idx[feed_idx, 0], "Feed Name"]
+
+            feed_dir = "%s/%s" % (parent_dir, feed_name)
+            mkdir_p(feed_dir)
+
+            by_primary_analysis_variable_dir = "%s/By %s" % (feed_dir, self.config.primary_categorical_splitter)
+            mkdir_p(by_primary_analysis_variable_dir)
+
+            by_secondary_analysis_variable_dir = "%s/By %s" % (feed_dir, self.config.secondary_categorical_splitter)
+            mkdir_p(by_secondary_analysis_variable_dir)
+
+            with_vessel_id_dir = "%s/%s" % (feed_dir, "With Vessel ID")
+            mkdir_p(with_vessel_id_dir)
+
+            secondary_separate_dir = "%s/Separate By %s" % (feed_dir, self.config.secondary_categorical_splitter)
+            mkdir_p(secondary_separate_dir)
+
+            feed_features = self.all_samples_features.loc[self.all_samples_features["Data Type"] == feed_name]
+            feed_features = feed_features.loc[idx[:, :, :, "Data"], :]
+
+            feed_features = pd.melt(feed_features,
+                                    id_vars=self.config.categorical_vars,
+                                    ignore_index=False)
+
+            feed_features = feed_features.rename(columns={'variable': 'Marker',
+                                                          'value': 'Expression'})
+
+            feed_features['Mean Expression'] = \
+                feed_features.groupby(['Vessel', 'Point', 'Marker'])['Expression'].transform('mean')
+
+            feed_features.reset_index(level=['Vessel', 'Point', 'Expansion'], inplace=True)
+
+            feed_features = feed_features[feed_features["Expansion"] == 0]
+
+            for marker in feed_features["Marker"].unique():
+                marker_features = feed_features[feed_features["Marker"] == marker]
+
+                g = sns.scatterplot(data=marker_features,
+                                    x=analysis_variable,
+                                    y="Mean Expression",
+                                    hue=self.config.primary_categorical_splitter,
+                                    ci=None)
+
+                plt.savefig(by_primary_analysis_variable_dir + '/%s.png' % str(marker), bbox_inches='tight')
+                plt.clf()
+
+            for marker in feed_features["Marker"].unique():
+                marker_features = feed_features[feed_features["Marker"] == marker]
+
+                g = sns.scatterplot(data=marker_features,
+                                    x=analysis_variable,
+                                    y="Mean Expression",
+                                    hue=self.config.secondary_categorical_splitter,
+                                    ci=None)
+
+                plt.savefig(by_secondary_analysis_variable_dir + '/%s.png' % str(marker), bbox_inches='tight')
+                plt.clf()
+
+            for marker in feed_features["Marker"].unique():
+                marker_features = feed_features[feed_features["Marker"] == marker]
+
+                g = sns.scatterplot(data=marker_features,
+                                    x=analysis_variable,
+                                    y="Mean Expression",
+                                    ci=None)
+
+                for line in range(0, 50):
+                    point_label = str(marker_features["Point"].values[line]) + ":" \
+                                  + str(marker_features["Vessel"].values[line])
+
+                    if not math.isnan(marker_features[analysis_variable].values[line]) \
+                            and not math.isnan(marker_features["Mean Expression"].values[line]):
+
+                        g.text(marker_features[analysis_variable].values[line],
+                               marker_features["Mean Expression"].values[line],
+                               point_label, horizontalalignment='left',
+                               size='medium', color='black', weight='semibold')
+
+                plt.savefig(with_vessel_id_dir + '/%s.png' % str(marker), bbox_inches='tight')
+                plt.clf()
+
+            for split_val in feed_features[self.config.secondary_categorical_splitter].unique():
+                out_dir = "%s/%s" % (secondary_separate_dir, split_val)
+                mkdir_p(out_dir)
+
+                split_features = feed_features[feed_features[self.config.secondary_categorical_splitter] == split_val]
+
+                for marker in split_features["Marker"].unique():
+                    marker_features = split_features[split_features["Marker"] == marker]
+
+                    plt.xlim([-0.05, 1.05])
+
+                    g = sns.scatterplot(data=marker_features,
+                                        x=analysis_variable,
+                                        y="Mean Expression",
+                                        hue=self.config.primary_categorical_splitter,
+                                        ci=None)
+
+                    plt.savefig(out_dir + '/%s.png' % str(marker), bbox_inches='tight')
+                    plt.clf()
 
     def vessel_nonvessel_heatmap(self, n_expansions: int):
         """

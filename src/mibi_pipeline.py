@@ -4,7 +4,8 @@ from multiprocessing import Pool
 
 from tqdm import tqdm
 
-from src.data_analysis.mibi_data_analysis import MIBIAnalyzer
+from src.data_analysis.base_analyzer import BaseAnalyzer
+from src.data_analysis.vessel_asymmetry_analyzer import VesselAsymmetryAnalyzer
 from src.data_loading.mibi_data_feed import MIBIDataFeed
 from src.data_loading.mibi_loader import MIBILoader
 from src.data_loading.mibi_point_contours import MIBIPointContours
@@ -33,6 +34,7 @@ class MIBIPipeline:
 
         self.visualizer = None
         self.analyzer = None
+        self.analyzers = []
 
         self.marker_names = None
         self.all_feeds_metadata = None
@@ -54,6 +56,25 @@ class MIBIPipeline:
         else:
             raise Exception("Duplicate feed trying to be processed, please rename feed!")
 
+    def add_analyzer(self, analyzer_type: BaseAnalyzer):
+        """
+        Add an analyzer to the pipeline
+
+        :param analyzer_type: BaseAnalyzer, analyzer to add
+        :return:
+        """
+
+        analyzer = analyzer_type(
+            self.config,
+            self.all_expansions_features,
+            self.marker_names,
+            self.all_feeds_contour_data,
+            self.all_feeds_metadata,
+            self.all_feeds_data
+        )
+
+        self.analyzers.append(analyzer)
+
     def analyze_data(self):
         """
         Analyze MIBI data
@@ -61,7 +82,8 @@ class MIBIPipeline:
         :return:
         """
 
-        self.analyzer.vessel_contiguity_analysis()
+        for analyzer in self.analyzers:
+            analyzer.analyze()
 
     def normalize_data(self,
                        all_expansions_features: pd.DataFrame,
@@ -343,6 +365,9 @@ class MIBIPipeline:
         if self.config.create_categorical_violin_plot:
             self.visualizer.categorical_violin_plot()
 
+        if self.config.create_categorical_scatter_plots:
+            self.visualizer.continuous_scatter_plot()
+
         # Iterate through selected expansions to create heatmaps and line plots
         for x in expansions:
 
@@ -450,15 +475,6 @@ class MIBIPipeline:
                                                            self.marker_names)
 
         self.visualizer = Visualizer(
-            self.config,
-            self.all_expansions_features,
-            self.marker_names,
-            self.all_feeds_contour_data,
-            self.all_feeds_metadata,
-            self.all_feeds_data
-        )
-
-        self.analyzer = MIBIAnalyzer(
             self.config,
             self.all_expansions_features,
             self.marker_names,
