@@ -1,6 +1,5 @@
 import datetime
 import math
-import warnings
 
 import matplotlib
 import matplotlib.pylab as pl
@@ -16,8 +15,6 @@ from src.data_loading.mibi_reader import MIBIReader
 from src.data_preprocessing.object_extractor import ObjectExtractor
 from src.data_preprocessing.markers_feature_gen import *
 from src.utils.utils_functions import mkdir_p
-
-warnings.filterwarnings("ignore")
 
 '''
 Authors: Aswin Visva, John-Paul Oliveria, Ph.D
@@ -100,7 +97,7 @@ class Visualizer:
                                                       "Data"], :]
 
         plot_features = pd.melt(plot_features,
-                                id_vars=self.config.categorical_vars,
+                                id_vars=self.config.non_marker_vars,
                                 ignore_index=False)
 
         plot_features = plot_features.rename(columns={'variable': 'Marker',
@@ -242,7 +239,7 @@ class Visualizer:
                                                       "Data"], :]
 
         plot_features = pd.melt(plot_features,
-                                id_vars=self.config.categorical_vars,
+                                id_vars=self.config.non_marker_vars,
                                 ignore_index=False)
 
         plot_features = plot_features.rename(columns={'variable': 'Marker',
@@ -378,7 +375,7 @@ class Visualizer:
                                                       "Data"], :]
 
         plot_features = pd.melt(plot_features,
-                                id_vars=self.config.categorical_vars,
+                                id_vars=self.config.non_marker_vars,
                                 ignore_index=False)
 
         plot_features = plot_features.rename(columns={'variable': 'Marker',
@@ -518,7 +515,7 @@ class Visualizer:
                                                       "Data"], :]
 
         plot_features = pd.melt(plot_features,
-                                id_vars=self.config.categorical_vars,
+                                id_vars=self.config.non_marker_vars,
                                 ignore_index=False)
 
         plot_features = plot_features.rename(columns={'variable': 'Marker',
@@ -954,7 +951,7 @@ class Visualizer:
                 feed_features = feed_features.loc[idx[:, :, 0:, "Data"], :]
 
             feed_features = pd.melt(feed_features,
-                                    id_vars=self.config.categorical_vars,
+                                    id_vars=self.config.non_marker_vars,
                                     ignore_index=False)
 
             feed_features = feed_features.rename(columns={'variable': 'Marker',
@@ -1048,7 +1045,7 @@ class Visualizer:
                                                       "Data"], :]
 
         plot_features = pd.melt(plot_features,
-                                id_vars=self.config.categorical_vars,
+                                id_vars=self.config.non_marker_vars,
                                 ignore_index=False)
 
         plot_features = plot_features.rename(columns={'variable': 'Marker',
@@ -1202,7 +1199,7 @@ class Visualizer:
                                                       "Data"], :]
 
         plot_features = pd.melt(plot_features,
-                                id_vars=self.config.categorical_vars,
+                                id_vars=self.config.non_marker_vars,
                                 ignore_index=False)
 
         plot_features = plot_features.rename(columns={'variable': 'Marker',
@@ -1727,7 +1724,7 @@ class Visualizer:
             feed_features = feed_features.loc[idx[:, :, :, "Data"], :]
 
             feed_features = pd.melt(feed_features,
-                                    id_vars=self.config.categorical_vars,
+                                    id_vars=self.config.non_marker_vars,
                                     ignore_index=False)
 
             feed_features = feed_features.rename(columns={'variable': 'Marker',

@@ -61,12 +61,15 @@ class Config:
         'allvessels'
     ]
 
-    categorical_vars = ["Contour Area",
-                        "Vessel Size",
-                        "SMA Presence",
-                        "Data Type",
-                        "Asymmetry",
-                        "Asymmetry Score"]
+    non_marker_vars = ["Contour Area",
+                       "Vessel Size",
+                       "SMA Presence",
+                       "Data Type",
+                       "Asymmetry",
+                       "Asymmetry Score",
+                       "UMAP0",
+                       "UMAP1",
+                       "DBSCAN Cluster"]
 
     n_markers = 34
 
@@ -150,7 +153,7 @@ class Config:
         pixel_interval = distance_interval / pixels_to_distance
 
     expansion_to_run = [1]
-    perform_inward_expansions = True
+    perform_inward_expansions = False
 
     if perform_inward_expansions:
         max_inward_expansion = 10
@@ -159,7 +162,7 @@ class Config:
 
     # Split settings
 
-    primary_categorical_splitter = "Asymmetry"
+    primary_categorical_splitter = "DBSCAN Cluster"
     secondary_categorical_splitter = "Vessel Size"
 
     SMA_positive_threshold = 0.1

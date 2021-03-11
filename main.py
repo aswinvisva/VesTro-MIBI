@@ -1,4 +1,5 @@
 from config.config_settings import Config
+from src.data_analysis.umap_analyzer import UMAPAnalyzer
 from src.data_analysis.vessel_asymmetry_analyzer import VesselAsymmetryAnalyzer
 from src.data_loading.mibi_data_feed import MIBIDataFeed
 from src.data_loading.mibi_loader import MIBILoader
@@ -25,8 +26,8 @@ def hires_example():
     conf = Config()
 
     hires_feed = MIBIDataFeed(
-        feed_data_loc="/media/large_storage/oliveria_data/data/hires",
-        feed_mask_loc="/media/large_storage/oliveria_data/masks/hires",
+        feed_data_loc="/media/aswin/large_storage/oliveria_data/data/hires",
+        feed_mask_loc="/media/aswin/large_storage/oliveria_data/masks/hires",
         feed_name="Hires",
         n_points=48
     )
@@ -36,6 +37,7 @@ def hires_example():
     pipe.load_preprocess_data()
 
     pipe.add_analyzer(VesselAsymmetryAnalyzer)
+    pipe.add_analyzer(UMAPAnalyzer)
 
     pipe.analyze_data()
     pipe.generate_visualizations()
