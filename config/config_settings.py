@@ -14,7 +14,7 @@ class Config:
     save_to_csv = True
 
     if save_to_csv:
-        csv_loc = "results/hires_data.csv"
+        csv_name = "data.csv"
 
     # Marker settings for reading data
 
@@ -61,12 +61,15 @@ class Config:
         'allvessels'
     ]
 
-    categorical_vars = ["Contour Area",
-                        "Vessel Size",
-                        "SMA Presence",
-                        "Data Type",
-                        "Asymmetry",
-                        "Asymmetry Score"]
+    non_marker_vars = ["Contour Area",
+                       "Vessel Size",
+                       "SMA Presence",
+                       "Data Type",
+                       "Asymmetry",
+                       "Asymmetry Score",
+                       "UMAP0",
+                       "UMAP1",
+                       "HDBSCAN Cluster"]
 
     n_markers = 34
 
@@ -149,7 +152,7 @@ class Config:
     else:
         pixel_interval = distance_interval / pixels_to_distance
 
-    expansion_to_run = [1]
+    expansion_to_run = [10]
     perform_inward_expansions = True
 
     if perform_inward_expansions:
@@ -159,13 +162,13 @@ class Config:
 
     # Split settings
 
-    primary_categorical_splitter = "Asymmetry"
+    primary_categorical_splitter = "HDBSCAN Cluster"
     secondary_categorical_splitter = "Vessel Size"
 
     SMA_positive_threshold = 0.1
     large_vessel_threshold = 500
-    medium_vessel_threshold = 300
-    small_vessel_threshold = 50
+    medium_vessel_threshold = 200  # 300
+    small_vessel_threshold = 0  # 50
 
     if max_expansions is None:
         max_expansions = max(expansion_to_run)
@@ -176,8 +179,8 @@ class Config:
     create_marker_expression_overlay_masks = False
     create_vessel_areas_histograms_and_boxplots = False
     create_brain_region_expansion_heatmaps = False  #
-    create_vessel_nonvessel_heatmaps = True  #
-    create_categorical_split_expansion_heatmaps = True  #
+    create_vessel_nonvessel_heatmaps = False  #
+    create_categorical_split_expansion_heatmaps = False  #
     create_brain_region_expansion_line_plots = False  #
     create_point_expansion_line_plots = False  #
     create_vessel_expansion_line_plots = False
@@ -189,11 +192,14 @@ class Config:
     create_expanded_vessel_masks = False
     create_spatial_probability_maps = False  #
     create_expression_histogram = False
-    create_expansion_violin_plots = False  #
+    create_expansion_violin_plots = True  #
     create_categorical_violin_plot = True  #
     create_expansion_box_plots = False  #
     create_vessel_asymmetry_area_spread_plot = True  #
     create_categorical_scatter_plots = True  #
+    create_umap_projection_scatter_plots = True  #
+    create_vessel_images_by_categorical_variable = True  #
+    create_pseudo_time_heatmap = True  #
 
     if create_vessel_areas_histograms_and_boxplots:
         show_boxplot_outliers = False

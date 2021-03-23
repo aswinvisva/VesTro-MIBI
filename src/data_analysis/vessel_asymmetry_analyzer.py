@@ -14,6 +14,7 @@ from src.data_loading.mibi_point_contours import MIBIPointContours
 from src.data_preprocessing.markers_feature_gen import *
 from src.data_visualization.visualizer import Visualizer
 from config.config_settings import Config
+from src.data_preprocessing.markers_feature_gen import arcsinh
 
 
 class VesselAsymmetryAnalyzer(BaseAnalyzer, ABC):
@@ -58,6 +59,7 @@ class VesselAsymmetryAnalyzer(BaseAnalyzer, ABC):
         """
 
         asymmetry_threshold = kwargs.get("asymmetry_threshold", 0.15)
+        apply_arcsinh_transform = kwargs.get("apply_arcsinh_transform", False)
 
         img_shape = self.config.segmentation_mask_size
         parent_dir = "%s/Vessel Asymmetry" % self.config.visualization_results_dir
@@ -183,6 +185,10 @@ class VesselAsymmetryAnalyzer(BaseAnalyzer, ABC):
                 = self.all_samples_features["Asymmetry Score"].max()
             min_value \
                 = self.all_samples_features["Asymmetry Score"].min()
+
+            if apply_arcsinh_transform:
+                self.all_samples_features["Asymmetry Score"] = \
+                    arcsinh(self.all_samples_features["Asymmetry Score"].values)
 
             self.all_samples_features["Asymmetry Score"] = (self.all_samples_features["Asymmetry Score"]
                                                             - min_value) / (max_value - min_value)
