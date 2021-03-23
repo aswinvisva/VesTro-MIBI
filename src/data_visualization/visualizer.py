@@ -1,5 +1,6 @@
 import datetime
 import math
+from collections import Collection
 
 import matplotlib
 import matplotlib.pylab as pl
@@ -56,7 +57,7 @@ class Visualizer:
         self.all_feeds_metadata = all_feeds_metadata
         self.all_feeds_data = all_points_marker_data
 
-    def vessel_region_plots(self, n_expansions: int):
+    def vessel_region_plots(self, n_expansions: int, **kwargs):
         """
         Create vessel region line plots for all marker bins, average marker bins and per marker bins
 
@@ -196,7 +197,7 @@ class Visualizer:
                     plt.savefig(bin_dir + '/Vessel_ID_%s.png' % str(vessel), bbox_inches='tight')
                     plt.clf()
 
-    def point_region_plots(self, n_expansions: int):
+    def point_region_plots(self, n_expansions: int, **kwargs):
         """
         Create point region line plots for all marker bins, average marker bins and per marker bins
 
@@ -342,7 +343,7 @@ class Visualizer:
                     plt.savefig(per_marker_dir + '/%s.png' % str(marker), bbox_inches='tight')
                     plt.clf()
 
-    def all_points_plots(self, n_expansions: int):
+    def all_points_plots(self, n_expansions: int, **kwargs):
         """
         Create all points average region line plots for all marker bins, average marker bins and per marker bins
 
@@ -482,7 +483,8 @@ class Visualizer:
                 plt.savefig(per_marker_dir + '/%s.png' % str(marker), bbox_inches='tight')
                 plt.clf()
 
-    def brain_region_plots(self, n_expansions: int):
+    def brain_region_plots(self, n_expansions: int,
+                           **kwargs):
         """
         Create brain region average region line plots for all marker bins, average marker bins and per marker bins
 
@@ -637,13 +639,14 @@ class Visualizer:
                     plt.savefig(per_marker_dir + '/%s.png' % str(marker), bbox_inches='tight')
                     plt.clf()
 
-    def obtain_expanded_vessel_masks(self, expansion_upper_bound: int = 60):
+    def obtain_expanded_vessel_masks(self, **kwargs):
         """
         Create expanded region vessel masks
 
-        :param expansion_upper_bound: int, Expansion upper bound
         :return:
         """
+
+        expansion_upper_bound = kwargs.get('expansion_upper_bound', 60)
 
         parent_dir = "%s/Expanded Vessel Masks" % self.config.visualization_results_dir
         mkdir_p(parent_dir)
@@ -705,13 +708,15 @@ class Visualizer:
                 im = Image.fromarray(original_included_point_mask * 255)
                 im.save(os.path.join(nondistinct_dir, "Point%s.tif" % str(idx + 1)))
 
-    def obtain_embedded_vessel_masks(self, expansion_upper_bound: int = 60):
+    def obtain_embedded_vessel_masks(self, **kwargs):
         """
         Create expanded region vessel masks
 
-        :param expansion_upper_bound: int, Expansion upper bound
         :return:
         """
+
+        expansion_upper_bound = kwargs.get('expansion_upper_bound', 60)
+
         parent_dir = "%s/Embedded Vessel Masks" % self.config.visualization_results_dir
         mkdir_p(parent_dir)
 
@@ -769,7 +774,7 @@ class Visualizer:
                 im = Image.fromarray(original_included_point_mask)
                 im.save(os.path.join(nondistinct_dir, "Point%s.tif" % str(idx + 1)))
 
-    def pixel_expansion_ring_plots(self):
+    def pixel_expansion_ring_plots(self, **kwargs):
         """
         Pixel Expansion Ring Plots
 
@@ -819,7 +824,7 @@ class Visualizer:
 
                     current_interval += interval
 
-    def expression_histogram(self):
+    def expression_histogram(self, **kwargs):
         """
         Histogram for visualizing Marker Expressions
 
@@ -846,7 +851,7 @@ class Visualizer:
         plt.title("Histogram")
         plt.savefig(output_dir + "/%s" % x)
 
-    def biaxial_scatter_plot(self):
+    def biaxial_scatter_plot(self, **kwargs):
         """
         Biaxial Scatter Plot for visualizing Marker Expressions
 
@@ -926,11 +931,12 @@ class Visualizer:
         plt.savefig(output_dir + '/%s_%s.png' % (x, y), bbox_inches='tight')
         plt.clf()
 
-    def categorical_violin_plot(self,
-                                inward_expansions_only: bool = True):
+    def categorical_violin_plot(self, **kwargs):
         """
         Categorical Violin Plot
         """
+
+        inward_expansions_only = kwargs.get('inward_expansions_only', True)
 
         parent_dir = "%s/Categorical Violin Plots" % self.config.visualization_results_dir
         mkdir_p(parent_dir)
@@ -946,7 +952,7 @@ class Visualizer:
             feed_features = self.all_samples_features.loc[self.all_samples_features["Data Type"] == feed_name]
 
             if inward_expansions_only:
-                feed_features = feed_features.loc[idx[:, :, :0, "Data"], :]
+                feed_features = feed_features.loc[idx[:, :, :-1, "Data"], :]
             else:
                 feed_features = feed_features.loc[idx[:, :, 0:, "Data"], :]
 
@@ -958,13 +964,11 @@ class Visualizer:
                                                           'value': 'Expression'})
 
             feed_features['Size'] = pd.cut(feed_features['Contour Area'],
-                                           bins=[0,
-                                                 self.config.small_vessel_threshold,
+                                           bins=[self.config.small_vessel_threshold,
                                                  self.config.medium_vessel_threshold,
                                                  self.config.large_vessel_threshold,
                                                  float('Inf')],
-                                           labels=["Excluded",
-                                                   "Small",
+                                           labels=["Small",
                                                    "Medium",
                                                    "Large"])
 
@@ -975,6 +979,8 @@ class Visualizer:
                 for marker, marker_name in enumerate(marker_clusters[key]):
                     marker_features = feed_features[(feed_features["Marker"] == marker_name)]
 
+                    plt.figure(figsize=(22, 10))
+
                     ax = sns.violinplot(x="Size",
                                         y="Expression",
                                         hue=self.config.primary_categorical_splitter,
@@ -982,11 +988,14 @@ class Visualizer:
                                         data=marker_features,
                                         bw=0.2)
 
+                    plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.,
+                               title=self.config.primary_categorical_splitter)
+
                     plt.savefig(marker_cluster_dir + '/%s.png' % str(marker_name),
                                 bbox_inches='tight')
                     plt.clf()
 
-    def violin_plot_brain_expansion(self, n_expansions: int):
+    def violin_plot_brain_expansion(self, n_expansions: int, **kwargs):
         """
         Violin Plots for Expansion Data
 
@@ -1140,7 +1149,7 @@ class Visualizer:
                         bbox_inches='tight')
             plt.clf()
 
-    def box_plot_brain_expansions(self, n_expansions: int):
+    def box_plot_brain_expansions(self, n_expansions: int, **kwargs):
         """
         Box Plots for Expansion Data
 
@@ -1274,7 +1283,7 @@ class Visualizer:
                         bbox_inches='tight')
             plt.clf()
 
-    def spatial_probability_maps(self):
+    def spatial_probability_maps(self, **kwargs):
         """
         Spatial Probability Maps
 
@@ -1425,6 +1434,139 @@ class Visualizer:
                     plt.savefig("%s/%s" % (point_dir, marker_name))
                     plt.clf()
 
+    def vessel_images_by_categorical_variable(self, **kwargs):
+        """
+        Vessel Images by Categorical Variable
+        :return:
+        """
+
+        assert self.config.primary_categorical_splitter is not None, "There must be a primary categorical splitter"
+
+        parent_dir = "%s/%s Vessel Images" % (self.config.visualization_results_dir,
+                                              self.config.primary_categorical_splitter)
+
+        img_shape = self.config.segmentation_mask_size
+
+        for feed_idx in self.all_feeds_contour_data.index.get_level_values('Feed Index').unique():
+            feed_data = self.all_feeds_contour_data.loc[feed_idx]
+            idx = pd.IndexSlice
+            feed_name = self.all_feeds_metadata.loc[idx[feed_idx, 0], "Feed Name"]
+
+            feed_dir = "%s/%s" % (parent_dir, feed_name)
+            mkdir_p(feed_dir)
+
+            feed_features = self.all_samples_features.loc[self.all_samples_features["Data Type"] == feed_name]
+
+            for val in feed_features[self.config.primary_categorical_splitter].unique():
+
+                output_dir = "%s/%s" % (feed_dir, val)
+                mkdir_p(output_dir)
+
+                split_features = feed_features[feed_features[self.config.primary_categorical_splitter] == val]
+
+                print(split_features[self.config.primary_categorical_splitter].unique())
+
+                for i in split_features.index:
+                    point_idx = i[0]
+                    cnt_idx = i[1]
+
+                    cnt = feed_data.loc[point_idx - 1, "Contours"].contours[cnt_idx]
+
+                    example_mask = np.zeros((img_shape[0], img_shape[1], 3), np.uint8)
+                    cv.drawContours(example_mask, [cnt], -1, (255, 255, 255), cv.FILLED)
+
+                    cv.imwrite(os.path.join(output_dir,
+                                            "Point_Num_%s_Vessel_ID_%s.png" % (str(point_idx),
+                                                                               str(cnt_idx + 1))),
+                               example_mask)
+
+    def _scatter_plot_color_bar(self,
+                                figure_name,
+                                output_dir,
+                                data,
+                                x="UMAP0",
+                                y="UMAP1",
+                                hue="SMA",
+                                cmap="coolwarm",
+                                min_val=None,
+                                max_val=None):
+        """
+        Scatter Plot with Colorbar Mapped to Continuous Third Variable
+
+        :param figure_name: str, Figure name for plot
+        :param output_dir: str, Output directory for plot
+        :param x: str, X axis column name in dataframe
+        :param y: str, Y axis column name in dataframe
+        :param hue: str, Third variable column name in dataframe
+        :param cmap: Union[str, Matplotlib.Colormap], Color map for Scatter Plot
+        :return:
+        """
+
+        if min_val is None:
+            min_val = data[hue].min()
+
+        if max_val is None:
+            max_val = data[hue].max()
+
+        mkdir_p(output_dir)
+
+        plt.figure(figsize=(15, 10))
+
+        ax = data.plot.scatter(x=x,
+                               y=y,
+                               c=hue,
+                               colormap=cmap,
+                               vmin=min_val,
+                               vmax=max_val)
+
+        plt.savefig(output_dir + '/%s.png' % figure_name)
+        plt.clf()
+
+    def scatter_plot_umap_marker_projection(self, **kwargs):
+        """
+        UMAP projection with marker channel colorbar
+
+        :return:
+        """
+
+        inward_expansions_only = kwargs.get('inward_expansions_only', True)
+
+        if inward_expansions_only:
+            plot_features = self.all_samples_features.loc[pd.IndexSlice[:, :, :-1, "Data"], :]
+        else:
+            plot_features = self.all_samples_features.loc[pd.IndexSlice[:, :, :, "Data"], :]
+
+        output_dir = self.config.visualization_results_dir + "/UMAP Scatter Plot Projection"
+
+        for marker_cluster in self.config.marker_clusters.keys():
+            plot_features[marker_cluster] = \
+                plot_features.loc[pd.IndexSlice[:,
+                                  :,
+                                  :,
+                                  :], self.config.marker_clusters[marker_cluster]].mean(axis=1)
+
+        for marker_cluster in self.config.marker_clusters.keys():
+
+            self._scatter_plot_color_bar(marker_cluster,
+                                         output_dir + "/Marker Clusters",
+                                         plot_features,
+                                         hue=marker_cluster,
+                                         min_val=0,
+                                         max_val=1)
+
+            for marker in self.config.marker_clusters[marker_cluster]:
+                self._scatter_plot_color_bar(marker,
+                                             output_dir + "/Individual Markers",
+                                             plot_features,
+                                             hue=marker)
+
+        self._scatter_plot_color_bar("umap_projection_by_size",
+                                     output_dir + "/Size",
+                                     plot_features,
+                                     hue="Contour Area",
+                                     min_val=self.config.small_vessel_threshold,
+                                     max_val=1000)
+
     def _vessel_nonvessel_heatmap(self,
                                   n_expansions: int,
                                   feed_features: pd.DataFrame,
@@ -1444,138 +1586,246 @@ class Visualizer:
             feed_features["SMA"] >= self.config.SMA_positive_threshold]
 
         idx = pd.IndexSlice
-        all_vessels_sma_data = positve_sma.loc[idx[:, :,
-                                               :n_expansions,
-                                               "Data"], self.markers_names].to_numpy()
-        mfg_vessels_sma_data = positve_sma.loc[idx[brain_regions[0][0]:brain_regions[0][1],
-                                               :,
-                                               :n_expansions,
-                                               "Data"], self.markers_names].to_numpy()
-        hip_vessels_sma_data = positve_sma.loc[idx[brain_regions[1][0]:brain_regions[1][1],
-                                               :,
-                                               :n_expansions,
-                                               "Data"], self.markers_names].to_numpy()
-        caud_vessels_sma_data = positve_sma.loc[idx[brain_regions[2][0]:brain_regions[2][1],
-                                                :,
-                                                :n_expansions,
-                                                "Data"], self.markers_names].to_numpy()
 
-        all_vessels_sma_data = np.mean(all_vessels_sma_data, axis=0)
-        mfg_vessels_sma_data = np.mean(mfg_vessels_sma_data, axis=0)
-        hip_vessels_sma_data = np.mean(hip_vessels_sma_data, axis=0)
-        caud_vessels_sma_data = np.mean(caud_vessels_sma_data, axis=0)
+        try:
+            all_vessels_sma_data = positve_sma.loc[idx[:, :,
+                                                   :n_expansions,
+                                                   "Data"], self.markers_names].to_numpy()
+            all_vessels_sma_data = np.mean(all_vessels_sma_data, axis=0)
+        except KeyError:
+            all_vessels_sma_data = np.zeros((self.config.n_markers,), np.uint8)
+
+        try:
+            mfg_vessels_sma_data = positve_sma.loc[idx[brain_regions[0][0]:brain_regions[0][1],
+                                                   :,
+                                                   :n_expansions,
+                                                   "Data"], self.markers_names].to_numpy()
+            mfg_vessels_sma_data = np.mean(mfg_vessels_sma_data, axis=0)
+
+        except KeyError:
+            mfg_vessels_sma_data = np.zeros((self.config.n_markers,), np.uint8)
+
+        try:
+            hip_vessels_sma_data = positve_sma.loc[idx[brain_regions[1][0]:brain_regions[1][1],
+                                                   :,
+                                                   :n_expansions,
+                                                   "Data"], self.markers_names].to_numpy()
+            hip_vessels_sma_data = np.mean(hip_vessels_sma_data, axis=0)
+        except KeyError:
+            hip_vessels_sma_data = np.zeros((self.config.n_markers,), np.uint8)
+
+        try:
+            caud_vessels_sma_data = positve_sma.loc[idx[brain_regions[2][0]:brain_regions[2][1],
+                                                    :,
+                                                    :n_expansions,
+                                                    "Data"], self.markers_names].to_numpy()
+            caud_vessels_sma_data = np.mean(caud_vessels_sma_data, axis=0)
+
+        except KeyError:
+            caud_vessels_sma_data = np.zeros((self.config.n_markers,), np.uint8)
 
         # Vessel Space (SMA Negative)
         negative_sma = feed_features.loc[
             feed_features["SMA"] < self.config.SMA_positive_threshold]
 
         idx = pd.IndexSlice
-        all_vessels_non_sma_data = negative_sma.loc[idx[:, :,
-                                                    :n_expansions,
-                                                    "Data"], self.markers_names].to_numpy()
-        mfg_vessels_non_sma_data = negative_sma.loc[idx[brain_regions[0][0]:brain_regions[0][1],
-                                                    :,
-                                                    :n_expansions,
-                                                    "Data"], self.markers_names].to_numpy()
-        hip_vessels_non_sma_data = negative_sma.loc[idx[brain_regions[1][0]:brain_regions[1][1],
-                                                    :,
-                                                    :n_expansions,
-                                                    "Data"], self.markers_names].to_numpy()
-        caud_vessels_non_sma_data = negative_sma.loc[idx[brain_regions[2][0]:brain_regions[2][1],
-                                                     :,
-                                                     :n_expansions,
-                                                     "Data"], self.markers_names].to_numpy()
 
-        all_vessels_non_sma_data = np.mean(all_vessels_non_sma_data, axis=0)
-        mfg_vessels_non_sma_data = np.mean(mfg_vessels_non_sma_data, axis=0)
-        hip_vessels_non_sma_data = np.mean(hip_vessels_non_sma_data, axis=0)
-        caud_vessels_non_sma_data = np.mean(caud_vessels_non_sma_data, axis=0)
+        try:
+            all_vessels_non_sma_data = negative_sma.loc[idx[:, :,
+                                                        :n_expansions,
+                                                        "Data"], self.markers_names].to_numpy()
+            all_vessels_non_sma_data = np.mean(all_vessels_non_sma_data, axis=0)
+
+        except KeyError:
+            all_vessels_non_sma_data = np.zeros((self.config.n_markers,), np.uint8)
+
+        try:
+            mfg_vessels_non_sma_data = negative_sma.loc[idx[brain_regions[0][0]:brain_regions[0][1],
+                                                        :,
+                                                        :n_expansions,
+                                                        "Data"], self.markers_names].to_numpy()
+            mfg_vessels_non_sma_data = np.mean(mfg_vessels_non_sma_data, axis=0)
+
+        except KeyError:
+            mfg_vessels_non_sma_data = np.zeros((self.config.n_markers,), np.uint8)
+
+        try:
+            hip_vessels_non_sma_data = negative_sma.loc[idx[brain_regions[1][0]:brain_regions[1][1],
+                                                        :,
+                                                        :n_expansions,
+                                                        "Data"], self.markers_names].to_numpy()
+            hip_vessels_non_sma_data = np.mean(hip_vessels_non_sma_data, axis=0)
+
+        except KeyError:
+            hip_vessels_non_sma_data = np.zeros((self.config.n_markers,), np.uint8)
+
+        try:
+            caud_vessels_non_sma_data = negative_sma.loc[idx[brain_regions[2][0]:brain_regions[2][1],
+                                                         :,
+                                                         :n_expansions,
+                                                         "Data"], self.markers_names].to_numpy()
+            caud_vessels_non_sma_data = np.mean(caud_vessels_non_sma_data, axis=0)
+
+        except KeyError:
+            caud_vessels_non_sma_data = np.zeros((self.config.n_markers,), np.uint8)
 
         # Non-vessel Space
 
-        all_nonmask_sma_data = positve_sma.loc[idx[:, :, :,
-                                               "Non-Vascular Space"], self.markers_names].to_numpy()
-        mfg_nonmask_sma_data = positve_sma.loc[idx[brain_regions[0][0]:brain_regions[0][1],
-                                               :,
-                                               :n_expansions,
-                                               "Non-Vascular Space"], self.markers_names].to_numpy()
-        hip_nonmask_sma_data = positve_sma.loc[idx[brain_regions[1][0]:brain_regions[1][1],
-                                               :,
-                                               :n_expansions,
-                                               "Non-Vascular Space"], self.markers_names].to_numpy()
-        caud_nonmask_sma_data = positve_sma.loc[idx[brain_regions[2][0]:brain_regions[2][1],
-                                                :,
-                                                :n_expansions,
-                                                "Non-Vascular Space"], self.markers_names].to_numpy()
+        try:
+            all_nonmask_sma_data = positve_sma.loc[idx[:, :, :,
+                                                   "Non-Vascular Space"], self.markers_names].to_numpy()
+            all_nonmask_sma_data = np.mean(all_nonmask_sma_data, axis=0)
 
-        all_nonmask_sma_data = np.mean(all_nonmask_sma_data, axis=0)
-        mfg_nonmask_sma_data = np.mean(mfg_nonmask_sma_data, axis=0)
-        hip_nonmask_sma_data = np.mean(hip_nonmask_sma_data, axis=0)
-        caud_nonmask_sma_data = np.mean(caud_nonmask_sma_data, axis=0)
+        except KeyError:
+            all_nonmask_sma_data = np.zeros((self.config.n_markers,), np.uint8)
 
-        all_nonmask_non_sma_data = negative_sma.loc[idx[:, :, :,
-                                                    "Non-Vascular Space"], self.markers_names].to_numpy()
-        mfg_nonmask_non_sma_data = negative_sma.loc[idx[brain_regions[0][0]:brain_regions[0][1],
+        try:
+            mfg_nonmask_sma_data = positve_sma.loc[idx[brain_regions[0][0]:brain_regions[0][1],
+                                                   :,
+                                                   :n_expansions,
+                                                   "Non-Vascular Space"], self.markers_names].to_numpy()
+            mfg_nonmask_sma_data = np.mean(mfg_nonmask_sma_data, axis=0)
+
+        except KeyError:
+            mfg_nonmask_sma_data = np.zeros((self.config.n_markers,), np.uint8)
+
+        try:
+            hip_nonmask_sma_data = positve_sma.loc[idx[brain_regions[1][0]:brain_regions[1][1],
+                                                   :,
+                                                   :n_expansions,
+                                                   "Non-Vascular Space"], self.markers_names].to_numpy()
+            hip_nonmask_sma_data = np.mean(hip_nonmask_sma_data, axis=0)
+
+        except KeyError:
+            hip_nonmask_sma_data = np.zeros((self.config.n_markers,), np.uint8)
+
+        try:
+            caud_nonmask_sma_data = positve_sma.loc[idx[brain_regions[2][0]:brain_regions[2][1],
                                                     :,
                                                     :n_expansions,
                                                     "Non-Vascular Space"], self.markers_names].to_numpy()
-        hip_nonmask_non_sma_data = negative_sma.loc[idx[brain_regions[1][0]:brain_regions[1][1],
-                                                    :,
-                                                    :n_expansions,
-                                                    "Non-Vascular Space"], self.markers_names].to_numpy()
-        caud_nonmask_non_sma_data = negative_sma.loc[idx[brain_regions[2][0]:brain_regions[2][1],
-                                                     :,
-                                                     :n_expansions,
-                                                     "Non-Vascular Space"], self.markers_names].to_numpy()
+            caud_nonmask_sma_data = np.mean(caud_nonmask_sma_data, axis=0)
 
-        all_nonmask_non_sma_data = np.mean(all_nonmask_non_sma_data, axis=0)
-        mfg_nonmask_non_sma_data = np.mean(mfg_nonmask_non_sma_data, axis=0)
-        hip_nonmask_non_sma_data = np.mean(hip_nonmask_non_sma_data, axis=0)
-        caud_nonmask_non_sma_data = np.mean(caud_nonmask_non_sma_data, axis=0)
+        except KeyError:
+            caud_nonmask_sma_data = np.zeros((self.config.n_markers,), np.uint8)
+
+        try:
+            all_nonmask_non_sma_data = negative_sma.loc[idx[:, :, :,
+                                                        "Non-Vascular Space"], self.markers_names].to_numpy()
+            all_nonmask_non_sma_data = np.mean(all_nonmask_non_sma_data, axis=0)
+
+        except KeyError:
+            all_nonmask_non_sma_data = np.zeros((self.config.n_markers,), np.uint8)
+
+        try:
+            mfg_nonmask_non_sma_data = negative_sma.loc[idx[brain_regions[0][0]:brain_regions[0][1],
+                                                        :,
+                                                        :n_expansions,
+                                                        "Non-Vascular Space"], self.markers_names].to_numpy()
+            mfg_nonmask_non_sma_data = np.mean(mfg_nonmask_non_sma_data, axis=0)
+
+        except KeyError:
+            mfg_nonmask_non_sma_data = np.zeros((self.config.n_markers,), np.uint8)
+
+        try:
+            hip_nonmask_non_sma_data = negative_sma.loc[idx[brain_regions[1][0]:brain_regions[1][1],
+                                                        :,
+                                                        :n_expansions,
+                                                        "Non-Vascular Space"], self.markers_names].to_numpy()
+            hip_nonmask_non_sma_data = np.mean(hip_nonmask_non_sma_data, axis=0)
+
+        except KeyError:
+            hip_nonmask_non_sma_data = np.zeros((self.config.n_markers,), np.uint8)
+
+        try:
+            caud_nonmask_non_sma_data = negative_sma.loc[idx[brain_regions[2][0]:brain_regions[2][1],
+                                                         :,
+                                                         :n_expansions,
+                                                         "Non-Vascular Space"], self.markers_names].to_numpy()
+            caud_nonmask_non_sma_data = np.mean(caud_nonmask_non_sma_data, axis=0)
+
+        except KeyError:
+            caud_nonmask_non_sma_data = np.zeros((self.config.n_markers,), np.uint8)
 
         # Vessel environment space
 
-        all_vessels_environment_sma_data = positve_sma.loc[idx[:, :,
-                                                           :n_expansions,
-                                                           "Vascular Space"], self.markers_names].to_numpy()
-        mfg_vessels_environment_sma_data = positve_sma.loc[idx[brain_regions[0][0]:brain_regions[0][1],
-                                                           :,
-                                                           :n_expansions,
-                                                           "Vascular Space"], self.markers_names].to_numpy()
-        hip_vessels_environment_sma_data = positve_sma.loc[idx[brain_regions[1][0]:brain_regions[1][1],
-                                                           :,
-                                                           :n_expansions,
-                                                           "Vascular Space"], self.markers_names].to_numpy()
-        caud_vessels_environment_sma_data = positve_sma.loc[idx[brain_regions[2][0]:brain_regions[2][1],
-                                                            :,
-                                                            :n_expansions,
-                                                            "Vascular Space"], self.markers_names].to_numpy()
+        try:
+            all_vessels_environment_sma_data = positve_sma.loc[idx[:, :,
+                                                               :n_expansions,
+                                                               "Vascular Space"], self.markers_names].to_numpy()
+            all_vessels_environment_sma_data = np.mean(all_vessels_environment_sma_data, axis=0)
 
-        all_vessels_environment_sma_data = np.mean(all_vessels_environment_sma_data, axis=0)
-        mfg_vessels_environment_sma_data = np.mean(mfg_vessels_environment_sma_data, axis=0)
-        hip_vessels_environment_sma_data = np.mean(hip_vessels_environment_sma_data, axis=0)
-        caud_vessels_environment_sma_data = np.mean(caud_vessels_environment_sma_data, axis=0)
+        except KeyError:
+            all_vessels_environment_sma_data = np.zeros((self.config.n_markers,), np.uint8)
 
-        all_vessels_environment_non_sma_data = negative_sma.loc[idx[:, :,
-                                                                :n_expansions,
-                                                                "Vascular Space"], self.markers_names].to_numpy()
-        mfg_vessels_environment_non_sma_data = negative_sma.loc[idx[brain_regions[0][0]:brain_regions[0][1],
+        try:
+            mfg_vessels_environment_sma_data = positve_sma.loc[idx[brain_regions[0][0]:brain_regions[0][1],
+                                                               :,
+                                                               :n_expansions,
+                                                               "Vascular Space"], self.markers_names].to_numpy()
+            mfg_vessels_environment_sma_data = np.mean(mfg_vessels_environment_sma_data, axis=0)
+
+        except KeyError:
+            mfg_vessels_environment_sma_data = np.zeros((self.config.n_markers,), np.uint8)
+
+        try:
+            hip_vessels_environment_sma_data = positve_sma.loc[idx[brain_regions[1][0]:brain_regions[1][1],
+                                                               :,
+                                                               :n_expansions,
+                                                               "Vascular Space"], self.markers_names].to_numpy()
+            hip_vessels_environment_sma_data = np.mean(hip_vessels_environment_sma_data, axis=0)
+
+        except KeyError:
+            hip_vessels_environment_sma_data = np.zeros((self.config.n_markers,), np.uint8)
+
+        try:
+            caud_vessels_environment_sma_data = positve_sma.loc[idx[brain_regions[2][0]:brain_regions[2][1],
                                                                 :,
                                                                 :n_expansions,
                                                                 "Vascular Space"], self.markers_names].to_numpy()
-        hip_vessels_environment_non_sma_data = negative_sma.loc[idx[brain_regions[1][0]:brain_regions[1][1],
-                                                                :,
-                                                                :n_expansions,
-                                                                "Vascular Space"], self.markers_names].to_numpy()
-        caud_vessels_environment_non_sma_data = negative_sma.loc[idx[brain_regions[2][0]:brain_regions[2][1],
-                                                                 :,
-                                                                 :n_expansions,
-                                                                 "Vascular Space"], self.markers_names].to_numpy()
+            caud_vessels_environment_sma_data = np.mean(caud_vessels_environment_sma_data, axis=0)
 
-        all_vessels_environment_non_sma_data = np.mean(all_vessels_environment_non_sma_data, axis=0)
-        mfg_vessels_environment_non_sma_data = np.mean(mfg_vessels_environment_non_sma_data, axis=0)
-        hip_vessels_environment_non_sma_data = np.mean(hip_vessels_environment_non_sma_data, axis=0)
-        caud_vessels_environment_non_sma_data = np.mean(caud_vessels_environment_non_sma_data, axis=0)
+        except KeyError:
+            caud_vessels_environment_sma_data = np.zeros((self.config.n_markers,), np.uint8)
+
+        try:
+            all_vessels_environment_non_sma_data = negative_sma.loc[idx[:, :,
+                                                                    :n_expansions,
+                                                                    "Vascular Space"], self.markers_names].to_numpy()
+            all_vessels_environment_non_sma_data = np.mean(all_vessels_environment_non_sma_data, axis=0)
+
+        except KeyError:
+            all_vessels_environment_non_sma_data = np.zeros((self.config.n_markers,), np.uint8)
+
+        try:
+            mfg_vessels_environment_non_sma_data = negative_sma.loc[idx[brain_regions[0][0]:brain_regions[0][1],
+                                                                    :,
+                                                                    :n_expansions,
+                                                                    "Vascular Space"], self.markers_names].to_numpy()
+            mfg_vessels_environment_non_sma_data = np.mean(mfg_vessels_environment_non_sma_data, axis=0)
+
+        except KeyError:
+            mfg_vessels_environment_non_sma_data = np.zeros((self.config.n_markers,), np.uint8)
+
+        try:
+            hip_vessels_environment_non_sma_data = negative_sma.loc[idx[brain_regions[1][0]:brain_regions[1][1],
+                                                                    :,
+                                                                    :n_expansions,
+                                                                    "Vascular Space"], self.markers_names].to_numpy()
+            hip_vessels_environment_non_sma_data = np.mean(hip_vessels_environment_non_sma_data, axis=0)
+
+        except KeyError:
+            hip_vessels_environment_non_sma_data = np.zeros((self.config.n_markers,), np.uint8)
+
+        try:
+            caud_vessels_environment_non_sma_data = negative_sma.loc[idx[brain_regions[2][0]:brain_regions[2][1],
+                                                                     :,
+                                                                     :n_expansions,
+                                                                     "Vascular Space"], self.markers_names].to_numpy()
+            caud_vessels_environment_non_sma_data = np.mean(caud_vessels_environment_non_sma_data, axis=0)
+
+        except KeyError:
+            caud_vessels_environment_non_sma_data = np.zeros((self.config.n_markers,), np.uint8)
 
         all_data = [all_vessels_sma_data,
                     all_vessels_non_sma_data,
@@ -1688,12 +1938,14 @@ class Visualizer:
         ax.savefig(output_dir + '/Expansion_%s.png' % str(n_expansions))
         plt.clf()
 
-    def continuous_scatter_plot(self, analysis_variable="Asymmetry Score"):
+    def continuous_scatter_plot(self, **kwargs):
         """
         Plot marker expressions as a function of some continuous variable
 
         :return:
         """
+
+        analysis_variable = kwargs.get('analysis_variable', "Asymmetry Score")
 
         assert self.config.primary_categorical_splitter is not None, "Must have a primary categorical variable"
         assert self.config.secondary_categorical_splitter is not None, "Must have a secondary categorical variable"
@@ -1744,7 +1996,12 @@ class Visualizer:
                                     x=analysis_variable,
                                     y="Mean Expression",
                                     hue=self.config.primary_categorical_splitter,
-                                    ci=None)
+                                    ci=None,
+                                    palette="tab20")
+
+                plt.legend(bbox_to_anchor=(1.05, 1), loc=2,
+                           borderaxespad=0.,
+                           title=self.config.primary_categorical_splitter)
 
                 plt.savefig(by_primary_analysis_variable_dir + '/%s.png' % str(marker), bbox_inches='tight')
                 plt.clf()
@@ -1756,7 +2013,11 @@ class Visualizer:
                                     x=analysis_variable,
                                     y="Mean Expression",
                                     hue=self.config.secondary_categorical_splitter,
-                                    ci=None)
+                                    ci=None,
+                                    palette="tab20")
+
+                plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.,
+                           title=self.config.secondary_categorical_splitter)
 
                 plt.savefig(by_secondary_analysis_variable_dir + '/%s.png' % str(marker), bbox_inches='tight')
                 plt.clf()
@@ -1767,7 +2028,8 @@ class Visualizer:
                 g = sns.scatterplot(data=marker_features,
                                     x=analysis_variable,
                                     y="Mean Expression",
-                                    ci=None)
+                                    ci=None,
+                                    palette="tab20")
 
                 for line in range(0, 50):
                     point_label = str(marker_features["Point"].values[line]) + ":" \
@@ -1775,7 +2037,6 @@ class Visualizer:
 
                     if not math.isnan(marker_features[analysis_variable].values[line]) \
                             and not math.isnan(marker_features["Mean Expression"].values[line]):
-
                         g.text(marker_features[analysis_variable].values[line],
                                marker_features["Mean Expression"].values[line],
                                point_label, horizontalalignment='left',
@@ -1799,12 +2060,16 @@ class Visualizer:
                                         x=analysis_variable,
                                         y="Mean Expression",
                                         hue=self.config.primary_categorical_splitter,
-                                        ci=None)
+                                        ci=None,
+                                        palette="tab20")
+
+                    plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.,
+                               title=self.config.primary_categorical_splitter)
 
                     plt.savefig(out_dir + '/%s.png' % str(marker), bbox_inches='tight')
                     plt.clf()
 
-    def vessel_nonvessel_heatmap(self, n_expansions: int):
+    def vessel_nonvessel_heatmap(self, n_expansions: int, **kwargs):
         """
         Vessel/Non-vessel heatmaps for marker expression
 
@@ -1981,7 +2246,8 @@ class Visualizer:
         plt.clf()
 
     def categorical_split_expansion_heatmap_clustermap(self,
-                                                       n_expansions: int):
+                                                       n_expansions: int,
+                                                       **kwargs):
         """
         Categorically split expansion heatmap
 
@@ -2325,7 +2591,7 @@ class Visualizer:
                                            map_name="CAUD_Region",
                                            cluster=True)
 
-    def brain_region_expansion_heatmap(self, n_expansions: int):
+    def brain_region_expansion_heatmap(self, n_expansions: int, **kwargs):
         """
         Brain Region Expansion Heatmap
 
@@ -2368,7 +2634,7 @@ class Visualizer:
 
                     self._brain_region_expansion_heatmap(n_expansions, split_features, heatmaps_dir, clustermaps_dir)
 
-    def marker_expression_masks(self):
+    def marker_expression_masks(self, **kwargs):
         """
         Marker Expression Overlay Masks
 
@@ -2419,7 +2685,7 @@ class Visualizer:
                     plt.savefig(os.path.join(point_dir, "%s.png" % marker_name))
                     plt.clf()
 
-    def removed_vessel_expression_boxplot(self):
+    def removed_vessel_expression_boxplot(self, **kwargs):
         """
         Create kept vs. removed vessel expression comparison using Box Plots
         """
@@ -2567,7 +2833,7 @@ class Visualizer:
             plt.savefig(os.path.join(all_points, "All_Points.png"))
             plt.clf()
 
-    def vessel_areas_histogram(self):
+    def vessel_areas_histogram(self, **kwargs):
         """
         Create visualizations of vessel areas
         """
@@ -2631,7 +2897,98 @@ class Visualizer:
         plt.savefig(os.path.join(output_dir, "Vessel_Areas_Histogram.png"))
         plt.clf()
 
-    def vessel_asymmetry_area_spread_plot(self):
+    def pseudo_time_heatmap(self,
+                            cmap=None,
+                            **kwargs):
+        """
+        Pseudo-Time Heatmap
+
+        :param cmap: Matplotlib.Colormap, Colormap to be used for plot
+        :param kwargs: Keyword arguments
+        :return:
+        """
+
+        output_dir = "%s/Pseudo-Time Heatmaps" % self.config.visualization_results_dir
+        mkdir_p(output_dir)
+
+        if cmap is None:
+            norm = matplotlib.colors.Normalize(-1, 1)
+            colors = [[norm(-1.0), "black"],
+                      [norm(-0.5), "indigo"],
+                      [norm(0), "firebrick"],
+                      [norm(0.5), "orange"],
+                      [norm(1.0), "khaki"]]
+
+            cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", colors)
+
+        analysis_variable = kwargs.get('analysis_variable', "Asymmetry Score")
+        n_x_ticks = kwargs.get('n_x_ticks', 9)
+
+        allowance = float(1.0 / n_x_ticks)
+
+        assert self.config.primary_categorical_splitter is not None, "Must have a primary categorical variable"
+        assert self.config.secondary_categorical_splitter is not None, "Must have a secondary categorical variable"
+
+        parent_dir = "%s/%s Scatter Plots" % (self.config.visualization_results_dir, analysis_variable)
+        mkdir_p(parent_dir)
+
+        for feed_idx in range(self.all_feeds_data.shape[0]):
+            idx = pd.IndexSlice
+            feed_name = self.all_feeds_metadata.loc[idx[feed_idx, 0], "Feed Name"]
+
+            feed_dir = "%s/%s" % (parent_dir, feed_name)
+            mkdir_p(feed_dir)
+
+            by_primary_analysis_variable_dir = "%s/By %s" % (feed_dir, self.config.primary_categorical_splitter)
+            mkdir_p(by_primary_analysis_variable_dir)
+
+            by_secondary_analysis_variable_dir = "%s/By %s" % (feed_dir, self.config.secondary_categorical_splitter)
+            mkdir_p(by_secondary_analysis_variable_dir)
+
+            with_vessel_id_dir = "%s/%s" % (feed_dir, "With Vessel ID")
+            mkdir_p(with_vessel_id_dir)
+
+            secondary_separate_dir = "%s/Separate By %s" % (feed_dir, self.config.secondary_categorical_splitter)
+            mkdir_p(secondary_separate_dir)
+
+            feed_features = self.all_samples_features.loc[self.all_samples_features["Data Type"] == feed_name]
+
+            feed_features = feed_features.loc[pd.IndexSlice[:,
+                                              :,
+                                              :-1,
+                                              "Data"], :]
+
+            all_mask_data = []
+
+            for i in np.linspace(0, 1, n_x_ticks):
+                try:
+                    current_expansion_all \
+                        = feed_features.loc[(feed_features[analysis_variable] >= i) &
+                                            (feed_features[analysis_variable] <= i + allowance)][
+                        self.markers_names].to_numpy()
+                except KeyError:
+                    current_expansion_all = np.array([])
+
+                if current_expansion_all.size > 0:
+                    all_mask_data.append(np.mean(np.array(current_expansion_all), axis=0))
+                else:
+                    all_mask_data.append(np.zeros((self.config.n_markers,), np.uint8))
+
+            all_mask_data = np.array(all_mask_data)
+            all_mask_data = all_mask_data.T
+
+            x_tick_labels = [str(round(i, 2)) for i in np.linspace(0, 1, n_x_ticks)]
+
+            self._heatmap_clustermap_generator(data=all_mask_data,
+                                               x_tick_labels=x_tick_labels,
+                                               x_label="Asymmetry Score",
+                                               cmap=cmap,
+                                               marker_clusters=self.config.marker_clusters,
+                                               output_dir=output_dir,
+                                               map_name="Pseudo_Time_Analysis",
+                                               cluster=False)
+
+    def vessel_asymmetry_area_spread_plot(self, **kwargs):
         """
         Vessel Asymmetry Area Spread Plot
         :return:
@@ -2652,13 +3009,11 @@ class Visualizer:
         asymmetry_features = plot_features.loc[self.all_samples_features["Asymmetry"] != "NA"]
 
         plot_features['Size'] = pd.cut(plot_features['Contour Area'],
-                                       bins=[0,
-                                             self.config.small_vessel_threshold,
+                                       bins=[self.config.small_vessel_threshold,
                                              self.config.medium_vessel_threshold,
                                              self.config.large_vessel_threshold,
                                              float('Inf')],
-                                       labels=["Excluded",
-                                               "Small",
+                                       labels=["Small",
                                                "Medium",
                                                "Large"])
 
@@ -2804,6 +3159,7 @@ class Visualizer:
 
     def vessel_nonvessel_masks(self,
                                n_expansions: int = 5,
+                               **kwargs
                                ):
         """
         Get Vessel nonvessel masks

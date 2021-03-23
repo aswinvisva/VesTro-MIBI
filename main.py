@@ -32,15 +32,18 @@ def hires_example():
         n_points=48
     )
 
-    pipe = MIBIPipeline(conf)
+    pipe = MIBIPipeline(conf, csv_loc="results/5um_impansion_5um_expansion.csv")
     pipe.add_feed(hires_feed)
     pipe.load_preprocess_data()
 
     pipe.add_analyzer(VesselAsymmetryAnalyzer)
     pipe.add_analyzer(UMAPAnalyzer)
 
-    pipe.analyze_data()
-    pipe.generate_visualizations()
+    pipe.analyze_data(min_samples=3, eps=0.75, mask_type="mask_and_expansion")
+
+    pipe.save_to_csv()
+
+    pipe.generate_visualizations(inward_expansions_only=True)
 
 
 if __name__ == '__main__':

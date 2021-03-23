@@ -22,7 +22,7 @@ Authors: Aswin Visva, John-Paul Oliveria, Ph.D
 
 class MIBIPipeline:
 
-    def __init__(self, config: Config):
+    def __init__(self, config: Config, **kwargs):
         """
         MIBI Pipeline Class
 
@@ -42,6 +42,8 @@ class MIBIPipeline:
         self.all_feeds_mask = None
         self.all_feeds_contour_data = None
         self.all_expansions_features = None
+
+        self.csv_loc = kwargs.get("csv_loc", None)
 
     def add_feed(self, data_feed: MIBIDataFeed):
         """
@@ -75,7 +77,7 @@ class MIBIPipeline:
 
         self.analyzers.append(analyzer)
 
-    def analyze_data(self):
+    def analyze_data(self, **kwargs):
         """
         Analyze MIBI data
 
@@ -83,7 +85,25 @@ class MIBIPipeline:
         """
 
         for analyzer in self.analyzers:
-            analyzer.analyze()
+            analyzer.analyze(**kwargs)
+
+    def save_to_csv(self):
+        """
+        Save data to a csv
+        :return:
+        """
+
+        if self.all_expansions_features is not None:
+            self.all_expansions_features.to_csv(self.config.visualization_results_dir + self.config.csv_name)
+
+    def _load_csv(self, csv_loc: str):
+        """
+        Load data from a csv
+
+        :return:
+        """
+
+        self.all_expansions_features = pd.read_csv(csv_loc, index_col=[0, 1, 2, 3], skipinitialspace=True)
 
     def normalize_data(self,
                        all_expansions_features: pd.DataFrame,
@@ -114,10 +134,7 @@ class MIBIPipeline:
                                                    else "Negative" for sma in all_expansions_features["SMA"]]
 
         all_expansions_features = all_expansions_features.sort_index()
-        all_expansions_features.index.rename(['Point', 'Vessel', 'Expansion', 'Data Type'], inplace=True)
-
-        if self.config.save_to_csv:
-            all_expansions_features.to_csv(self.config.csv_loc)
+        all_expansions_features.index.rename(['Point', 'Vessel', 'Expansion', 'Expansion Type'], inplace=True)
 
         return all_expansions_features
 
@@ -315,7 +332,7 @@ class MIBIPipeline:
 
         return all_expansions_features, current_expansion_no
 
-    def generate_visualizations(self):
+    def generate_visualizations(self, **kwargs):
         """
         Generate Visualizations
 
@@ -326,90 +343,100 @@ class MIBIPipeline:
 
         expansions = self.config.expansion_to_run
 
+        # Pseudo-Time Heatmaps
+        if self.config.create_pseudo_time_heatmap:
+            self.visualizer.pseudo_time_heatmap(**kwargs)
+
         # Expression Histograms
         if self.config.create_expression_histogram:
-            self.visualizer.expression_histogram()
+            self.visualizer.expression_histogram(**kwargs)
 
         # Spatial Probability Maps
         if self.config.create_spatial_probability_maps:
-            self.visualizer.spatial_probability_maps()
+            self.visualizer.spatial_probability_maps(**kwargs)
 
         # Marker expression overlay masks
         if self.config.create_marker_expression_overlay_masks:
-            self.visualizer.marker_expression_masks()
+            self.visualizer.marker_expression_masks(**kwargs)
 
         # Removed vessel expression box plots
         if self.config.create_removed_vessels_expression_boxplot:
-            self.visualizer.removed_vessel_expression_boxplot()
+            self.visualizer.removed_vessel_expression_boxplot(**kwargs)
 
         # Vessel areas histograms and boxplots
         if self.config.create_vessel_areas_histograms_and_boxplots:
-            self.visualizer.vessel_areas_histogram()
+            self.visualizer.vessel_areas_histogram(**kwargs)
 
         # Vessel expansion ring plots
         if self.config.create_expansion_ring_plots:
-            self.visualizer.pixel_expansion_ring_plots()
+            self.visualizer.pixel_expansion_ring_plots(**kwargs)
 
         if self.config.create_biaxial_scatter_plot:
-            self.visualizer.biaxial_scatter_plot()
+            self.visualizer.biaxial_scatter_plot(**kwargs)
 
         if self.config.create_expanded_vessel_masks:
-            self.visualizer.obtain_expanded_vessel_masks()
+            self.visualizer.obtain_expanded_vessel_masks(**kwargs)
 
         if self.config.create_embedded_vessel_id_masks:
-            self.visualizer.obtain_embedded_vessel_masks()
+            self.visualizer.obtain_embedded_vessel_masks(**kwargs)
 
         if self.config.create_vessel_asymmetry_area_spread_plot:
-            self.visualizer.vessel_asymmetry_area_spread_plot()
+            self.visualizer.vessel_asymmetry_area_spread_plot(**kwargs)
 
         if self.config.create_categorical_violin_plot:
-            self.visualizer.categorical_violin_plot()
+            self.visualizer.categorical_violin_plot(**kwargs)
 
         if self.config.create_categorical_scatter_plots:
-            self.visualizer.continuous_scatter_plot()
+            self.visualizer.continuous_scatter_plot(**kwargs)
+
+        if self.config.create_umap_projection_scatter_plots:
+            self.visualizer.scatter_plot_umap_marker_projection(**kwargs)
+
+        if self.config.create_vessel_images_by_categorical_variable:
+            self.visualizer.vessel_images_by_categorical_variable(**kwargs)
 
         # Iterate through selected expansions to create heatmaps and line plots
         for x in expansions:
 
             # Brain region expansion heatmaps
             if self.config.create_brain_region_expansion_heatmaps:
-                self.visualizer.brain_region_expansion_heatmap(x)
+                self.visualizer.brain_region_expansion_heatmap(x, **kwargs)
 
             # Categorical split expansion heatmaps
             if self.config.create_categorical_split_expansion_heatmaps:
-                self.visualizer.categorical_split_expansion_heatmap_clustermap(x)
+                self.visualizer.categorical_split_expansion_heatmap_clustermap(x, **kwargs)
 
             # Per brain region line plots
             if self.config.create_brain_region_expansion_line_plots:
-                self.visualizer.brain_region_plots(x)
+                self.visualizer.brain_region_plots(x, **kwargs)
 
             # Violin Plots
             if self.config.create_expansion_violin_plots:
-                self.visualizer.violin_plot_brain_expansion(x)
+                self.visualizer.violin_plot_brain_expansion(x, **kwargs)
 
             # All points average line plots
             if self.config.create_allpoints_expansion_line_plots:
-                self.visualizer.all_points_plots(x)
+                self.visualizer.all_points_plots(x, **kwargs)
 
             # Box Plots
             if self.config.create_expansion_box_plots:
-                self.visualizer.box_plot_brain_expansions(x)
+                self.visualizer.box_plot_brain_expansions(x, **kwargs)
 
             # Mask/Non-mask heatmaps
             if self.config.create_vessel_nonvessel_heatmaps:
-                self.visualizer.vessel_nonvessel_heatmap(x)
+                self.visualizer.vessel_nonvessel_heatmap(x, **kwargs)
 
             # Vessel/Non-vessel masks
             if self.config.create_vessel_nonvessel_mask:
-                self.visualizer.vessel_nonvessel_masks(x)
+                self.visualizer.vessel_nonvessel_masks(x, **kwargs)
 
             # Per point line plots
             if self.config.create_point_expansion_line_plots:
-                self.visualizer.point_region_plots(x)
+                self.visualizer.point_region_plots(x, **kwargs)
 
             # Per vessel line plots
             if self.config.create_vessel_expansion_line_plots:
-                self.visualizer.vessel_region_plots(x)
+                self.visualizer.vessel_region_plots(x, **kwargs)
 
     def load_preprocess_data(self):
         """
@@ -453,26 +480,30 @@ class MIBIPipeline:
 
         self.all_feeds_contour_data = pd.concat(all_feeds_contour_data).fillna(0)
 
-        # Inward expansion data
-        if self.config.perform_inward_expansions:
-            all_inward_expansions_features, current_expansion_no = self._get_inward_expansion_data()
+        if self.csv_loc is None:
+            # Inward expansion data
+            if self.config.perform_inward_expansions:
+                all_inward_expansions_features, current_expansion_no = self._get_inward_expansion_data()
 
-            logging.debug("Finished inward expansions with a maximum of %s %s"
-                          % (
-                              str(
-                                  current_expansion_no * self.config.pixel_interval * self.config.pixels_to_distance),
-                              str(self.config.data_resolution_units)))
+                logging.debug("Finished inward expansions with a maximum of %s %s"
+                              % (
+                                  str(
+                                      current_expansion_no * self.config.pixel_interval * self.config.pixels_to_distance),
+                                  str(self.config.data_resolution_units)))
 
-        # Collect outward microenvironment expansion data, nonvessel space expansion data and vessel space expansion
-        # data
-        all_expansions_features = self._get_outward_expansion_data()
+            # Collect outward microenvironment expansion data, nonvessel space expansion data and vessel space expansion
+            # data
+            all_expansions_features = self._get_outward_expansion_data()
 
-        if self.config.perform_inward_expansions:
-            all_expansions_features = all_expansions_features.append(all_inward_expansions_features)
+            if self.config.perform_inward_expansions:
+                all_expansions_features = all_expansions_features.append(all_inward_expansions_features)
 
-        # Normalize all features
-        self.all_expansions_features = self.normalize_data(all_expansions_features,
-                                                           self.marker_names)
+                # Normalize all features
+            self.all_expansions_features = self.normalize_data(all_expansions_features,
+                                                               self.marker_names)
+
+        else:
+            self._load_csv(self.csv_loc)
 
         self.visualizer = Visualizer(
             self.config,
