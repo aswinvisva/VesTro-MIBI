@@ -12,10 +12,10 @@ from scipy.ndimage import gaussian_filter
 from scipy.stats import gaussian_kde
 from seaborn.utils import axis_ticklabels_overlap
 
-from src.data_loading.mibi_reader import MIBIReader
-from src.data_preprocessing.object_extractor import ObjectExtractor
-from src.data_preprocessing.markers_feature_gen import *
-from src.utils.utils_functions import mkdir_p
+from mibipy.data_loading.mibi_reader import MIBIReader
+from mibipy.data_preprocessing.object_extractor import ObjectExtractor
+from mibipy.data_preprocessing.markers_feature_gen import *
+from mibipy.utils.utils_functions import mkdir_p
 
 '''
 Authors: Aswin Visva, John-Paul Oliveria, Ph.D
@@ -1915,7 +1915,7 @@ class Visualizer:
         output_dir = "%s/Heatmaps" % feed_dir
         mkdir_p(output_dir)
 
-        plt.savefig(output_dir + '/Expansion_%s.png' % str((n_expansions)), bbox_inches='tight')
+        plt.savefig(output_dir + '/Expansion_%s.png' % str(n_expansions), bbox_inches='tight')
         plt.clf()
 
         ax = sns.clustermap(all_data,
@@ -2323,7 +2323,6 @@ class Visualizer:
         """
 
         if not cluster:
-
             plt.figure(figsize=(22, 10))
 
             ax = sns.heatmap(data,

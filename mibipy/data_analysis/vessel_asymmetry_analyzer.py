@@ -7,14 +7,14 @@ from sklearn.preprocessing import MinMaxScaler
 from tqdm import tqdm
 import cv2 as cv
 
-from src.data_analysis.base_analyzer import BaseAnalyzer
-from src.data_loading.mibi_data_feed import MIBIDataFeed
-from src.data_loading.mibi_loader import MIBILoader
-from src.data_loading.mibi_point_contours import MIBIPointContours
-from src.data_preprocessing.markers_feature_gen import *
-from src.data_visualization.visualizer import Visualizer
+from mibipy.data_analysis.base_analyzer import BaseAnalyzer
+from mibipy.data_loading.mibi_data_feed import MIBIDataFeed
+from mibipy.data_loading.mibi_loader import MIBILoader
+from mibipy.data_loading.mibi_point_contours import MIBIPointContours
+from mibipy.data_preprocessing.markers_feature_gen import *
+from mibipy.plotting.visualizer import Visualizer
 from config.config_settings import Config
-from src.data_preprocessing.markers_feature_gen import arcsinh
+from mibipy.data_preprocessing.markers_feature_gen import arcsinh
 
 
 class VesselAsymmetryAnalyzer(BaseAnalyzer, ABC):

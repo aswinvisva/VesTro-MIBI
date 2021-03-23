@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 from PIL import Image
 import pandas as pd
 
-from src.utils.utils_functions import mkdir_p
+from mibipy.utils.utils_functions import mkdir_p
 from config.config_settings import Config
 
 '''

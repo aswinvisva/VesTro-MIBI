@@ -2,7 +2,7 @@ import unittest
 import os
 
 from config.config_settings import Config
-from src.data_loading import tiff_reader
+from mibipy.data_loading import tiff_reader
 
 
 class TestTiffReader(unittest.TestCase):

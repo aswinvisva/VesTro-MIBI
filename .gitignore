@@ -2,7 +2,7 @@ __pycache__/
 env/
 .idea/
 annotated_data/
-src/__pycache__/
+mibipy/__pycache__/
 dnn_vessel_heterogeneity/topic_generation/__pycache__/
 trained_models/
 runs/

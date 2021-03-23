@@ -4,7 +4,7 @@ from datetime import datetime
 import matplotlib
 import matplotlib.pylab as pl
 
-from src.utils.utils_functions import mkdir_p
+from mibipy.utils.utils_functions import mkdir_p
 
 
 class Config:

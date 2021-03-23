@@ -1,8 +1,8 @@
 import numpy as np
 
 from config.config_settings import Config
-from src.data_preprocessing.object_extractor import ObjectExtractor
-from src.utils.utils_functions import get_contour_areas_list
+from mibipy.data_preprocessing.object_extractor import ObjectExtractor
+from mibipy.utils.utils_functions import get_contour_areas_list
 
 
 class MIBIPointContours:

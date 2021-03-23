@@ -1,8 +1,8 @@
 import unittest
 
 from config.config_settings import Config
-from src.data_loading.mibi_data_feed import MIBIDataFeed
-from src.data_loading.mibi_loader import MIBILoader
+from mibipy.data_loading.mibi_data_feed import MIBIDataFeed
+from mibipy.data_loading.mibi_loader import MIBILoader
 
 
 class TestMIBILoader(unittest.TestCase):

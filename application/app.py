@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for
 
 from config.config_settings import Config
-from src.mibi_pipeline import MIBIPipeline
+from mibipy.mibi_pipeline import MIBIPipeline
 
 app = Flask(__name__)
 
