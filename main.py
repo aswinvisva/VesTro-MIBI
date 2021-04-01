@@ -39,11 +39,11 @@ def hires_example():
     pipe.add_analyzer(VesselAsymmetryAnalyzer)
     pipe.add_analyzer(UMAPAnalyzer)
 
-    pipe.analyze_data(min_samples=3, eps=0.75, mask_type="mask_and_expansion")
+    pipe.analyze_data(mask_type="mask_and_expansion", umap_marker_settings="vessel_mask_markers_removed")
 
     pipe.save_to_csv()
 
-    pipe.generate_visualizations(inward_expansions_only=True)
+    pipe.generate_visualizations(mask_type="mask_and_expansion")
 
 
 if __name__ == '__main__':

@@ -4,7 +4,6 @@ from collections import Counter
 from multiprocessing import Pool
 import random
 
-import hdbscan
 import matplotlib
 from scipy.spatial.distance import cdist
 from sklearn.preprocessing import MinMaxScaler
@@ -21,45 +20,7 @@ from mibipy.data_loading.mibi_point_contours import MIBIPointContours
 from mibipy.data_preprocessing.markers_feature_gen import *
 from mibipy.plotting.visualizer import Visualizer
 from config.config_settings import Config
-
-
-def exemplars(cluster_id, condensed_tree):
-    raw_tree = condensed_tree._raw_tree
-    # Just the cluster elements of the tree, excluding singleton points
-    cluster_tree = raw_tree[raw_tree['child_size'] > 1]
-    # Get the leaf cluster nodes under the cluster we are considering
-    leaves = hdbscan.plots._recurse_leaf_dfs(cluster_tree, cluster_id)
-    # Now collect up the last remaining points of each leaf cluster (the heart of the leaf)
-    result = np.array([])
-    for leaf in leaves:
-        max_lambda = raw_tree['lambda_val'][raw_tree['parent'] == leaf].max()
-        points = raw_tree['child'][(raw_tree['parent'] == leaf) &
-                                   (raw_tree['lambda_val'] == max_lambda)]
-        result = np.hstack((result, points))
-    return result.astype(np.int)
-
-
-def min_dist_to_exemplar(point, cluster_exemplars, data):
-    dists = cdist([data[point]], data[cluster_exemplars.astype(np.int32)])
-    return dists.min()
-
-
-def dist_vector(point, exemplar_dict, data):
-    result = {}
-    for cluster in exemplar_dict:
-        result[cluster] = min_dist_to_exemplar(point, exemplar_dict[cluster], data)
-    return np.array(list(result.values()))
-
-
-def dist_membership_vector(point, exemplar_dict, data, softmax=False):
-    if softmax:
-        result = np.exp(1. / dist_vector(point, exemplar_dict, data))
-        result[~np.isfinite(result)] = np.finfo(np.double).max
-    else:
-        result = 1. / dist_vector(point, exemplar_dict, data)
-        result[~np.isfinite(result)] = np.finfo(np.double).max
-    result /= result.sum()
-    return result
+from src.data_analysis._cluster import k_means, dbscan, agglomerative, hdbscan_method
 
 
 class UMAPAnalyzer(BaseAnalyzer, ABC):
@@ -104,10 +65,12 @@ class UMAPAnalyzer(BaseAnalyzer, ABC):
         """
 
         mask_type = kwargs.get("mask_type", "mask_only")
-        min_samples = kwargs.get("min_samples", 10)
-        eps = kwargs.get("eps", 0.5)
+        umap_marker_settings = kwargs.get("umap_marker_settings", "vessel_mask_markers_removed")
 
-        assert mask_type in ["mask_only", "mask_and_expansion", "mask_and_expansion_weighted"], "Unknown Mask Type!"
+        assert mask_type in ["mask_only",
+                             "mask_and_expansion",
+                             "mask_and_expansion_weighted",
+                             "expansion_only"], "Unknown Mask Type!"
 
         parent_dir = "%s/UMAP" % self.config.visualization_results_dir
         mkdir_p(parent_dir)
@@ -122,90 +85,125 @@ class UMAPAnalyzer(BaseAnalyzer, ABC):
                                                             :,
                                                             :,
                                                             "Data"], :]
-        elif mask_type == "mask_and_expansion_weighted":
+        elif mask_type == "expansion_only":
             marker_features = self.all_samples_features.loc[pd.IndexSlice[:,
                                                             :,
-                                                            :,
+                                                            0:,
                                                             "Data"], :]
 
         marker_features = marker_features.drop(self.config.non_marker_vars, axis=1, errors='ignore')
 
-        marker_features.reset_index(level=['Point', 'Vessel'], inplace=True)
+        marker_cluster_features = marker_features.copy()
+        marker_vis_features = marker_features.copy()
 
-        average_marker_features = marker_features.groupby(['Point', 'Vessel']).mean()
+        marker_cluster_features.reset_index(level=['Point', 'Vessel'], inplace=True)
+        marker_vis_features.reset_index(level=['Point', 'Vessel'], inplace=True)
 
-        reducer = umap.UMAP(random_state=123)
-        embedding = reducer.fit_transform(average_marker_features)
+        cluster_features = marker_cluster_features.groupby(['Point', 'Vessel']).mean()
 
-        clusterer = hdbscan.HDBSCAN(cluster_selection_epsilon=eps, min_cluster_size=min_samples)
-        clusterer.fit(embedding)
+        if umap_marker_settings == "vessel_mask_markers_removed":
+            marker_vis_features = marker_vis_features.drop(self.config.mask_marker_clusters["Vessels"],
+                                                           axis=1, errors='ignore')
 
-        tree = clusterer.condensed_tree_
-        exemplar_dict = {c: exemplars(c, tree) for c in tree._select_clusters()}
+        elif umap_marker_settings == "vessel_markers_only":
+            for cluster in self.config.marker_clusters.keys():
+                if cluster != "Vessels":
+                    marker_vis_features = marker_vis_features.drop(self.config.marker_clusters[cluster],
+                                                                   axis=1, errors='ignore')
 
-        cluster_labels_argmax = []
+        elif umap_marker_settings == "vessel_and_astrocyte_markers":
+            for cluster in self.config.marker_clusters.keys():
+                if cluster != "Vessels" and cluster != "Astrocytes":
+                    marker_vis_features = marker_vis_features.drop(self.config.marker_clusters[cluster],
+                                                                   axis=1, errors='ignore')
 
-        for x in range(embedding.shape[0]):
-            membership_vector = dist_membership_vector(x, exemplar_dict, embedding)
-            cluster_labels_argmax.append(np.argmax(membership_vector))
+        visualization_features = marker_vis_features.groupby(['Point', 'Vessel']).mean()
 
-        for idx, x in enumerate(average_marker_features.index):
-            point_idx = x[0]
-            vessel_idx = x[1]
+        reducer = umap.UMAP(random_state=42, n_neighbors=4)
+        embedding = reducer.fit_transform(visualization_features)
 
-            embedding_0 = embedding[:, 0][idx]
-            embedding_1 = embedding[:, 1][idx]
-            cluster = cluster_labels_argmax[idx]
+        clustering_models = [{"title": "K-Means", "cluster": k_means},
+                             {"title": "Hierarchical", "cluster": agglomerative}]
 
-            self.all_samples_features.loc[pd.IndexSlice[point_idx,
-                                          vessel_idx,
-                                          :,
-                                          :], "UMAP0"] = embedding_0
+        features = [{"title": "UMAP Space", "features": embedding},
+                    {"title": "Original Space", "features": cluster_features.to_numpy()}]
+        n_clusters_trials = [5, 10, 15, 20]
 
-            self.all_samples_features.loc[pd.IndexSlice[point_idx,
-                                          vessel_idx,
-                                          :,
-                                          :], "UMAP1"] = embedding_1
+        for n_clusters in n_clusters_trials:
 
-            self.all_samples_features.loc[pd.IndexSlice[point_idx,
-                                          vessel_idx,
-                                          :,
-                                          :], "HDBSCAN Cluster"] = cluster
+            cluster_dir = "%s/%s Clusters" % (parent_dir, str(n_clusters))
+            mkdir_p(cluster_dir)
 
-        marker_features = self.all_samples_features.drop([x for x in self.config.non_marker_vars if x != "HDBSCAN "
-                                                                                                         "Cluster"],
-                                                         axis=1, errors='ignore')
+            for feature in features:
+                X = feature["features"]
 
-        average_marker_features = marker_features.groupby(["HDBSCAN Cluster"]).mean()
+                for cluster_model in clustering_models:
 
-        ax = sns.scatterplot(x="UMAP0",
-                             y="UMAP1",
-                             data=self.all_samples_features,
-                             hue="HDBSCAN Cluster",
-                             palette="tab20")
+                    y = cluster_model["cluster"](X, n_clusters=n_clusters)
 
-        plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0., title="DBSCAN Cluster")
+                    title = "%s Clustering in %s" % (cluster_model["title"], feature["title"])
 
-        plt.title('UMAP projection of the MIBI Dataset', fontsize=18)
-        plt.savefig(parent_dir + '/umap.png', bbox_inches='tight')
+                    for idx, x in enumerate(visualization_features.index):
+                        point_idx = x[0]
+                        vessel_idx = x[1]
 
-        norm = matplotlib.colors.Normalize(-1, 1)
-        colors = [[norm(-1.0), "black"],
-                  [norm(-0.5), "indigo"],
-                  [norm(0), "firebrick"],
-                  [norm(0.5), "orange"],
-                  [norm(1.0), "khaki"]]
+                        embedding_0 = embedding[:, 0][idx]
+                        embedding_1 = embedding[:, 1][idx]
+                        cluster = y[idx]
 
-        cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", colors)
+                        self.all_samples_features.loc[pd.IndexSlice[point_idx,
+                                                      vessel_idx,
+                                                      :,
+                                                      :], "UMAP0"] = embedding_0
 
-        plt.figure(figsize=(22, 10))
+                        self.all_samples_features.loc[pd.IndexSlice[point_idx,
+                                                      vessel_idx,
+                                                      :,
+                                                      :], "UMAP1"] = embedding_1
 
-        ax = sns.clustermap(average_marker_features,
-                            cmap=cmap,
-                            linewidths=0,
-                            row_cluster=True,
-                            col_cluster=True,
-                            figsize=(20, 10)
-                            )
-        plt.savefig(parent_dir + '/hdbscan_heatmap.png', bbox_inches='tight')
-        plt.clf()
+                        self.all_samples_features.loc[pd.IndexSlice[point_idx,
+                                                      vessel_idx,
+                                                      :,
+                                                      :], cluster_model["title"]] = cluster
+
+                    marker_features = self.all_samples_features.drop(
+                        [x for x in self.config.non_marker_vars if x != cluster_model["title"]],
+                        axis=1, errors='ignore')
+
+                    average_marker_expression = marker_features.groupby([cluster_model["title"]]).mean()
+
+                    plt.figure(figsize=(12, 10))
+
+                    ax = sns.scatterplot(x="UMAP0",
+                                         y="UMAP1",
+                                         data=self.all_samples_features,
+                                         hue=cluster_model["title"],
+                                         palette="tab20")
+
+                    plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0., title="Cluster")
+
+                    plt.title('UMAP projection of the MIBI Dataset', fontsize=18)
+                    plt.savefig(cluster_dir + '/%s.png' % title, bbox_inches='tight')
+                    plt.clf()
+
+                    norm = matplotlib.colors.Normalize(-1, 1)
+                    colors = [[norm(-1.0), "black"],
+                              [norm(-0.5), "indigo"],
+                              [norm(0), "firebrick"],
+                              [norm(0.5), "orange"],
+                              [norm(1.0), "khaki"]]
+
+                    cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", colors)
+
+                    clrs = sns.color_palette('tab20', n_colors=n_clusters)
+
+                    ax = sns.clustermap(average_marker_expression,
+                                        cmap=cmap,
+                                        linewidths=0,
+                                        row_cluster=True,
+                                        col_cluster=True,
+                                        row_colors=clrs,
+                                        figsize=(20, 10)
+                                        )
+                    plt.savefig(cluster_dir + '/%s_heatmap.png' % title, bbox_inches='tight')
+                    plt.clf()

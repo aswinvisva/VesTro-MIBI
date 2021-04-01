@@ -59,7 +59,7 @@ class VesselAsymmetryAnalyzer(BaseAnalyzer, ABC):
         """
 
         asymmetry_threshold = kwargs.get("asymmetry_threshold", 0.15)
-        apply_arcsinh_transform = kwargs.get("apply_arcsinh_transform", False)
+        apply_arcsinh_transform = kwargs.get("apply_arcsinh_transform", True)
 
         img_shape = self.config.segmentation_mask_size
         parent_dir = "%s/Vessel Asymmetry" % self.config.visualization_results_dir
@@ -119,76 +119,29 @@ class VesselAsymmetryAnalyzer(BaseAnalyzer, ABC):
                                                       :,
                                                       :], "Asymmetry Score"] = asymmetry_score
 
-                        if cnt_area > self.config.large_vessel_threshold:
-                            size = "Large"
-                        elif cnt_area > self.config.medium_vessel_threshold:
-                            size = "Medium"
-                        elif cnt_area > self.config.small_vessel_threshold:
-                            size = "Small"
+            self.all_samples_features["Asymmetry Score"] = self.all_samples_features["Asymmetry Score"] / np.percentile(
+                self.all_samples_features["Asymmetry Score"],
+                self.config.percentile_to_normalize,
+                axis=0)
 
-                        if asymmetry_score > asymmetry_threshold:
-                            self.all_samples_features.loc[idx[point_idx + 1,
-                                                          cnt_idx,
-                                                          :,
-                                                          :], "Asymmetry"] = "Yes"
+            self.all_samples_features["Asymmetry"] = "No"
 
-                            example_mask = np.zeros((img_shape[0], img_shape[1], 3), np.uint8)
-                            cv.drawContours(example_mask, [cnt], -1, (255, 255, 255), cv.FILLED)
-                            cv.drawContours(example_mask, [point_hull], -1, (0, 0, 255), 2)
+            for point_idx in feed_data.index.get_level_values('Point Index').unique():
+                point_data = feed_data.loc[point_idx, "Contours"]
 
-                            M = cv.moments(cnt)
-                            cX = int(M["m10"] / M["m00"]) + 10
-                            cY = int(M["m01"] / M["m00"]) - 10
+                for cnt_idx, cnt in enumerate(point_data.contours):
+                    vessel_features = self.all_samples_features.loc[idx[point_idx + 1,
+                                                                    cnt_idx,
+                                                                    :,
+                                                                    :], :]
 
-                            cv.putText(example_mask,
-                                       "Proportion: %s" % round(1.0 - asymmetry_score, 2),
-                                       (cX, cY),
-                                       cv.FONT_HERSHEY_SIMPLEX,
-                                       0.5,
-                                       (0, 255, 0),
-                                       2,
-                                       cv.LINE_AA)
-
-                            cv.imwrite(os.path.join(asymmetry_dir,
-                                                    "Point_Num_%s_Vessel_ID_%s_%s.png" % (str(point_idx + 1),
-                                                                                          str(cnt_idx + 1), size)),
-                                       example_mask)
-                        else:
-                            self.all_samples_features.loc[idx[point_idx + 1,
-                                                          cnt_idx,
-                                                          :,
-                                                          :], "Asymmetry"] = "No"
-
-                            example_mask = np.zeros((img_shape[0], img_shape[1], 3), np.uint8)
-                            cv.drawContours(example_mask, [cnt], -1, (255, 255, 255), cv.FILLED)
-                            cv.drawContours(example_mask, [point_hull], -1, (0, 0, 255), 2)
-
-                            M = cv.moments(cnt)
-                            cX = int(M["m10"] / M["m00"]) + 5
-                            cY = int(M["m01"] / M["m00"]) + 5
-
-                            cv.putText(example_mask,
-                                       "Proportion: %s" % round(1.0 - asymmetry_score, 2),
-                                       (cX, cY),
-                                       cv.FONT_HERSHEY_SIMPLEX,
-                                       0.5,
-                                       (0, 255, 0),
-                                       2,
-                                       cv.LINE_AA)
-
-                            cv.imwrite(os.path.join(non_asymmetry_dir,
-                                                    "Point_Num_%s_Vessel_ID_%s_%s.png" % (str(point_idx + 1),
-                                                                                          str(cnt_idx + 1), size)),
-                                       example_mask)
-
-            max_value \
-                = self.all_samples_features["Asymmetry Score"].max()
-            min_value \
-                = self.all_samples_features["Asymmetry Score"].min()
-
-            if apply_arcsinh_transform:
-                self.all_samples_features["Asymmetry Score"] = \
-                    arcsinh(self.all_samples_features["Asymmetry Score"].values)
-
-            self.all_samples_features["Asymmetry Score"] = (self.all_samples_features["Asymmetry Score"]
-                                                            - min_value) / (max_value - min_value)
+                    if (vessel_features["Asymmetry Score"] >= 0.2).any() and (
+                        (vessel_features["GLUT1"] >= 0.25).any() or
+                        (vessel_features["vWF"] >= 0.25).any() or
+                        (vessel_features["CD31"] >= 0.25).any() or
+                        (vessel_features["SMA"] >= 0.25).any()
+                    ):
+                        self.all_samples_features.loc[idx[point_idx + 1,
+                                                      cnt_idx,
+                                                      :,
+                                                      :], "Asymmetry"] = "Yes"
