@@ -93,7 +93,7 @@ class MIBIPipeline:
         :return:
         """
 
-        if self.all_expansions_features is not None:
+        if self.all_expansions_features is not None and self.config.save_to_csv:
             self.all_expansions_features.to_csv(self.config.visualization_results_dir + self.config.csv_name)
 
     def _load_csv(self, csv_loc: str):

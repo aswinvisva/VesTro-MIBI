@@ -11,7 +11,7 @@ class Config:
     # High-Level Settings
     n_workers = 5
     data_resolution = "hires"
-    save_to_csv = True
+    save_to_csv = False
 
     if save_to_csv:
         csv_name = "data.csv"
@@ -69,7 +69,11 @@ class Config:
                        "Asymmetry Score",
                        "UMAP0",
                        "UMAP1",
-                       "HDBSCAN Cluster"]
+                       "K-Means",
+                       # "DBSCAN",
+                       # "HDBSCAN",
+                       "Hierarchical"
+                       ]
 
     n_markers = 34
 
@@ -162,7 +166,7 @@ class Config:
 
     # Split settings
 
-    primary_categorical_splitter = "HDBSCAN Cluster"
+    primary_categorical_splitter = "Asymmetry"
     secondary_categorical_splitter = "Vessel Size"
 
     SMA_positive_threshold = 0.1
@@ -192,14 +196,14 @@ class Config:
     create_expanded_vessel_masks = False
     create_spatial_probability_maps = False  #
     create_expression_histogram = False
-    create_expansion_violin_plots = True  #
-    create_categorical_violin_plot = True  #
+    create_expansion_violin_plots = False  #
+    create_categorical_violin_plot = False  #
     create_expansion_box_plots = False  #
-    create_vessel_asymmetry_area_spread_plot = True  #
-    create_categorical_scatter_plots = True  #
+    create_vessel_asymmetry_area_spread_plot = False  #
+    create_categorical_scatter_plots = False  #
     create_umap_projection_scatter_plots = True  #
-    create_vessel_images_by_categorical_variable = True  #
-    create_pseudo_time_heatmap = True  #
+    create_vessel_images_by_categorical_variable = False  #
+    create_pseudo_time_heatmap = False  #
 
     if create_vessel_areas_histograms_and_boxplots:
         show_boxplot_outliers = False
