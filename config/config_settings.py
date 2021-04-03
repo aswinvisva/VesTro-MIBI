@@ -183,16 +183,16 @@ class Config:
 
     # Figures to generate
     create_vessel_id_plot = False
-    create_vessel_nonvessel_mask = False  #
+    create_vessel_nonvessel_mask = True  #
     create_marker_expression_overlay_masks = False
     create_vessel_areas_histograms_and_boxplots = False
-    create_brain_region_expansion_heatmaps = False  #
-    create_vessel_nonvessel_heatmaps = False  #
+    create_brain_region_expansion_heatmaps = True  #
+    create_vessel_nonvessel_heatmaps = True  #
     create_categorical_split_expansion_heatmaps = False  #
     create_brain_region_expansion_line_plots = False  #
     create_point_expansion_line_plots = False  #
     create_vessel_expansion_line_plots = False
-    create_allpoints_expansion_line_plots = False  #
+    create_allpoints_expansion_line_plots = True  #
     create_expansion_ring_plots = False
     create_embedded_vessel_id_masks = False
     create_removed_vessels_expression_boxplot = False
@@ -200,9 +200,9 @@ class Config:
     create_expanded_vessel_masks = False
     create_spatial_probability_maps = False  #
     create_expression_histogram = False
-    create_expansion_violin_plots = False  #
-    create_categorical_violin_plot = False  #
-    create_expansion_box_plots = False  #
+    create_expansion_violin_plots = True  #
+    create_categorical_violin_plot = True  #
+    create_expansion_box_plots = True  #
     create_vessel_asymmetry_area_spread_plot = False  #
     create_categorical_scatter_plots = False  #
     create_umap_projection_scatter_plots = True  #
