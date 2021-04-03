@@ -52,7 +52,7 @@ class DimensionalityReductionClusteringAnalyzer(BaseAnalyzer, ABC):
         """
 
         mask_type = kwargs.get("mask_type", "mask_only")
-        umap_marker_settings = kwargs.get("umap_marker_settings", "vessel_mask_markers_removed")
+        marker_settings = kwargs.get("marker_settings", "vessel_mask_markers_removed")
 
         assert mask_type in ["mask_only",
                              "mask_and_expansion",
@@ -88,17 +88,17 @@ class DimensionalityReductionClusteringAnalyzer(BaseAnalyzer, ABC):
 
         cluster_features = marker_cluster_features.groupby(['Point', 'Vessel']).mean()
 
-        if umap_marker_settings == "vessel_mask_markers_removed":
+        if marker_settings == "vessel_mask_markers_removed":
             marker_vis_features = marker_vis_features.drop(self.config.mask_marker_clusters["Vessels"],
                                                            axis=1, errors='ignore')
 
-        elif umap_marker_settings == "vessel_markers_only":
+        elif marker_settings == "vessel_markers_only":
             for cluster in self.config.marker_clusters.keys():
                 if cluster != "Vessels":
                     marker_vis_features = marker_vis_features.drop(self.config.marker_clusters[cluster],
                                                                    axis=1, errors='ignore')
 
-        elif umap_marker_settings == "vessel_and_astrocyte_markers":
+        elif marker_settings == "vessel_and_astrocyte_markers":
             for cluster in self.config.marker_clusters.keys():
                 if cluster != "Vessels" and cluster != "Astrocytes":
                     marker_vis_features = marker_vis_features.drop(self.config.marker_clusters[cluster],
