@@ -1,5 +1,5 @@
 from config.config_settings import Config
-from src.data_analysis.umap_analyzer import UMAPAnalyzer
+from src.data_analysis.dimensionality_reduction_clustering import DimensionalityReductionClusteringAnalyzer
 from src.data_analysis.vessel_asymmetry_analyzer import VesselAsymmetryAnalyzer
 from src.data_loading.mibi_data_feed import MIBIDataFeed
 from src.data_loading.mibi_loader import MIBILoader
@@ -37,7 +37,7 @@ def hires_example():
     pipe.load_preprocess_data()
 
     pipe.add_analyzer(VesselAsymmetryAnalyzer)
-    pipe.add_analyzer(UMAPAnalyzer)
+    pipe.add_analyzer(DimensionalityReductionClusteringAnalyzer)
 
     pipe.analyze_data(mask_type="mask_and_expansion", umap_marker_settings="vessel_mask_markers_removed")
 

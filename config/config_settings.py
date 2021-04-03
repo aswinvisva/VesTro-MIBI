@@ -69,9 +69,13 @@ class Config:
                        "Asymmetry Score",
                        "UMAP0",
                        "UMAP1",
+                       "TSNE0",
+                       "TSNE1",
+                       "PCA0",
+                       "PCA1",
+                       "SVD0",
+                       "SVD1",
                        "K-Means",
-                       # "DBSCAN",
-                       # "HDBSCAN",
                        "Hierarchical"
                        ]
 

@@ -31,6 +31,25 @@ def round_to_nearest_half(number):
     return round(number * 2) / 2
 
 
+def save_figure(save_dir: str,
+                fig_name: str,
+                ax=None):
+    """
+    Save Figure
+
+    :return:
+    """
+
+    mkdir_p(save_dir)
+
+    if ax is not None:
+        ax.savefig(save_dir + '/%s.png' % fig_name, bbox_inches='tight')
+    else:
+        plt.savefig(save_dir + '/%s.png' % fig_name, bbox_inches='tight')
+
+    plt.clf()
+
+
 class Visualizer:
 
     def __init__(self,
