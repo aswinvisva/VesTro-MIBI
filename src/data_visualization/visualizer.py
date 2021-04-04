@@ -15,6 +15,7 @@ from seaborn.utils import axis_ticklabels_overlap
 from src.data_loading.mibi_reader import MIBIReader
 from src.data_preprocessing.object_extractor import ObjectExtractor
 from src.data_preprocessing.markers_feature_gen import *
+from src.data_preprocessing.transforms import melt_markers, loc_by_expansion
 from src.utils.utils_functions import mkdir_p
 
 '''
@@ -116,18 +117,11 @@ class Visualizer:
                                                       :n_expansions,
                                                       "Data"], :]
 
-        plot_features = pd.melt(plot_features,
-                                id_vars=self.config.non_marker_vars,
-                                ignore_index=False)
-
-        plot_features = plot_features.rename(columns={'variable': 'Marker',
-                                                      'value': 'Expression'})
-
-        plot_features.reset_index(level=['Expansion'], inplace=True)
-
-        for key in marker_clusters.keys():
-            for marker, marker_name in enumerate(marker_clusters[key]):
-                plot_features.loc[plot_features["Marker"] == marker_name, "Marker Label"] = key
+        plot_features = melt_markers(plot_features,
+                                     id_vars=self.config.non_marker_vars,
+                                     reset_index=['Expansion'],
+                                     add_marker_group=True,
+                                     marker_groups=marker_clusters)
 
         plot_features['Expansion'] = plot_features['Expansion'].apply(lambda x:
                                                                       round_to_nearest_half(
@@ -163,7 +157,7 @@ class Visualizer:
                 g = sns.lineplot(data=vessel_features,
                                  x="Distance Expanded (%s)" % self.config.data_resolution_units,
                                  y="Expression",
-                                 hue="Marker Label",
+                                 hue="Marker Group",
                                  style=self.config.primary_categorical_splitter,
                                  size=self.config.secondary_categorical_splitter,
                                  palette=self.config.line_plots_bin_colors,
@@ -198,7 +192,7 @@ class Visualizer:
                     bin_dir = "%s/%s" % (per_bin_dir, key)
                     mkdir_p(bin_dir)
 
-                    bin_features = vessel_features.loc[vessel_features["Marker Label"] == key]
+                    bin_features = vessel_features.loc[vessel_features["Marker Group"] == key]
                     # Per Bin
                     g = sns.lineplot(data=bin_features,
                                      x="Distance Expanded (%s)" % self.config.data_resolution_units,
@@ -258,18 +252,11 @@ class Visualizer:
                                                       :n_expansions,
                                                       "Data"], :]
 
-        plot_features = pd.melt(plot_features,
-                                id_vars=self.config.non_marker_vars,
-                                ignore_index=False)
-
-        plot_features = plot_features.rename(columns={'variable': 'Marker',
-                                                      'value': 'Expression'})
-
-        plot_features.reset_index(level=['Expansion'], inplace=True)
-
-        for key in marker_clusters.keys():
-            for marker, marker_name in enumerate(marker_clusters[key]):
-                plot_features.loc[plot_features["Marker"] == marker_name, "Marker Label"] = key
+        plot_features = melt_markers(plot_features,
+                                     id_vars=self.config.non_marker_vars,
+                                     reset_index=['Expansion'],
+                                     add_marker_group=True,
+                                     marker_groups=marker_clusters)
 
         plot_features['Expansion'] = plot_features['Expansion'].apply(lambda x:
                                                                       round_to_nearest_half(
@@ -296,7 +283,7 @@ class Visualizer:
             g = sns.lineplot(data=point_features,
                              x="Distance Expanded (%s)" % self.config.data_resolution_units,
                              y="Expression",
-                             hue="Marker Label",
+                             hue="Marker Group",
                              style=self.config.primary_categorical_splitter,
                              palette=self.config.line_plots_bin_colors,
                              ci=None)
@@ -327,7 +314,7 @@ class Visualizer:
             plt.clf()
 
             for key in marker_clusters.keys():
-                bin_features = point_features.loc[point_features["Marker Label"] == key]
+                bin_features = point_features.loc[point_features["Marker Group"] == key]
                 # Per Bin
                 g = sns.lineplot(data=bin_features,
                                  x="Distance Expanded (%s)" % self.config.data_resolution_units,
@@ -394,18 +381,11 @@ class Visualizer:
                                                       :n_expansions,
                                                       "Data"], :]
 
-        plot_features = pd.melt(plot_features,
-                                id_vars=self.config.non_marker_vars,
-                                ignore_index=False)
-
-        plot_features = plot_features.rename(columns={'variable': 'Marker',
-                                                      'value': 'Expression'})
-
-        plot_features.reset_index(level=['Expansion'], inplace=True)
-
-        for key in marker_clusters.keys():
-            for marker, marker_name in enumerate(marker_clusters[key]):
-                plot_features.loc[plot_features["Marker"] == marker_name, "Marker Label"] = key
+        plot_features = melt_markers(plot_features,
+                                     id_vars=self.config.non_marker_vars,
+                                     reset_index=['Expansion'],
+                                     add_marker_group=True,
+                                     marker_groups=marker_clusters)
 
         plot_features['Expansion'] = plot_features['Expansion'].apply(lambda x:
                                                                       round_to_nearest_half(
@@ -436,7 +416,7 @@ class Visualizer:
         g = sns.lineplot(data=plot_features,
                          x="Distance Expanded (%s)" % self.config.data_resolution_units,
                          y="Expression",
-                         hue="Marker Label",
+                         hue="Marker Group",
                          style=self.config.primary_categorical_splitter,
                          palette=self.config.line_plots_bin_colors,
                          ci=None)
@@ -467,7 +447,7 @@ class Visualizer:
         plt.clf()
 
         for key in marker_clusters.keys():
-            bin_features = plot_features.loc[plot_features["Marker Label"] == key]
+            bin_features = plot_features.loc[plot_features["Marker Group"] == key]
             # Per Bin
             g = sns.lineplot(data=bin_features,
                              x="Distance Expanded (%s)" % self.config.data_resolution_units,
@@ -535,18 +515,11 @@ class Visualizer:
                                                       :n_expansions,
                                                       "Data"], :]
 
-        plot_features = pd.melt(plot_features,
-                                id_vars=self.config.non_marker_vars,
-                                ignore_index=False)
-
-        plot_features = plot_features.rename(columns={'variable': 'Marker',
-                                                      'value': 'Expression'})
-
-        plot_features.reset_index(level=['Expansion', 'Point'], inplace=True)
-
-        for key in marker_clusters.keys():
-            for marker, marker_name in enumerate(marker_clusters[key]):
-                plot_features.loc[plot_features["Marker"] == marker_name, "Marker Label"] = key
+        plot_features = melt_markers(plot_features,
+                                     id_vars=self.config.non_marker_vars,
+                                     reset_index=['Expansion'],
+                                     add_marker_group=True,
+                                     marker_groups=marker_clusters)
 
         plot_features['Expansion'] = plot_features['Expansion'].apply(lambda x:
                                                                       round_to_nearest_half(
@@ -592,7 +565,7 @@ class Visualizer:
             g = sns.lineplot(data=region_features,
                              x="Distance Expanded (%s)" % self.config.data_resolution_units,
                              y="Expression",
-                             hue="Marker Label",
+                             hue="Marker Group",
                              style=self.config.primary_categorical_splitter,
                              palette=self.config.line_plots_bin_colors,
                              ci=None)
@@ -623,7 +596,7 @@ class Visualizer:
             plt.clf()
 
             for key in marker_clusters.keys():
-                bin_features = region_features.loc[region_features["Marker Label"] == key]
+                bin_features = region_features.loc[region_features["Marker Group"] == key]
                 # Per Bin
                 g = sns.lineplot(data=bin_features,
                                  x="Distance Expanded (%s)" % self.config.data_resolution_units,
@@ -970,19 +943,12 @@ class Visualizer:
             mkdir_p(feed_dir)
             feed_features = self.all_samples_features.loc[self.all_samples_features["Data Type"] == feed_name]
 
-            if mask_type == "mask_only":
-                feed_features = feed_features.loc[idx[:, :, :-1, "Data"], :]
-            elif mask_type == "mask_and_expansion":
-                feed_features = feed_features.loc[idx[:, :, :, "Data"], :]
-            elif mask_type == "expansion_only":
-                feed_features = feed_features.loc[idx[:, :, 0:, "Data"], :]
+            feed_features = loc_by_expansion(feed_features,
+                                             expansion_type=mask_type,
+                                             average=False)
 
-            feed_features = pd.melt(feed_features,
-                                    id_vars=self.config.non_marker_vars,
-                                    ignore_index=False)
-
-            feed_features = feed_features.rename(columns={'variable': 'Marker',
-                                                          'value': 'Expression'})
+            feed_features = melt_markers(feed_features,
+                                         id_vars=self.config.non_marker_vars)
 
             feed_features['Size'] = pd.cut(feed_features['Contour Area'],
                                            bins=[self.config.small_vessel_threshold,
@@ -1103,18 +1069,11 @@ class Visualizer:
                                                       :n_expansions,
                                                       "Data"], :]
 
-        plot_features = pd.melt(plot_features,
-                                id_vars=self.config.non_marker_vars,
-                                ignore_index=False)
-
-        plot_features = plot_features.rename(columns={'variable': 'Marker',
-                                                      'value': 'Expression'})
-
-        plot_features.reset_index(level=['Expansion', 'Point'], inplace=True)
-
-        for key in marker_clusters.keys():
-            for marker, marker_name in enumerate(marker_clusters[key]):
-                plot_features.loc[plot_features["Marker"] == marker_name, "Marker Label"] = key
+        plot_features = melt_markers(plot_features,
+                                     id_vars=self.config.non_marker_vars,
+                                     reset_index=['Expansion', 'Point'],
+                                     add_marker_group=True,
+                                     marker_groups=marker_clusters)
 
         plot_features['Expansion'] = plot_features['Expansion'].apply(lambda x:
                                                                       round_to_nearest_half(
@@ -1168,7 +1127,7 @@ class Visualizer:
                 plt.clf()
 
         for key in marker_clusters.keys():
-            marker_features = plot_features.loc[plot_features["Marker Label"] == key]
+            marker_features = plot_features.loc[plot_features["Marker Group"] == key]
 
             colors_clusters = color_maps[key](np.linspace(0, 1, 6))[3:]
 
@@ -1257,18 +1216,11 @@ class Visualizer:
                                                       :n_expansions,
                                                       "Data"], :]
 
-        plot_features = pd.melt(plot_features,
-                                id_vars=self.config.non_marker_vars,
-                                ignore_index=False)
-
-        plot_features = plot_features.rename(columns={'variable': 'Marker',
-                                                      'value': 'Expression'})
-
-        plot_features.reset_index(level=['Expansion', 'Point'], inplace=True)
-
-        for key in marker_clusters.keys():
-            for marker, marker_name in enumerate(marker_clusters[key]):
-                plot_features.loc[plot_features["Marker"] == marker_name, "Marker Label"] = key
+        plot_features = melt_markers(plot_features,
+                                     id_vars=self.config.non_marker_vars,
+                                     reset_index=['Expansion', 'Point'],
+                                     add_marker_group=True,
+                                     marker_groups=marker_clusters)
 
         plot_features['Expansion'] = plot_features['Expansion'].apply(lambda x:
                                                                       round_to_nearest_half(
@@ -1312,7 +1264,7 @@ class Visualizer:
                 plt.clf()
 
         for key in marker_clusters.keys():
-            marker_features = plot_features.loc[plot_features["Marker Label"] == key]
+            marker_features = plot_features.loc[plot_features["Marker Group"] == key]
 
             colors_clusters = color_maps[key](np.linspace(0, 1, 6))[3:]
 
@@ -1577,12 +1529,11 @@ class Visualizer:
         :return:
         """
 
-        inward_expansions_only = kwargs.get('inward_expansions_only', True)
+        mask_type = kwargs.get('mask_type', "mask_only")
 
-        if inward_expansions_only:
-            plot_features = self.all_samples_features.loc[pd.IndexSlice[:, :, :-1, "Data"], :]
-        else:
-            plot_features = self.all_samples_features.loc[pd.IndexSlice[:, :, :, "Data"], :]
+        plot_features = loc_by_expansion(self.all_samples_features,
+                                         expansion_type=mask_type,
+                                         average=False)
 
         output_dir = self.config.visualization_results_dir + "/UMAP Scatter Plot Projection"
 
@@ -3076,19 +3027,13 @@ class Visualizer:
 
             feed_features = self.all_samples_features.loc[self.all_samples_features["Data Type"] == feed_name]
 
-            if mask_type == "mask_only":
-                feed_features = feed_features.loc[idx[:, :, :-1, "Data"], :]
-            elif mask_type == "mask_and_expansion":
-                feed_features = feed_features.loc[idx[:, :, :, "Data"], :]
-            elif mask_type == "expansion_only":
-                feed_features = feed_features.loc[idx[:, :, 0:, "Data"], :]
+            feed_features = loc_by_expansion(feed_features,
+                                             expansion_type=mask_type,
+                                             average=False)
 
-            feed_features = pd.melt(feed_features,
-                                    id_vars=self.config.non_marker_vars,
-                                    ignore_index=False)
-
-            feed_features = feed_features.rename(columns={'variable': 'Marker',
-                                                          'value': 'Expression'})
+            feed_features = melt_markers(feed_features,
+                                         id_vars=self.config.non_marker_vars,
+                                         add_marker_group=False)
 
             feed_features['Mean Expression'] = \
                 feed_features.groupby(['Vessel', 'Point', 'Marker'])['Expression'].transform('mean')
