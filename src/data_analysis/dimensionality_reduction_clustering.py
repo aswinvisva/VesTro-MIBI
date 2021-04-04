@@ -107,7 +107,7 @@ class DimensionalityReductionClusteringAnalyzer(BaseAnalyzer, ABC):
                         {"title": "PCA", "features": pca_embedding},
                         {"title": "SVD", "features": svd_embedding}]
 
-        n_clusters_trials = [5]
+        n_clusters_trials = [5, 10, 15, 20]
 
         for n_clusters in n_clusters_trials:
 
