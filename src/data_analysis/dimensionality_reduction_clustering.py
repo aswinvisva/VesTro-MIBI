@@ -69,9 +69,11 @@ class DimensionalityReductionClusteringAnalyzer(BaseAnalyzer, ABC):
                                             average=True)
 
         if marker_settings == "vessel_mask_markers_removed":
+
             visualization_features = loc_by_expansion(self.all_samples_features,
-                                                      columns_to_keep=self.markers_names -
-                                                                      self.config.mask_marker_clusters["Vessels"],
+                                                      columns_to_keep=np.setdiff1d(self.markers_names,
+                                                                                   self.config.mask_marker_clusters[
+                                                                                       "Vessels"]),
                                                       expansion_type=mask_type,
                                                       average=True)
 
@@ -93,21 +95,27 @@ class DimensionalityReductionClusteringAnalyzer(BaseAnalyzer, ABC):
         pca_embedding = pca(visualization_features)
         svd_embedding = svd(visualization_features)
 
-        clustering_models = [{"title": "K-Means", "cluster": k_means},
-                             {"title": "Hierarchical", "cluster": agglomerative}]
+        clustering_models = [
+            {"title": "K-Means", "cluster": k_means},
+            {"title": "Hierarchical", "cluster": agglomerative}
+        ]
 
-        cluster_features_trials = [{"title": "UMAP Space", "features": umap_embedding},
-                                   {"title": "TSNE Space", "features": tsne_embedding},
-                                   {"title": "PCA Space", "features": pca_embedding},
-                                   {"title": "SVD", "features": svd_embedding},
-                                   {"title": "Original Space", "features": cluster_features.to_numpy()}, ]
+        cluster_features_trials = [
+            # {"title": "UMAP Space", "features": umap_embedding},
+            # {"title": "TSNE Space", "features": tsne_embedding},
+            # {"title": "PCA Space", "features": pca_embedding},
+            # {"title": "SVD", "features": svd_embedding},
+            {"title": "Original Space", "features": cluster_features.to_numpy()}
+        ]
 
-        vis_features = [{"title": "UMAP", "features": umap_embedding},
-                        {"title": "TSNE", "features": tsne_embedding},
-                        {"title": "PCA", "features": pca_embedding},
-                        {"title": "SVD", "features": svd_embedding}]
+        vis_features = [
+            {"title": "UMAP", "features": umap_embedding},
+            # {"title": "TSNE", "features": tsne_embedding},
+            # {"title": "PCA", "features": pca_embedding},
+            # {"title": "SVD", "features": svd_embedding}
+        ]
 
-        n_clusters_trials = [5, 10, 15, 20]
+        n_clusters_trials = [5]
 
         for n_clusters in n_clusters_trials:
 

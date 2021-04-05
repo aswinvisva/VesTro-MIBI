@@ -1502,7 +1502,7 @@ class Visualizer:
         :param cmap: Union[str, Matplotlib.Colormap], Color map for Scatter Plot
         :return:
         """
-        columns = self.all_samples_features.columns
+        columns = data.columns
 
         assert x in columns and y in columns and hue in columns, "Analysis columns are not in dataframe!"
 
@@ -1534,6 +1534,7 @@ class Visualizer:
         """
 
         mask_type = kwargs.get('mask_type', "mask_only")
+        analysis_variable = kwargs.get('analysis_variable', "Asymmetry Score")
 
         plot_features = loc_by_expansion(self.all_samples_features,
                                          expansion_type=mask_type,
@@ -1569,6 +1570,11 @@ class Visualizer:
                                      hue="Contour Area",
                                      min_val=self.config.small_vessel_threshold,
                                      max_val=1000)
+
+        self._scatter_plot_color_bar("umap_projection",
+                                     output_dir + "/%s" % analysis_variable,
+                                     plot_features,
+                                     hue=analysis_variable)
 
         plot_features.reset_index(level=['Point'], inplace=True)
 
