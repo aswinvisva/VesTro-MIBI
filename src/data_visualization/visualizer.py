@@ -118,7 +118,7 @@ class Visualizer:
                                                       "Data"], :]
 
         plot_features = melt_markers(plot_features,
-                                     id_vars=self.config.non_marker_vars,
+                                     non_id_vars=self.markers_names,
                                      reset_index=['Expansion'],
                                      add_marker_group=True,
                                      marker_groups=marker_clusters)
@@ -253,7 +253,7 @@ class Visualizer:
                                                       "Data"], :]
 
         plot_features = melt_markers(plot_features,
-                                     id_vars=self.config.non_marker_vars,
+                                     non_id_vars=self.markers_names,
                                      reset_index=['Expansion'],
                                      add_marker_group=True,
                                      marker_groups=marker_clusters)
@@ -382,7 +382,7 @@ class Visualizer:
                                                       "Data"], :]
 
         plot_features = melt_markers(plot_features,
-                                     id_vars=self.config.non_marker_vars,
+                                     non_id_vars=self.markers_names,
                                      reset_index=['Expansion'],
                                      add_marker_group=True,
                                      marker_groups=marker_clusters)
@@ -516,7 +516,7 @@ class Visualizer:
                                                       "Data"], :]
 
         plot_features = melt_markers(plot_features,
-                                     id_vars=self.config.non_marker_vars,
+                                     non_id_vars=self.markers_names,
                                      reset_index=['Expansion'],
                                      add_marker_group=True,
                                      marker_groups=marker_clusters)
@@ -948,7 +948,8 @@ class Visualizer:
                                              average=False)
 
             feed_features = melt_markers(feed_features,
-                                         id_vars=self.config.non_marker_vars)
+                                         non_id_vars=self.markers_names,
+                                         )
 
             feed_features['Size'] = pd.cut(feed_features['Contour Area'],
                                            bins=[self.config.small_vessel_threshold,
@@ -1070,7 +1071,7 @@ class Visualizer:
                                                       "Data"], :]
 
         plot_features = melt_markers(plot_features,
-                                     id_vars=self.config.non_marker_vars,
+                                     non_id_vars=self.markers_names,
                                      reset_index=['Expansion', 'Point'],
                                      add_marker_group=True,
                                      marker_groups=marker_clusters)
@@ -1217,7 +1218,7 @@ class Visualizer:
                                                       "Data"], :]
 
         plot_features = melt_markers(plot_features,
-                                     id_vars=self.config.non_marker_vars,
+                                     non_id_vars=self.markers_names,
                                      reset_index=['Expansion', 'Point'],
                                      add_marker_group=True,
                                      marker_groups=marker_clusters)
@@ -1501,6 +1502,9 @@ class Visualizer:
         :param cmap: Union[str, Matplotlib.Colormap], Color map for Scatter Plot
         :return:
         """
+        columns = self.all_samples_features.columns
+
+        assert x in columns and y in columns and hue in columns, "Analysis columns are not in dataframe!"
 
         if min_val is None:
             min_val = data[hue].min()
@@ -2001,19 +2005,13 @@ class Visualizer:
 
             feed_features = self.all_samples_features.loc[self.all_samples_features["Data Type"] == feed_name]
 
-            if mask_type == "mask_only":
-                feed_features = feed_features.loc[idx[:, :, :-1, "Data"], :]
-            elif mask_type == "mask_and_expansion":
-                feed_features = feed_features.loc[idx[:, :, :, "Data"], :]
-            elif mask_type == "expansion_only":
-                feed_features = feed_features.loc[idx[:, :, 0:, "Data"], :]
+            feed_features = loc_by_expansion(feed_features,
+                                             expansion_type=mask_type,
+                                             average=False)
 
-            feed_features = pd.melt(feed_features,
-                                    id_vars=self.config.non_marker_vars,
-                                    ignore_index=False)
-
-            feed_features = feed_features.rename(columns={'variable': 'Marker',
-                                                          'value': 'Expression'})
+            feed_features = melt_markers(feed_features,
+                                         non_id_vars=self.markers_names,
+                                         add_marker_group=False)
 
             feed_features['Mean Expression'] = \
                 feed_features.groupby(['Vessel', 'Point', 'Marker'])['Expression'].transform('mean')
@@ -3032,7 +3030,7 @@ class Visualizer:
                                              average=False)
 
             feed_features = melt_markers(feed_features,
-                                         id_vars=self.config.non_marker_vars,
+                                         non_id_vars=self.markers_names,
                                          add_marker_group=False)
 
             feed_features['Mean Expression'] = \
