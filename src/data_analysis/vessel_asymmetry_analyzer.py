@@ -62,24 +62,10 @@ class VesselAsymmetryAnalyzer(BaseAnalyzer, ABC):
         apply_arcsinh_transform = kwargs.get("apply_arcsinh_transform", True)
 
         img_shape = self.config.segmentation_mask_size
-        parent_dir = "%s/Vessel Asymmetry" % self.config.visualization_results_dir
 
         for feed_idx in self.all_feeds_contour_data.index.get_level_values('Feed Index').unique():
             feed_data = self.all_feeds_contour_data.loc[feed_idx]
             idx = pd.IndexSlice
-            feed_name = self.all_feeds_metadata.loc[idx[feed_idx, 0], "Feed Name"]
-
-            output_dir = "%s/%s" % (parent_dir, feed_name)
-            mkdir_p(output_dir)
-
-            asymmetry_dir = "%s/%s" % (output_dir, "Asymmetry")
-            mkdir_p(asymmetry_dir)
-
-            non_asymmetry_dir = "%s/%s" % (output_dir, "Non-Asymmetry")
-            mkdir_p(non_asymmetry_dir)
-
-            na_dir = "%s/%s" % (output_dir, "Excluded")
-            mkdir_p(na_dir)
 
             for point_idx in feed_data.index.get_level_values('Point Index').unique():
                 point_data = feed_data.loc[point_idx, "Contours"]

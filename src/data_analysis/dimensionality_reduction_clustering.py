@@ -64,13 +64,13 @@ class DimensionalityReductionClusteringAnalyzer(BaseAnalyzer, ABC):
         mkdir_p(parent_dir)
 
         cluster_features = loc_by_expansion(self.all_samples_features,
-                                            columns_to_drop=self.config.non_marker_vars,
+                                            columns_to_keep=self.markers_names,
                                             expansion_type=mask_type,
                                             average=True)
 
         if marker_settings == "vessel_mask_markers_removed":
             visualization_features = loc_by_expansion(self.all_samples_features,
-                                                      columns_to_drop=self.config.non_marker_vars +
+                                                      columns_to_keep=self.markers_names -
                                                                       self.config.mask_marker_clusters["Vessels"],
                                                       expansion_type=mask_type,
                                                       average=True)
@@ -156,9 +156,7 @@ class DimensionalityReductionClusteringAnalyzer(BaseAnalyzer, ABC):
                                                           :,
                                                           :], cluster_model["title"]] = cluster
 
-                        marker_features = self.all_samples_features.drop(
-                            [x for x in self.config.non_marker_vars if x != cluster_model["title"]],
-                            axis=1, errors='ignore')
+                        marker_features = self.all_samples_features[self.markers_names + [cluster_model["title"]]]
 
                         marker_features = marker_features.groupby(['Point', 'Vessel']).mean()
 
