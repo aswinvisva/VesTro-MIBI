@@ -58,8 +58,8 @@ class VesselAsymmetryAnalyzer(BaseAnalyzer, ABC):
         :return:
         """
 
-        asymmetry_threshold = kwargs.get("asymmetry_threshold", 0.15)
-        apply_arcsinh_transform = kwargs.get("apply_arcsinh_transform", True)
+        asymmetry_threshold = kwargs.get("asymmetry_threshold", 0.2)
+        vessel_mask_marker_threshold = kwargs.get("vessel_mask_marker_threshold", 0.25)
 
         img_shape = self.config.segmentation_mask_size
         parent_dir = "%s/Vessel Asymmetry" % self.config.visualization_results_dir
@@ -103,7 +103,6 @@ class VesselAsymmetryAnalyzer(BaseAnalyzer, ABC):
                     cv.drawContours(mask, [cnt], -1, 1, cv.FILLED)
 
                     if cnt_area > self.config.small_vessel_threshold:
-                        # hull = cv.convexHull(cnt, returnPoints=False)
                         point_hull = cv.convexHull(cnt)
                         hull_mask = np.zeros((img_shape[0], img_shape[1], 1), np.uint8)
 
@@ -135,11 +134,11 @@ class VesselAsymmetryAnalyzer(BaseAnalyzer, ABC):
                                                                     :,
                                                                     :], :]
 
-                    if (vessel_features["Asymmetry Score"] >= 0.2).any() and (
-                        (vessel_features["GLUT1"] >= 0.25).any() or
-                        (vessel_features["vWF"] >= 0.25).any() or
-                        (vessel_features["CD31"] >= 0.25).any() or
-                        (vessel_features["SMA"] >= 0.25).any()
+                    if (vessel_features["Asymmetry Score"] >= asymmetry_threshold).any() and (
+                        (vessel_features["GLUT1"] >= vessel_mask_marker_threshold).any() or
+                        (vessel_features["vWF"] >= vessel_mask_marker_threshold).any() or
+                        (vessel_features["CD31"] >= vessel_mask_marker_threshold).any() or
+                        (vessel_features["SMA"] >= vessel_mask_marker_threshold).any()
                     ):
                         self.all_samples_features.loc[idx[point_idx + 1,
                                                       cnt_idx,

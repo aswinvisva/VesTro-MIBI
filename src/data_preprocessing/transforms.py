@@ -42,6 +42,7 @@ def loc_by_expansion(mibi_features: pd.DataFrame,
             transformed_features = transformed_features.drop(columns_to_drop, axis=1, errors='ignore')
 
         transformed_features.reset_index(level=['Point', 'Vessel'], inplace=True)
+
         transformed_features = transformed_features.groupby(['Point', 'Vessel']).mean()
 
     return transformed_features

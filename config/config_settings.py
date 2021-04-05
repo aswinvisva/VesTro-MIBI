@@ -67,16 +67,17 @@ class Config:
                        "Data Type",
                        "Asymmetry",
                        "Asymmetry Score",
-                       "UMAP0",
-                       "UMAP1",
-                       "TSNE0",
-                       "TSNE1",
-                       "PCA0",
-                       "PCA1",
-                       "SVD0",
-                       "SVD1",
-                       "K-Means",
-                       "Hierarchical"
+                       "Region"
+                       # "UMAP0",
+                       # "UMAP1",
+                       # "TSNE0",
+                       # "TSNE1",
+                       # "PCA0",
+                       # "PCA1",
+                       # "SVD0",
+                       # "SVD1",
+                       # "K-Means",
+                       # "Hierarchical"
                        ]
 
     n_markers = 34
@@ -207,7 +208,7 @@ class Config:
     create_categorical_scatter_plots = False  #
     create_umap_projection_scatter_plots = True  #
     create_vessel_images_by_categorical_variable = False  #
-    create_pseudo_time_heatmap = False  #
+    create_pseudo_time_heatmap = True  #
 
     if create_vessel_areas_histograms_and_boxplots:
         show_boxplot_outliers = False
