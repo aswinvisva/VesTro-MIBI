@@ -37,9 +37,9 @@ def loc_by_expansion(mibi_features: pd.DataFrame,
 
     if average:
         if columns_to_keep is not None:
-            transformed_features = transformed_features[columns_to_keep]
+            transformed_features = keep_columns_in_df(transformed_features, columns_to_keep)
         elif columns_to_drop is not None:
-            transformed_features = transformed_features.drop(columns_to_drop, axis=1, errors='ignore')
+            transformed_features = drop_columns_in_df(transformed_features, columns_to_drop)
 
         transformed_features.reset_index(level=['Point', 'Vessel'], inplace=True)
 
@@ -49,7 +49,8 @@ def loc_by_expansion(mibi_features: pd.DataFrame,
 
 
 def melt_markers(mibi_features: pd.DataFrame,
-                 id_vars: list,
+                 non_id_vars: list = None,
+                 id_vars: list = None,
                  reset_index: list = None,
                  add_marker_group: bool = False,
                  marker_groups: dict = None):
@@ -59,6 +60,9 @@ def melt_markers(mibi_features: pd.DataFrame,
 
     if add_marker_group:
         assert marker_groups is not None, "No marker groups specified!"
+
+    if non_id_vars is not None:
+        id_vars = np.setdiff1d(mibi_features.columns, non_id_vars)
 
     transformed_features = pd.melt(mibi_features,
                                    id_vars=id_vars,
@@ -76,3 +80,20 @@ def melt_markers(mibi_features: pd.DataFrame,
                 transformed_features.loc[transformed_features["Marker"] == marker_name, "Marker Group"] = key
 
     return transformed_features
+
+
+def keep_columns_in_df(mibi_features: pd.DataFrame,
+                       columns_to_keep: list):
+    """
+    Get data from MIBI dataframe
+    """
+
+    return mibi_features[columns_to_keep]
+
+
+def drop_columns_in_df(mibi_features: pd.DataFrame,
+                       columns_to_drop: list):
+    """
+    Drop data from MIBI dataframe
+    """
+    return mibi_features.drop(columns_to_drop, axis=1, errors='ignore')

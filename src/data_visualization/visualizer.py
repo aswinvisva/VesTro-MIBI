@@ -118,7 +118,7 @@ class Visualizer:
                                                       "Data"], :]
 
         plot_features = melt_markers(plot_features,
-                                     id_vars=self.config.non_marker_vars,
+                                     non_id_vars=self.markers_names,
                                      reset_index=['Expansion'],
                                      add_marker_group=True,
                                      marker_groups=marker_clusters)
@@ -253,7 +253,7 @@ class Visualizer:
                                                       "Data"], :]
 
         plot_features = melt_markers(plot_features,
-                                     id_vars=self.config.non_marker_vars,
+                                     non_id_vars=self.markers_names,
                                      reset_index=['Expansion'],
                                      add_marker_group=True,
                                      marker_groups=marker_clusters)
@@ -382,7 +382,7 @@ class Visualizer:
                                                       "Data"], :]
 
         plot_features = melt_markers(plot_features,
-                                     id_vars=self.config.non_marker_vars,
+                                     non_id_vars=self.markers_names,
                                      reset_index=['Expansion'],
                                      add_marker_group=True,
                                      marker_groups=marker_clusters)
@@ -516,7 +516,7 @@ class Visualizer:
                                                       "Data"], :]
 
         plot_features = melt_markers(plot_features,
-                                     id_vars=self.config.non_marker_vars,
+                                     non_id_vars=self.markers_names,
                                      reset_index=['Expansion'],
                                      add_marker_group=True,
                                      marker_groups=marker_clusters)
@@ -948,7 +948,8 @@ class Visualizer:
                                              average=False)
 
             feed_features = melt_markers(feed_features,
-                                         id_vars=self.config.non_marker_vars)
+                                         non_id_vars=self.markers_names,
+                                         )
 
             feed_features['Size'] = pd.cut(feed_features['Contour Area'],
                                            bins=[self.config.small_vessel_threshold,
@@ -1070,7 +1071,7 @@ class Visualizer:
                                                       "Data"], :]
 
         plot_features = melt_markers(plot_features,
-                                     id_vars=self.config.non_marker_vars,
+                                     non_id_vars=self.markers_names,
                                      reset_index=['Expansion', 'Point'],
                                      add_marker_group=True,
                                      marker_groups=marker_clusters)
@@ -1217,7 +1218,7 @@ class Visualizer:
                                                       "Data"], :]
 
         plot_features = melt_markers(plot_features,
-                                     id_vars=self.config.non_marker_vars,
+                                     non_id_vars=self.markers_names,
                                      reset_index=['Expansion', 'Point'],
                                      add_marker_group=True,
                                      marker_groups=marker_clusters)
@@ -1501,6 +1502,9 @@ class Visualizer:
         :param cmap: Union[str, Matplotlib.Colormap], Color map for Scatter Plot
         :return:
         """
+        columns = data.columns
+
+        assert x in columns and y in columns and hue in columns, "Analysis columns are not in dataframe!"
 
         if min_val is None:
             min_val = data[hue].min()
@@ -1530,6 +1534,7 @@ class Visualizer:
         """
 
         mask_type = kwargs.get('mask_type', "mask_only")
+        analysis_variable = kwargs.get('analysis_variable', "Asymmetry Score")
 
         plot_features = loc_by_expansion(self.all_samples_features,
                                          expansion_type=mask_type,
@@ -1565,6 +1570,13 @@ class Visualizer:
                                      hue="Contour Area",
                                      min_val=self.config.small_vessel_threshold,
                                      max_val=1000)
+
+        self._scatter_plot_color_bar("umap_projection",
+                                     output_dir + "/%s" % analysis_variable,
+                                     plot_features,
+                                     hue=analysis_variable,
+                                     min_val=plot_features[analysis_variable].min(),
+                                     max_val=1.25)
 
         plot_features.reset_index(level=['Point'], inplace=True)
 
@@ -2001,19 +2013,13 @@ class Visualizer:
 
             feed_features = self.all_samples_features.loc[self.all_samples_features["Data Type"] == feed_name]
 
-            if mask_type == "mask_only":
-                feed_features = feed_features.loc[idx[:, :, :-1, "Data"], :]
-            elif mask_type == "mask_and_expansion":
-                feed_features = feed_features.loc[idx[:, :, :, "Data"], :]
-            elif mask_type == "expansion_only":
-                feed_features = feed_features.loc[idx[:, :, 0:, "Data"], :]
+            feed_features = loc_by_expansion(feed_features,
+                                             expansion_type=mask_type,
+                                             average=False)
 
-            feed_features = pd.melt(feed_features,
-                                    id_vars=self.config.non_marker_vars,
-                                    ignore_index=False)
-
-            feed_features = feed_features.rename(columns={'variable': 'Marker',
-                                                          'value': 'Expression'})
+            feed_features = melt_markers(feed_features,
+                                         non_id_vars=self.markers_names,
+                                         add_marker_group=False)
 
             feed_features['Mean Expression'] = \
                 feed_features.groupby(['Vessel', 'Point', 'Marker'])['Expression'].transform('mean')
@@ -2346,7 +2352,10 @@ class Visualizer:
                                       output_dir,
                                       map_name,
                                       cluster=False,
-                                      y_tick_labels=False):
+                                      y_tick_labels=False,
+                                      x_tick_values=None,
+                                      vmin=None,
+                                      vmax=None):
 
         """
         Helper method to save heatmap and clustermap output
@@ -2374,8 +2383,8 @@ class Visualizer:
                              xticklabels=x_tick_labels,
                              yticklabels=y_tick_labels,
                              linewidths=0,
-                             vmin=0,
-                             vmax=1
+                             vmin=vmin,
+                             vmax=vmax
                              )
 
             ax.set_xticklabels(ax.get_xticklabels(), rotation="horizontal")
@@ -2383,10 +2392,8 @@ class Visualizer:
             if axis_ticklabels_overlap(ax.get_xticklabels()):
                 ax.set_xticklabels(ax.get_xticklabels(), rotation=45, ha="right")
 
-            if len(x_tick_labels) > 100:
+            if len(x_tick_labels) != data.shape[1] or x_tick_values is not None:
                 xticks = ax.get_xticklabels()
-
-                x_tick_values = [0.00, 0.25, 0.5, 0.75, 1.0]
 
                 for xtick in xticks:
                     xtick.set_visible(False)
@@ -2430,10 +2437,8 @@ class Visualizer:
             if axis_ticklabels_overlap(ax_ax.get_xticklabels()):
                 ax_ax.set_xticklabels(ax_ax.get_xticklabels(), rotation=45, ha="right")
 
-            if len(x_tick_labels) > 100:
+            if len(x_tick_labels) != data.shape[1] or x_tick_values is not None:
                 xticks = ax_ax.get_xticklabels()
-
-                x_tick_values = [0.00, 0.25, 0.5, 0.75, 1.0]
 
                 for xtick in xticks:
                     xtick.set_visible(False)
@@ -2994,7 +2999,7 @@ class Visualizer:
 
             cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", colors)
 
-        analysis_variable = kwargs.get('analysis_variable', "Contour Area")
+        analysis_variable = kwargs.get('analysis_variable', "Asymmetry Score")
         mask_type = kwargs.get('mask_type', "expansion_only")
 
         for feed_idx in range(self.all_feeds_data.shape[0]):
@@ -3030,7 +3035,7 @@ class Visualizer:
                                                    average=False)
 
                 region_features = melt_markers(region_features,
-                                               id_vars=self.config.non_marker_vars,
+                                               non_id_vars=self.markers_names,
                                                add_marker_group=False)
 
                 region_features["Expression"] = pd.to_numeric(region_features["Expression"])
@@ -3070,20 +3075,25 @@ class Visualizer:
                 self._heatmap_clustermap_generator(data=all_mask_data,
                                                    x_tick_labels=x_tick_labels,
                                                    x_label=analysis_variable,
+                                                   x_tick_values=np.linspace(region_features[analysis_variable].min(),
+                                                                             region_features[analysis_variable].max(),
+                                                                             5).tolist(),
                                                    cmap=cmap,
                                                    marker_clusters=self.config.marker_clusters,
                                                    output_dir=region_dir,
-                                                   map_name="Pseudo_Time_Analysis",
+                                                   map_name="%s_heatmap" % analysis_variable,
                                                    cluster=False,
                                                    y_tick_labels=y_tick_labels)
 
                 all_mask_data = []
                 x_tick_labels = []
 
-                for val in np.linspace(0, 1, 5):
+                for val in np.linspace(region_features[analysis_variable].min(),
+                                       region_features[analysis_variable].max(), 5):
 
                     current_expansion_all = region_features[(region_features[analysis_variable] >= val) &
-                                                            (region_features[analysis_variable] < val + 0.25)].groupby(
+                                                            (region_features[analysis_variable] < val + region_features[
+                                                                analysis_variable].max() / 5)].groupby(
                         ['Marker'])[
                         'Mean Expression'].mean().to_numpy()
 
@@ -3101,10 +3111,13 @@ class Visualizer:
                 self._heatmap_clustermap_generator(data=all_mask_data,
                                                    x_tick_labels=x_tick_labels,
                                                    x_label=analysis_variable,
+                                                   x_tick_values=np.linspace(region_features[analysis_variable].min(),
+                                                                             region_features[analysis_variable].max(),
+                                                                             5).tolist(),
                                                    cmap=cmap,
                                                    marker_clusters=self.config.marker_clusters,
                                                    output_dir=region_dir,
-                                                   map_name="Pseudo_Time_Analysis_Binned",
+                                                   map_name="%s_heatmap_binned" % analysis_variable,
                                                    cluster=False,
                                                    y_tick_labels=y_tick_labels)
 

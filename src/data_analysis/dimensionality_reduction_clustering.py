@@ -63,49 +63,62 @@ class DimensionalityReductionClusteringAnalyzer(BaseAnalyzer, ABC):
         parent_dir = "%s/Clustering" % self.config.visualization_results_dir
         mkdir_p(parent_dir)
 
-        cluster_features = loc_by_expansion(self.all_samples_features,
-                                            columns_to_drop=self.config.non_marker_vars,
+        cluster_features = loc_by_expansion(self.all_samples_features.copy(),
+                                            columns_to_keep=self.markers_names,
                                             expansion_type=mask_type,
                                             average=True)
 
         if marker_settings == "vessel_mask_markers_removed":
-            visualization_features = loc_by_expansion(self.all_samples_features,
-                                                      columns_to_drop=self.config.non_marker_vars +
-                                                                      self.config.mask_marker_clusters["Vessels"],
+
+            visualization_features = loc_by_expansion(self.all_samples_features.copy(),
+                                                      columns_to_keep=np.setdiff1d(self.markers_names,
+                                                                                   self.config.mask_marker_clusters[
+                                                                                       "Vessels"]),
                                                       expansion_type=mask_type,
                                                       average=True)
 
         elif marker_settings == "vessel_markers_only":
-            visualization_features = loc_by_expansion(self.all_samples_features,
+            visualization_features = loc_by_expansion(self.all_samples_features.copy(),
                                                       columns_to_keep=self.config.marker_clusters["Vessels"],
                                                       expansion_type=mask_type,
                                                       average=True)
 
         elif marker_settings == "vessel_and_astrocyte_markers":
-            visualization_features = loc_by_expansion(self.all_samples_features,
+            visualization_features = loc_by_expansion(self.all_samples_features.copy(),
                                                       columns_to_keep=self.config.marker_clusters["Vessels"] +
                                                                       self.config.marker_clusters["Astrocytes"],
                                                       expansion_type=mask_type,
                                                       average=True)
+        elif marker_settings == "all_markers":
+            visualization_features = loc_by_expansion(self.all_samples_features.copy(),
+                                                      columns_to_keep=self.markers_names,
+                                                      expansion_type=mask_type,
+                                                      average=True)
 
-        umap_embedding = umap(visualization_features, n_neighbors=4)
+        umap_embedding = umap(visualization_features)
         tsne_embedding = tsne(visualization_features)
         pca_embedding = pca(visualization_features)
         svd_embedding = svd(visualization_features)
 
-        clustering_models = [{"title": "K-Means", "cluster": k_means},
-                             {"title": "Hierarchical", "cluster": agglomerative}]
+        clustering_models = [
+            {"title": "K-Means", "cluster": k_means},
+            {"title": "Hierarchical", "cluster": agglomerative}
+        ]
 
-        cluster_features_trials = [{"title": "UMAP Space", "features": umap_embedding},
-                                   {"title": "TSNE Space", "features": tsne_embedding},
-                                   {"title": "PCA Space", "features": pca_embedding},
-                                   {"title": "SVD", "features": svd_embedding},
-                                   {"title": "Original Space", "features": cluster_features.to_numpy()}, ]
+        cluster_features_trials = [
+            # {"title": "UMAP Space", "features": umap_embedding},
+            # {"title": "TSNE Space", "features": tsne_embedding},
+            # {"title": "PCA Space", "features": pca_embedding},
+            # {"title": "SVD", "features": svd_embedding},
+            {"title": "Original Space", "features": cluster_features.to_numpy()}
+        ]
 
-        vis_features = [{"title": "UMAP", "features": umap_embedding},
-                        {"title": "TSNE", "features": tsne_embedding},
-                        {"title": "PCA", "features": pca_embedding},
-                        {"title": "SVD", "features": svd_embedding}]
+        vis_features = [
+            {"title": "UMAP", "features": umap_embedding},
+            # {"title": "TSNE", "features": tsne_embedding},
+            # {"title": "PCA", "features": pca_embedding},
+            # {"title": "SVD", "features": svd_embedding}
+        ]
 
         n_clusters_trials = [5]
 
@@ -156,9 +169,7 @@ class DimensionalityReductionClusteringAnalyzer(BaseAnalyzer, ABC):
                                                           :,
                                                           :], cluster_model["title"]] = cluster
 
-                        marker_features = self.all_samples_features.drop(
-                            [x for x in self.config.non_marker_vars if x != cluster_model["title"]],
-                            axis=1, errors='ignore')
+                        marker_features = self.all_samples_features[self.markers_names + [cluster_model["title"]]]
 
                         marker_features = marker_features.groupby(['Point', 'Vessel']).mean()
 

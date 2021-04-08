@@ -7,6 +7,7 @@ from sklearn.preprocessing import MinMaxScaler
 from tqdm import tqdm
 import cv2 as cv
 
+from src.data_analysis._shape_quantification_metrics import *
 from src.data_analysis.base_analyzer import BaseAnalyzer
 from src.data_loading.mibi_data_feed import MIBIDataFeed
 from src.data_loading.mibi_loader import MIBILoader
@@ -58,28 +59,15 @@ class VesselAsymmetryAnalyzer(BaseAnalyzer, ABC):
         :return:
         """
 
-        asymmetry_threshold = kwargs.get("asymmetry_threshold", 0.2)
+        asymmetry_threshold = kwargs.get("asymmetry_threshold", 90)
         vessel_mask_marker_threshold = kwargs.get("vessel_mask_marker_threshold", 0.25)
+        shape_quantification_metric = kwargs.get("shape_quantification_metric", contour_area)
 
         img_shape = self.config.segmentation_mask_size
-        parent_dir = "%s/Vessel Asymmetry" % self.config.visualization_results_dir
 
         for feed_idx in self.all_feeds_contour_data.index.get_level_values('Feed Index').unique():
             feed_data = self.all_feeds_contour_data.loc[feed_idx]
             idx = pd.IndexSlice
-            feed_name = self.all_feeds_metadata.loc[idx[feed_idx, 0], "Feed Name"]
-
-            output_dir = "%s/%s" % (parent_dir, feed_name)
-            mkdir_p(output_dir)
-
-            asymmetry_dir = "%s/%s" % (output_dir, "Asymmetry")
-            mkdir_p(asymmetry_dir)
-
-            non_asymmetry_dir = "%s/%s" % (output_dir, "Non-Asymmetry")
-            mkdir_p(non_asymmetry_dir)
-
-            na_dir = "%s/%s" % (output_dir, "Excluded")
-            mkdir_p(na_dir)
 
             for point_idx in feed_data.index.get_level_values('Point Index').unique():
                 point_data = feed_data.loc[point_idx, "Contours"]
@@ -98,20 +86,8 @@ class VesselAsymmetryAnalyzer(BaseAnalyzer, ABC):
 
                     cnt_area = cv.contourArea(cnt)
 
-                    mask = np.zeros((img_shape[0], img_shape[1], 1), np.uint8)
-
-                    cv.drawContours(mask, [cnt], -1, 1, cv.FILLED)
-
                     if cnt_area > self.config.small_vessel_threshold:
-                        point_hull = cv.convexHull(cnt)
-                        hull_mask = np.zeros((img_shape[0], img_shape[1], 1), np.uint8)
-
-                        cv.drawContours(hull_mask, [point_hull], -1, 1, cv.FILLED)
-
-                        hull_non_zero_pixels = cv.countNonZero(hull_mask)
-                        mask_non_zero_pixels = cv.countNonZero(mask)
-
-                        asymmetry_score = 1.0 - (float(mask_non_zero_pixels) / float(hull_non_zero_pixels))
+                        asymmetry_score = shape_quantification_metric(cnt)
 
                         self.all_samples_features.loc[idx[point_idx + 1,
                                                       cnt_idx,
@@ -124,6 +100,9 @@ class VesselAsymmetryAnalyzer(BaseAnalyzer, ABC):
                 axis=0)
 
             self.all_samples_features["Asymmetry"] = "No"
+
+            asymmetry_threshold = np.percentile(self.all_samples_features["Asymmetry Score"].values,
+                                                asymmetry_threshold)
 
             for point_idx in feed_data.index.get_level_values('Point Index').unique():
                 point_data = feed_data.loc[point_idx, "Contours"]
