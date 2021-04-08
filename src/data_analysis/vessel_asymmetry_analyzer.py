@@ -61,7 +61,7 @@ class VesselAsymmetryAnalyzer(BaseAnalyzer, ABC):
 
         asymmetry_threshold = kwargs.get("asymmetry_threshold", 90)
         vessel_mask_marker_threshold = kwargs.get("vessel_mask_marker_threshold", 0.25)
-        shape_quantification_metric = kwargs.get("shape_quantification_metric", contour_area)
+        shape_quantification_metric = kwargs.get("shape_quantification_metric", longest_skeleton_path_length)
 
         img_shape = self.config.segmentation_mask_size
 
@@ -87,7 +87,7 @@ class VesselAsymmetryAnalyzer(BaseAnalyzer, ABC):
                     cnt_area = cv.contourArea(cnt)
 
                     if cnt_area > self.config.small_vessel_threshold:
-                        asymmetry_score = shape_quantification_metric(cnt)
+                        asymmetry_score = shape_quantification_metric(cnt, img_shape=img_shape)
 
                         self.all_samples_features.loc[idx[point_idx + 1,
                                                       cnt_idx,

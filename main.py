@@ -38,7 +38,7 @@ def hires_example():
 
     pipe.add_analyzer(VesselAsymmetryAnalyzer)
     pipe.add_analyzer(DimensionalityReductionClusteringAnalyzer)
-    #
+
     pipe.analyze_data(mask_type="expansion_only", marker_settings="all_markers")
 
     pipe.save_to_csv()
