@@ -37,11 +37,12 @@ def loc_by_expansion(mibi_features: pd.DataFrame,
 
     if average:
         if columns_to_keep is not None:
-            transformed_features = keep_columns_in_df(mibi_features, columns_to_keep)
+            transformed_features = keep_columns_in_df(transformed_features, columns_to_keep)
         elif columns_to_drop is not None:
-            transformed_features = drop_columns_in_df(mibi_features, columns_to_drop)
+            transformed_features = drop_columns_in_df(transformed_features, columns_to_drop)
 
         transformed_features.reset_index(level=['Point', 'Vessel'], inplace=True)
+
         transformed_features = transformed_features.groupby(['Point', 'Vessel']).mean()
 
     return transformed_features

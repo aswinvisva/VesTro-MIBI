@@ -63,14 +63,14 @@ class DimensionalityReductionClusteringAnalyzer(BaseAnalyzer, ABC):
         parent_dir = "%s/Clustering" % self.config.visualization_results_dir
         mkdir_p(parent_dir)
 
-        cluster_features = loc_by_expansion(self.all_samples_features,
+        cluster_features = loc_by_expansion(self.all_samples_features.copy(),
                                             columns_to_keep=self.markers_names,
                                             expansion_type=mask_type,
                                             average=True)
 
         if marker_settings == "vessel_mask_markers_removed":
 
-            visualization_features = loc_by_expansion(self.all_samples_features,
+            visualization_features = loc_by_expansion(self.all_samples_features.copy(),
                                                       columns_to_keep=np.setdiff1d(self.markers_names,
                                                                                    self.config.mask_marker_clusters[
                                                                                        "Vessels"]),
@@ -78,19 +78,24 @@ class DimensionalityReductionClusteringAnalyzer(BaseAnalyzer, ABC):
                                                       average=True)
 
         elif marker_settings == "vessel_markers_only":
-            visualization_features = loc_by_expansion(self.all_samples_features,
+            visualization_features = loc_by_expansion(self.all_samples_features.copy(),
                                                       columns_to_keep=self.config.marker_clusters["Vessels"],
                                                       expansion_type=mask_type,
                                                       average=True)
 
         elif marker_settings == "vessel_and_astrocyte_markers":
-            visualization_features = loc_by_expansion(self.all_samples_features,
+            visualization_features = loc_by_expansion(self.all_samples_features.copy(),
                                                       columns_to_keep=self.config.marker_clusters["Vessels"] +
                                                                       self.config.marker_clusters["Astrocytes"],
                                                       expansion_type=mask_type,
                                                       average=True)
+        elif marker_settings == "all_markers":
+            visualization_features = loc_by_expansion(self.all_samples_features.copy(),
+                                                      columns_to_keep=self.markers_names,
+                                                      expansion_type=mask_type,
+                                                      average=True)
 
-        umap_embedding = umap(visualization_features, n_neighbors=4)
+        umap_embedding = umap(visualization_features)
         tsne_embedding = tsne(visualization_features)
         pca_embedding = pca(visualization_features)
         svd_embedding = svd(visualization_features)

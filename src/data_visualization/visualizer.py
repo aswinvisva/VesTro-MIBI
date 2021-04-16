@@ -929,6 +929,7 @@ class Visualizer:
         """
 
         mask_type = kwargs.get('mask_type', "expansion_only")
+        analysis_variable = kwargs.get('analysis_variable', "Asymmetry Score")
 
         parent_dir = "%s/Categorical Violin Plots" % self.config.visualization_results_dir
         mkdir_p(parent_dir)
@@ -960,7 +961,7 @@ class Visualizer:
                                                    "Medium",
                                                    "Large"])
 
-            split_dir = "%s/By %s" % (feed_dir, self.config.primary_categorical_splitter)
+            split_dir = "%s/By %s" % (feed_dir, analysis_variable)
             mkdir_p(split_dir)
 
             cmap = colors.ListedColormap(['blue', 'red'])(np.linspace(0, 1, 2))
@@ -976,14 +977,16 @@ class Visualizer:
 
                     ax = sns.violinplot(x="Size",
                                         y="Expression",
-                                        hue=self.config.primary_categorical_splitter,
+                                        hue=analysis_variable,
+                                        hue_order=["25%", "50%", "75%", "100%"],
                                         inner="box",
                                         data=marker_features,
                                         bw=0.2,
-                                        palette=cmap)
+                                        # palette=cmap
+                                        )
 
                     plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.,
-                               title=self.config.primary_categorical_splitter)
+                               title=analysis_variable)
 
                     plt.savefig(marker_cluster_dir + '/%s.png' % str(marker_name),
                                 bbox_inches='tight')
@@ -1001,12 +1004,14 @@ class Visualizer:
 
                     plt.figure(figsize=(10, 10))
 
-                    ax = sns.violinplot(x=self.config.primary_categorical_splitter,
+                    ax = sns.violinplot(x=analysis_variable,
                                         y="Expression",
+                                        order=["25%", "50%", "75%", "100%"],
                                         inner="box",
                                         data=marker_features,
                                         bw=0.2,
-                                        palette=cmap)
+                                        # palette=cmap
+                                        )
 
                     plt.savefig(marker_cluster_dir + '/%s.png' % str(marker_name),
                                 bbox_inches='tight')
@@ -1574,7 +1579,9 @@ class Visualizer:
         self._scatter_plot_color_bar("umap_projection",
                                      output_dir + "/%s" % analysis_variable,
                                      plot_features,
-                                     hue=analysis_variable)
+                                     hue=analysis_variable,
+                                     min_val=plot_features[analysis_variable].min(),
+                                     max_val=1.25)
 
         plot_features.reset_index(level=['Point'], inplace=True)
 
@@ -1981,11 +1988,14 @@ class Visualizer:
         :return:
         """
 
-        analysis_variable = kwargs.get('analysis_variable', "Asymmetry Score")
-        mask_type = kwargs.get('mask_type', "expansion_only")
+        primary_categorical_splitter = kwargs.get('primary_categorical_splitter', "Asymmetry")
+        secondary_categorical_splitter = kwargs.get('secondary_categorical_splitter', "Vessel Size")
 
-        assert self.config.primary_categorical_splitter is not None, "Must have a primary categorical variable"
-        assert self.config.secondary_categorical_splitter is not None, "Must have a secondary categorical variable"
+        mask_type = kwargs.get('mask_type', "expansion_only")
+        analysis_variable = kwargs.get('analysis_variable', "Asymmetry Score")
+
+        assert primary_categorical_splitter is not None, "Must have a primary categorical variable"
+        assert secondary_categorical_splitter is not None, "Must have a secondary categorical variable"
 
         parent_dir = "%s/%s Scatter Plots" % (self.config.visualization_results_dir, analysis_variable)
         mkdir_p(parent_dir)
@@ -1997,16 +2007,16 @@ class Visualizer:
             feed_dir = "%s/%s" % (parent_dir, feed_name)
             mkdir_p(feed_dir)
 
-            by_primary_analysis_variable_dir = "%s/By %s" % (feed_dir, self.config.primary_categorical_splitter)
+            by_primary_analysis_variable_dir = "%s/By %s" % (feed_dir, primary_categorical_splitter)
             mkdir_p(by_primary_analysis_variable_dir)
 
-            by_secondary_analysis_variable_dir = "%s/By %s" % (feed_dir, self.config.secondary_categorical_splitter)
+            by_secondary_analysis_variable_dir = "%s/By %s" % (feed_dir, secondary_categorical_splitter)
             mkdir_p(by_secondary_analysis_variable_dir)
 
             with_vessel_id_dir = "%s/%s" % (feed_dir, "With Vessel ID")
             mkdir_p(with_vessel_id_dir)
 
-            secondary_separate_dir = "%s/Separate By %s" % (feed_dir, self.config.secondary_categorical_splitter)
+            secondary_separate_dir = "%s/Separate By %s" % (feed_dir, secondary_categorical_splitter)
             mkdir_p(secondary_separate_dir)
 
             feed_features = self.all_samples_features.loc[self.all_samples_features["Data Type"] == feed_name]
@@ -2034,13 +2044,13 @@ class Visualizer:
                 g = sns.scatterplot(data=marker_features,
                                     x=analysis_variable,
                                     y="Mean Expression",
-                                    hue=self.config.primary_categorical_splitter,
+                                    hue=primary_categorical_splitter,
                                     ci=None,
                                     palette=cmap)
 
                 plt.legend(bbox_to_anchor=(1.05, 1), loc=2,
                            borderaxespad=0.,
-                           title=self.config.primary_categorical_splitter)
+                           title=primary_categorical_splitter)
 
                 plt.savefig(by_primary_analysis_variable_dir + '/%s.png' % str(marker), bbox_inches='tight')
                 plt.clf()
@@ -2053,14 +2063,14 @@ class Visualizer:
                 g = sns.scatterplot(data=marker_features,
                                     x=analysis_variable,
                                     y="Mean Expression",
-                                    hue=self.config.secondary_categorical_splitter,
+                                    hue=secondary_categorical_splitter,
                                     ci=None,
                                     palette=cmap,
                                     edgecolor='k',
                                     linewidth=1)
 
                 plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.,
-                           title=self.config.secondary_categorical_splitter)
+                           title=secondary_categorical_splitter)
 
                 plt.savefig(by_secondary_analysis_variable_dir + '/%s.png' % str(marker), bbox_inches='tight')
                 plt.clf()
@@ -2088,11 +2098,11 @@ class Visualizer:
                 plt.savefig(with_vessel_id_dir + '/%s.png' % str(marker), bbox_inches='tight')
                 plt.clf()
 
-            for split_val in feed_features[self.config.secondary_categorical_splitter].unique():
+            for split_val in feed_features[secondary_categorical_splitter].unique():
                 out_dir = "%s/%s" % (secondary_separate_dir, split_val)
                 mkdir_p(out_dir)
 
-                split_features = feed_features[feed_features[self.config.secondary_categorical_splitter] == split_val]
+                split_features = feed_features[feed_features[secondary_categorical_splitter] == split_val]
 
                 for marker in split_features["Marker"].unique():
                     marker_features = split_features[split_features["Marker"] == marker]
@@ -2102,12 +2112,12 @@ class Visualizer:
                     g = sns.scatterplot(data=marker_features,
                                         x=analysis_variable,
                                         y="Mean Expression",
-                                        hue=self.config.primary_categorical_splitter,
+                                        hue=primary_categorical_splitter,
                                         ci=None,
                                         palette="tab20")
 
                     plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.,
-                               title=self.config.primary_categorical_splitter)
+                               title=primary_categorical_splitter)
 
                     plt.savefig(out_dir + '/%s.png' % str(marker), bbox_inches='tight')
                     plt.clf()
@@ -2350,7 +2360,11 @@ class Visualizer:
                                       output_dir,
                                       map_name,
                                       cluster=False,
-                                      y_tick_labels=False):
+                                      y_tick_labels=False,
+                                      x_tick_values=None,
+                                      x_tick_indices=None,
+                                      vmin=None,
+                                      vmax=None):
 
         """
         Helper method to save heatmap and clustermap output
@@ -2378,8 +2392,8 @@ class Visualizer:
                              xticklabels=x_tick_labels,
                              yticklabels=y_tick_labels,
                              linewidths=0,
-                             vmin=0,
-                             vmax=1
+                             vmin=vmin,
+                             vmax=vmax
                              )
 
             ax.set_xticklabels(ax.get_xticklabels(), rotation="horizontal")
@@ -2387,18 +2401,21 @@ class Visualizer:
             if axis_ticklabels_overlap(ax.get_xticklabels()):
                 ax.set_xticklabels(ax.get_xticklabels(), rotation=45, ha="right")
 
-            if len(x_tick_labels) > 100:
+            if len(x_tick_labels) != data.shape[1] or x_tick_values is not None or x_tick_indices is not None:
                 xticks = ax.get_xticklabels()
-
-                x_tick_values = [0.00, 0.25, 0.5, 0.75, 1.0]
 
                 for xtick in xticks:
                     xtick.set_visible(False)
 
-                for i, val in enumerate(x_tick_labels):
-                    if val in x_tick_values:
+                if x_tick_values is not None:
+                    for i, val in enumerate(x_tick_labels):
+                        if val in x_tick_values:
+                            xticks[i].set_visible(True)
+                            x_tick_values.remove(val)
+
+                if x_tick_indices is not None:
+                    for i in x_tick_indices:
                         xticks[i].set_visible(True)
-                        x_tick_values.remove(val)
 
             plt.xlabel("%s" % x_label)
 
@@ -2434,18 +2451,21 @@ class Visualizer:
             if axis_ticklabels_overlap(ax_ax.get_xticklabels()):
                 ax_ax.set_xticklabels(ax_ax.get_xticklabels(), rotation=45, ha="right")
 
-            if len(x_tick_labels) > 100:
+            if len(x_tick_labels) != data.shape[1] or x_tick_values is not None or x_tick_indices is not None:
                 xticks = ax_ax.get_xticklabels()
-
-                x_tick_values = [0.00, 0.25, 0.5, 0.75, 1.0]
 
                 for xtick in xticks:
                     xtick.set_visible(False)
 
-                for i, val in enumerate(x_tick_labels):
-                    if val in x_tick_values:
+                if x_tick_values is not None:
+                    for i, val in enumerate(x_tick_labels):
+                        if val in x_tick_values:
+                            xticks[i].set_visible(True)
+                            x_tick_values.remove(val)
+
+                if x_tick_indices is not None:
+                    for i in x_tick_indices:
                         xticks[i].set_visible(True)
-                        x_tick_values.remove(val)
 
             ax.savefig(output_dir + '/%s.png' % map_name)
             plt.clf()
@@ -2999,117 +3019,128 @@ class Visualizer:
             cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", colors)
 
         analysis_variable = kwargs.get('analysis_variable', "Asymmetry Score")
-        n_x_ticks = kwargs.get('n_x_ticks', 9)
         mask_type = kwargs.get('mask_type', "expansion_only")
-
-        allowance = 0.1
-
-        assert self.config.primary_categorical_splitter is not None, "Must have a primary categorical variable"
-        assert self.config.secondary_categorical_splitter is not None, "Must have a secondary categorical variable"
-
-        parent_dir = "%s/%s Scatter Plots" % (self.config.visualization_results_dir, analysis_variable)
-        mkdir_p(parent_dir)
 
         for feed_idx in range(self.all_feeds_data.shape[0]):
             idx = pd.IndexSlice
             feed_name = self.all_feeds_metadata.loc[idx[feed_idx, 0], "Feed Name"]
 
-            feed_dir = "%s/%s" % (parent_dir, feed_name)
+            feed_dir = "%s/%s" % (output_dir, feed_name)
             mkdir_p(feed_dir)
-
-            by_primary_analysis_variable_dir = "%s/By %s" % (feed_dir, self.config.primary_categorical_splitter)
-            mkdir_p(by_primary_analysis_variable_dir)
-
-            by_secondary_analysis_variable_dir = "%s/By %s" % (feed_dir, self.config.secondary_categorical_splitter)
-            mkdir_p(by_secondary_analysis_variable_dir)
-
-            with_vessel_id_dir = "%s/%s" % (feed_dir, "With Vessel ID")
-            mkdir_p(with_vessel_id_dir)
-
-            secondary_separate_dir = "%s/Separate By %s" % (feed_dir, self.config.secondary_categorical_splitter)
-            mkdir_p(secondary_separate_dir)
 
             feed_features = self.all_samples_features.loc[self.all_samples_features["Data Type"] == feed_name]
 
-            feed_features = loc_by_expansion(feed_features,
-                                             expansion_type=mask_type,
-                                             average=False)
+            feed_features.reset_index(level=['Point', 'Vessel', 'Expansion', 'Expansion Type'], inplace=True)
 
-            feed_features = melt_markers(feed_features,
-                                         non_id_vars=self.markers_names,
-                                         add_marker_group=False)
+            feed_features['Region'] = pd.cut(feed_features['Point'],
+                                             bins=[self.config.brain_region_point_ranges[0][0] - 1,
+                                                   self.config.brain_region_point_ranges[1][0] - 1,
+                                                   self.config.brain_region_point_ranges[2][0] - 1,
+                                                   float('Inf')],
+                                             labels=[self.config.brain_region_names[0],
+                                                     self.config.brain_region_names[1],
+                                                     self.config.brain_region_names[2]])
 
-            feed_features['Mean Expression'] = \
-                feed_features.groupby(['Vessel', 'Point', 'Marker'])['Expression'].transform('mean')
+            feed_features.set_index(['Point', 'Vessel', 'Expansion', 'Expansion Type'], inplace=True)
 
-            feed_features.reset_index(level=['Vessel', 'Point', 'Expansion'], inplace=True)
+            for region in feed_features['Region'].unique():
+                region_dir = "%s/%s" % (feed_dir, region)
+                mkdir_p(region_dir)
 
-            feed_features = feed_features[feed_features["Expansion"] == feed_features["Expansion"].max()]
+                region_features = feed_features[feed_features['Region'] == region]
 
-            all_mask_data = []
-            x_tick_labels = []
+                region_features = loc_by_expansion(region_features,
+                                                   expansion_type=mask_type,
+                                                   average=False)
 
-            for val in sorted(feed_features[analysis_variable].unique()):
+                region_features = melt_markers(region_features,
+                                               non_id_vars=self.markers_names,
+                                               add_marker_group=False)
 
-                y_tick_labels = feed_features[feed_features[analysis_variable] == val].groupby(['Marker'],
-                                                                                               sort=False)[
-                    'Mean Expression'].mean().reset_index()["Marker"].values
+                region_features["Expression"] = pd.to_numeric(region_features["Expression"])
 
-                current_expansion_all = feed_features[feed_features[analysis_variable] == val].groupby(['Marker'],
+                region_features['Mean Expression'] = \
+                    region_features.groupby(['Vessel', 'Point', 'Marker'])['Expression'].transform('mean')
+
+                region_features.reset_index(level=['Vessel', 'Point', 'Expansion'], inplace=True)
+
+                region_features = region_features[region_features["Expansion"] == region_features["Expansion"].max()]
+
+                all_mask_data = []
+                x_tick_labels = []
+
+                for val in sorted(region_features[analysis_variable].unique()):
+
+                    y_tick_labels = region_features[region_features[analysis_variable] == val].groupby(['Marker'],
                                                                                                        sort=False)[
-                    'Mean Expression'].mean().to_numpy()
+                        'Mean Expression'].mean().reset_index()["Marker"].values
 
-                x_tick_labels.append(round(val, 2))
+                    current_expansion_all = \
+                        region_features[region_features[analysis_variable] == val].groupby(['Marker'],
+                                                                                           sort=False)[
+                            'Mean Expression'].mean().to_numpy()
 
-                if current_expansion_all.size > 0:
-                    all_mask_data.append(current_expansion_all)
-                else:
-                    all_mask_data.append(np.zeros((self.config.n_markers,), np.uint8))
+                    x_tick_labels.append(round(val, 2))
 
-            all_mask_data = np.array(all_mask_data)
+                    if current_expansion_all.size > 0:
+                        all_mask_data.append(current_expansion_all)
+                    else:
+                        all_mask_data.append(np.zeros((self.config.n_markers,), np.uint8))
 
-            all_mask_data = all_mask_data.T
+                all_mask_data = np.array(all_mask_data)
 
-            self._heatmap_clustermap_generator(data=all_mask_data,
-                                               x_tick_labels=x_tick_labels,
-                                               x_label=analysis_variable,
-                                               cmap=cmap,
-                                               marker_clusters=self.config.marker_clusters,
-                                               output_dir=output_dir,
-                                               map_name="Pseudo_Time_Analysis",
-                                               cluster=False,
-                                               y_tick_labels=y_tick_labels)
+                all_mask_data = all_mask_data.T
 
-            all_mask_data = []
-            x_tick_labels = []
+                self._heatmap_clustermap_generator(data=all_mask_data,
+                                                   x_tick_labels=x_tick_labels,
+                                                   x_label=analysis_variable,
+                                                   x_tick_indices=np.linspace(0,
+                                                                              all_mask_data.shape[1] - 1,
+                                                                              5,
+                                                                              dtype=int),
+                                                   cmap=cmap,
+                                                   marker_clusters=self.config.marker_clusters,
+                                                   output_dir=region_dir,
+                                                   map_name="%s_heatmap" % analysis_variable,
+                                                   cluster=False,
+                                                   y_tick_labels=y_tick_labels)
 
-            for val in np.linspace(0, 1, 5):
+                all_mask_data = []
+                x_tick_labels = []
 
-                current_expansion_all = feed_features[(feed_features[analysis_variable] >= val) &
-                                                      (feed_features[analysis_variable] < val + 0.25)].groupby(
-                    ['Marker'])[
-                    'Mean Expression'].mean().to_numpy()
+                for val in np.linspace(region_features[analysis_variable].min(),
+                                       region_features[analysis_variable].max(), 5):
 
-                x_tick_labels.append(round(val, 2))
+                    current_expansion_all = region_features[(region_features[analysis_variable] >= val) &
+                                                            (region_features[analysis_variable] < val + region_features[
+                                                                analysis_variable].max() / 5)].groupby(
+                        ['Marker'])[
+                        'Mean Expression'].mean().to_numpy()
 
-                if current_expansion_all.size > 0:
-                    all_mask_data.append(current_expansion_all)
-                else:
-                    all_mask_data.append(np.zeros((self.config.n_markers,), np.uint8))
+                    x_tick_labels.append(round(val, 2))
 
-            all_mask_data = np.array(all_mask_data)
+                    if current_expansion_all.size > 0:
+                        all_mask_data.append(current_expansion_all)
+                    else:
+                        all_mask_data.append(np.zeros((self.config.n_markers,), np.uint8))
 
-            all_mask_data = all_mask_data.T
+                all_mask_data = np.array(all_mask_data)
 
-            self._heatmap_clustermap_generator(data=all_mask_data,
-                                               x_tick_labels=x_tick_labels,
-                                               x_label=analysis_variable,
-                                               cmap=cmap,
-                                               marker_clusters=self.config.marker_clusters,
-                                               output_dir=output_dir,
-                                               map_name="Pseudo_Time_Analysis_Binned",
-                                               cluster=False,
-                                               y_tick_labels=y_tick_labels)
+                all_mask_data = all_mask_data.T
+
+                self._heatmap_clustermap_generator(data=all_mask_data,
+                                                   x_tick_labels=x_tick_labels,
+                                                   x_label="Normalized Roughness",
+                                                   x_tick_indices=np.linspace(0,
+                                                                              all_mask_data.shape[1] - 1,
+                                                                              5,
+                                                                              dtype=int),
+                                                   cmap=cmap,
+                                                   marker_clusters=self.config.marker_clusters,
+                                                   output_dir=region_dir,
+                                                   map_name="%s_heatmap_binned" % analysis_variable,
+                                                   cluster=False,
+                                                   y_tick_labels=y_tick_labels)
 
     def vessel_asymmetry_area_spread_plot(self, **kwargs):
         """

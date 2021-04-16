@@ -3,10 +3,12 @@ from abc import ABC
 from collections import Counter
 from multiprocessing import Pool
 
+from scipy.stats import iqr
 from sklearn.preprocessing import MinMaxScaler
 from tqdm import tqdm
 import cv2 as cv
 
+from src.data_analysis._shape_quantification_metrics import *
 from src.data_analysis.base_analyzer import BaseAnalyzer
 from src.data_loading.mibi_data_feed import MIBIDataFeed
 from src.data_loading.mibi_loader import MIBILoader
@@ -58,8 +60,9 @@ class VesselAsymmetryAnalyzer(BaseAnalyzer, ABC):
         :return:
         """
 
-        asymmetry_threshold = kwargs.get("asymmetry_threshold", 0.15)
-        apply_arcsinh_transform = kwargs.get("apply_arcsinh_transform", True)
+        vessel_mask_marker_threshold = kwargs.get("vessel_mask_marker_threshold", 0.25)
+        shape_quantification_metric = kwargs.get("shape_quantification_metric", roughness)
+        shape_quantification_name = kwargs.get("analysis_variable", "Circularity")
 
         img_shape = self.config.segmentation_mask_size
 
@@ -75,42 +78,35 @@ class VesselAsymmetryAnalyzer(BaseAnalyzer, ABC):
                     self.all_samples_features.loc[idx[point_idx + 1,
                                                   cnt_idx,
                                                   :,
-                                                  :], "Asymmetry"] = "NA"
+                                                  :], shape_quantification_name] = "NA"
 
                     self.all_samples_features.loc[idx[point_idx + 1,
                                                   cnt_idx,
                                                   :,
-                                                  :], "Asymmetry Score"] = float("NaN")
+                                                  :], "%s Score" % shape_quantification_name] = float("NaN")
 
                     cnt_area = cv.contourArea(cnt)
 
-                    mask = np.zeros((img_shape[0], img_shape[1], 1), np.uint8)
-
-                    cv.drawContours(mask, [cnt], -1, 1, cv.FILLED)
-
                     if cnt_area > self.config.small_vessel_threshold:
-                        # hull = cv.convexHull(cnt, returnPoints=False)
-                        point_hull = cv.convexHull(cnt)
-                        hull_mask = np.zeros((img_shape[0], img_shape[1], 1), np.uint8)
-
-                        cv.drawContours(hull_mask, [point_hull], -1, 1, cv.FILLED)
-
-                        hull_non_zero_pixels = cv.countNonZero(hull_mask)
-                        mask_non_zero_pixels = cv.countNonZero(mask)
-
-                        asymmetry_score = 1.0 - (float(mask_non_zero_pixels) / float(hull_non_zero_pixels))
+                        asymmetry_score = shape_quantification_metric(cnt, img_shape=img_shape)
 
                         self.all_samples_features.loc[idx[point_idx + 1,
                                                       cnt_idx,
                                                       :,
-                                                      :], "Asymmetry Score"] = asymmetry_score
+                                                      :], "%s Score" % shape_quantification_name] = asymmetry_score
 
-            self.all_samples_features["Asymmetry Score"] = self.all_samples_features["Asymmetry Score"] / np.percentile(
-                self.all_samples_features["Asymmetry Score"],
-                self.config.percentile_to_normalize,
-                axis=0)
+            self.all_samples_features["%s Score" % shape_quantification_name] = \
+                self.all_samples_features[
+                    "%s Score" % shape_quantification_name] / np.percentile(
+                    self.all_samples_features["%s Score" % shape_quantification_name],
+                    self.config.percentile_to_normalize,
+                    axis=0)
 
-            self.all_samples_features["Asymmetry"] = "No"
+            self.all_samples_features[shape_quantification_name] = "No"
+
+            quartile_25 = np.percentile(self.all_samples_features["%s Score" % shape_quantification_name], 25)
+            quartile_50 = np.percentile(self.all_samples_features["%s Score" % shape_quantification_name], 50)
+            quartile_75 = np.percentile(self.all_samples_features["%s Score" % shape_quantification_name], 75)
 
             for point_idx in feed_data.index.get_level_values('Point Index').unique():
                 point_data = feed_data.loc[point_idx, "Contours"]
@@ -121,13 +117,30 @@ class VesselAsymmetryAnalyzer(BaseAnalyzer, ABC):
                                                                     :,
                                                                     :], :]
 
-                    if (vessel_features["Asymmetry Score"] >= 0.2).any() and (
-                        (vessel_features["GLUT1"] >= 0.25).any() or
-                        (vessel_features["vWF"] >= 0.25).any() or
-                        (vessel_features["CD31"] >= 0.25).any() or
-                        (vessel_features["SMA"] >= 0.25).any()
-                    ):
-                        self.all_samples_features.loc[idx[point_idx + 1,
-                                                      cnt_idx,
-                                                      :,
-                                                      :], "Asymmetry"] = "Yes"
+                    if (vessel_features["GLUT1"] >= vessel_mask_marker_threshold).any() or (
+                            vessel_features["vWF"] >= vessel_mask_marker_threshold).any() or (
+                            vessel_features["CD31"] >= vessel_mask_marker_threshold).any() or (
+                            vessel_features["SMA"] >= vessel_mask_marker_threshold).any():
+
+                        if (vessel_features["%s Score" % shape_quantification_name] >= quartile_75).any():
+                            self.all_samples_features.loc[idx[point_idx + 1,
+                                                          cnt_idx,
+                                                          :,
+                                                          :], shape_quantification_name] = "100%"
+                        elif (vessel_features["%s Score" % shape_quantification_name] >= quartile_50).any() and (
+                                vessel_features["%s Score" % shape_quantification_name] < quartile_75).any():
+                            self.all_samples_features.loc[idx[point_idx + 1,
+                                                          cnt_idx,
+                                                          :,
+                                                          :], shape_quantification_name] = "75%"
+                        elif (vessel_features["%s Score" % shape_quantification_name] >= quartile_25).any() and (
+                                vessel_features["%s Score" % shape_quantification_name] < quartile_50).any():
+                            self.all_samples_features.loc[idx[point_idx + 1,
+                                                          cnt_idx,
+                                                          :,
+                                                          :], shape_quantification_name] = "50%"
+                        elif (vessel_features["%s Score" % shape_quantification_name] <= quartile_25).any():
+                            self.all_samples_features.loc[idx[point_idx + 1,
+                                                          cnt_idx,
+                                                          :,
+                                                          :], shape_quantification_name] = "25%"
