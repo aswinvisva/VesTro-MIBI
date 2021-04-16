@@ -386,7 +386,7 @@ class MIBIPipeline:
         if self.config.create_categorical_violin_plot:
             self.visualizer.categorical_violin_plot(**kwargs)
 
-        if self.config.create_categorical_scatter_plots:
+        if self.config.create_continuous_scatter_plot:
             self.visualizer.continuous_scatter_plot(**kwargs)
 
         if self.config.create_umap_projection_scatter_plots:
