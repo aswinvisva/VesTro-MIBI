@@ -1,4 +1,5 @@
 from config.config_settings import Config
+from src.data_analysis._shape_quantification_metrics import *
 from src.data_analysis.dimensionality_reduction_clustering import DimensionalityReductionClusteringAnalyzer
 from src.data_analysis.positive_vessel_summary_analyzer import PositiveVesselSummaryAnalyzer
 from src.data_analysis.vessel_asymmetry_analyzer import VesselAsymmetryAnalyzer
@@ -38,15 +39,20 @@ def hires_example():
     pipe.load_preprocess_data()
 
     pipe.add_analyzer(VesselAsymmetryAnalyzer)
-    pipe.add_analyzer(PositiveVesselSummaryAnalyzer)
+    # pipe.add_analyzer(PositiveVesselSummaryAnalyzer)
     # pipe.add_analyzer(DimensionalityReductionClusteringAnalyzer)
 
-    pipe.analyze_data(mask_type="expansion_only", marker_settings="all_markers", analysis_variable="Roughness")
+    pipe.analyze_data(mask_type="expansion_only",
+                      marker_settings="all_markers",
+                      shape_quantification_method={
+                          "Name": "Solidity",
+                          "Metric": solidity
+                      })
 
     pipe.save_to_csv()
 
     pipe.generate_visualizations(mask_type="mask_only",
-                                 analysis_variable="Roughness")
+                                 analysis_variable="Solidity")
 
 
 if __name__ == '__main__':

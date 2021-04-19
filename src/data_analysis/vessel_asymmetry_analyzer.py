@@ -61,8 +61,14 @@ class VesselAsymmetryAnalyzer(BaseAnalyzer, ABC):
         """
 
         vessel_mask_marker_threshold = kwargs.get("vessel_mask_marker_threshold", 0.25)
-        shape_quantification_metric = kwargs.get("shape_quantification_metric", roughness)
-        shape_quantification_name = kwargs.get("analysis_variable", "Circularity")
+
+        shape_quantification_method = kwargs.get("shape_quantification_method", {
+            "Name": "Circularity",
+            "Metric": circularity
+        })
+
+        shape_quantification_name = shape_quantification_method["Name"]
+        shape_quantification_metric = shape_quantification_method["Metric"]
 
         img_shape = self.config.segmentation_mask_size
 

@@ -1,5 +1,6 @@
 import datetime
 import math
+import random
 from collections import Collection
 
 import matplotlib
@@ -1447,11 +1448,13 @@ class Visualizer:
         Vessel Images by Categorical Variable
         :return:
         """
+        analysis_variable = kwargs.get("analysis_variable", "Asymmetry")
+        n_examples = kwargs.get("n_examples", 10)
 
-        assert self.config.primary_categorical_splitter is not None, "There must be a primary categorical splitter"
+        assert analysis_variable is not None, "There must be a primary categorical splitter"
 
         parent_dir = "%s/%s Vessel Images" % (self.config.visualization_results_dir,
-                                              self.config.primary_categorical_splitter)
+                                              analysis_variable)
 
         img_shape = self.config.segmentation_mask_size
 
@@ -1465,14 +1468,14 @@ class Visualizer:
 
             feed_features = self.all_samples_features.loc[self.all_samples_features["Data Type"] == feed_name]
 
-            for val in feed_features[self.config.primary_categorical_splitter].unique():
+            for val in feed_features[analysis_variable].unique():
 
                 output_dir = "%s/%s" % (feed_dir, val)
                 mkdir_p(output_dir)
 
-                split_features = feed_features[feed_features[self.config.primary_categorical_splitter] == val]
+                split_features = feed_features[feed_features[analysis_variable] == val]
 
-                for i in split_features.index:
+                for i in random.sample(list(split_features.index), min(n_examples, len(list(split_features.index)))):
                     point_idx = i[0]
                     cnt_idx = i[1]
 
