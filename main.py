@@ -34,7 +34,9 @@ def hires_example():
         n_points=48
     )
 
-    pipe = MIBIPipeline(conf, csv_loc="results/5um_impansion_5um_expansion.csv")
+    pipe = MIBIPipeline(conf,
+                        csv_loc="results/5um_impansion_5um_expansion.csv"
+                        )
     pipe.add_feed(hires_feed)
     pipe.load_preprocess_data()
 
@@ -49,7 +51,7 @@ def hires_example():
                           "Metric": solidity
                       })
 
-    pipe.save_to_csv()
+    # pipe.save_to_csv()
 
     pipe.generate_visualizations(mask_type="mask_only",
                                  analysis_variable="Solidity")
