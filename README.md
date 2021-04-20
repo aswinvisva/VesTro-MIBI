@@ -1,4 +1,8 @@
 #  MIBI Toolbox for Spatial Analysis and Visualization
+
+[![Build Status](https://travis-ci.org/aswinvisva/oliveria-lab-ml.svg?branch=master)](https://travis-ci.org/aswinvisva/oliveria-lab-ml)
+[![codecov](https://codecov.io/gh/aswinvisva/oliveria-lab-ml/branch/master/graph/badge.svg?token=0GHGAVQRG9)](https://codecov.io/gh/aswinvisva/oliveria-lab-ml)
+
 Authors: Aswin Visva & John-Paul Oliveria, Ph.D
 
 This project is the main toolbox for MIBI data preprocessing and visualization.
