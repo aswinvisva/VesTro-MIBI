@@ -47,7 +47,9 @@ class TestMIBIPipeline(unittest.TestCase):
             pipe.add_feed(example_feed)
             pipe.load_preprocess_data(max_inward_expansions=1,
                                       max_outward_expansions=1,
-                                      expansions=[1])
+                                      expansions=[1],
+                                      n_workers=1,
+                                      run_async=False)
 
             self.assertIsNotNone(pipe.all_expansions_features)
             self.assertIsNotNone(pipe.visualizer)
