@@ -178,7 +178,8 @@ class MIBIPipeline:
         return data
 
     def _get_outward_expansion_data(self,
-                                    max_outward_expansions=10) -> (list, list, list):
+                                    max_outward_expansions=10,
+                                    n_workers=5) -> (list, list, list):
         """
         Collect outward expansion data for each expansion, for each point, for each vessel
 
@@ -217,7 +218,7 @@ class MIBIPipeline:
 
                 start_expression = datetime.datetime.now()
 
-                with Pool(self.config.n_workers) as p:
+                with Pool(n_workers) as p:
                     result = p.map_async(self._get_outward_expansion_data_multiprocessing_target,
                                          map_data)
                     current_expansion_data = result.get()
@@ -446,7 +447,8 @@ class MIBIPipeline:
     def load_preprocess_data(self,
                              max_inward_expansions=10,
                              max_outward_expansions=10,
-                             expansions=[10]):
+                             expansions=[10],
+                             n_workers=5):
         """
         Create the visualizations for inward and outward vessel expansions and populate all results in the directory
         set in the configuration settings.
@@ -496,7 +498,8 @@ class MIBIPipeline:
 
             # Collect outward microenvironment expansion data, nonvessel space expansion data and vessel space expansion
             # data
-            all_expansions_features = self._get_outward_expansion_data(max_outward_expansions=max_outward_expansions)
+            all_expansions_features = self._get_outward_expansion_data(max_outward_expansions=max_outward_expansions,
+                                                                       n_workers=n_workers)
 
             if self.config.perform_inward_expansions:
                 all_expansions_features = all_expansions_features.append(all_inward_expansions_features)
