@@ -1,5 +1,6 @@
 __pycache__/
 env/
+venv/
 .idea/
 annotated_data/
 src/__pycache__/
