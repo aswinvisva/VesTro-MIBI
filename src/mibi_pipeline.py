@@ -225,8 +225,8 @@ class MIBIPipeline:
                                              map_data)
                         current_expansion_data = result.get()
                     else:
-                        current_expansion_data = p.map(self._get_outward_expansion_data_multiprocessing_target,
-                                                       map_data)
+                        current_expansion_data = map(self._get_outward_expansion_data_multiprocessing_target,
+                                                     map_data)
 
                 end_expression = datetime.datetime.now()
 
