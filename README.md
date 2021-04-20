@@ -46,6 +46,8 @@ git checkout -b my_feature_branch
 
 4. Commit with a message and push your code to the remote
 ```console
-git commit -m "Added a cool feature"
+git commit -m "Developed a new feature or fixed a bug"
 git push --set-upstream origin my_feature_branch
 ```
+
+5. Open a pull request
