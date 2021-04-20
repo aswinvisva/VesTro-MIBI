@@ -27,7 +27,7 @@ pip3 install -r requirements.txt
 
 4. Run the script:
 ```console
-python3 run.py
+python3 main.py
 ```
 
 ## Contributing
