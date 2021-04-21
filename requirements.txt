@@ -22,7 +22,6 @@ decorator==4.4.2
 defusedxml==0.6.0
 entrypoints==0.3
 fcsparser==0.2.1
-fil-finder==1.7
 Flask==1.1.2
 FlowCytometryTools==0.5.0
 FlowSom==0.1.1
