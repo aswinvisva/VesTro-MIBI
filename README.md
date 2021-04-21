@@ -1,6 +1,6 @@
 #  MIBI Toolbox for Spatial Analysis and Visualization
 
-[![Build Status](https://travis-ci.org/aswinvisva/oliveria-lab-ml.svg?branch=master)](https://travis-ci.org/aswinvisva/oliveria-lab-ml)
+[![Build Status](https://github.com/aswinvisva/oliveria-lab-ml/actions/workflows/python-app.yml/badge.svg)
 [![codecov](https://codecov.io/gh/aswinvisva/oliveria-lab-ml/branch/master/graph/badge.svg?token=0GHGAVQRG9)](https://codecov.io/gh/aswinvisva/oliveria-lab-ml)
 [![Documentation Status](https://readthedocs.org/projects/oliveria-lab-ml/badge/?version=latest)](https://oliveria-lab-ml.readthedocs.io/en/latest/?badge=latest)
 
