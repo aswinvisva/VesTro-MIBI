@@ -1,9 +1,5 @@
 import cv2 as cv
 import numpy as np
-from matplotlib import pyplot as plt
-from skimage.morphology import skeletonize
-from fil_finder import FilFinder2D
-import astropy.units as u
 
 
 def solidity(cnt, **kwargs):
@@ -79,30 +75,3 @@ def roughness(cnt, **kwargs):
     hull_perimeter = cv.arcLength(point_hull, True)
 
     return perimeter / hull_perimeter
-
-
-def longest_skeleton_path_length(cnt, **kwargs):
-    """
-    Get longest skeleton path
-    """
-    img_shape = kwargs.get("img_shape")
-
-    mask = np.zeros((img_shape[0], img_shape[1], 1), np.uint8)
-    cv.drawContours(mask, [cnt], -1, 1, cv.FILLED)
-
-    skeleton = skeletonize(mask == 1)
-    skeleton = np.squeeze(skeleton, axis=2)
-
-    fil = FilFinder2D(skeleton, distance=250 * u.pix, mask=skeleton)
-    fil.preprocess_image(flatten_percent=85)
-    fil.create_mask(border_masking=True, verbose=False,
-                    use_existing_mask=True)
-    fil.medskel(verbose=False)
-    fil.analyze_skeletons(branch_thresh=40 * u.pix, skel_thresh=10 * u.pix, prune_criteria='length')
-
-    lengths = fil.lengths().to_value(u.pix)
-
-    if len(lengths) == 0:
-        return 0.0
-
-    return fil.lengths().to_value(u.pix)[0]
