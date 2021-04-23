@@ -10,6 +10,7 @@ from src.data_loading.mibi_data_feed import MIBIDataFeed
 from src.data_loading.mibi_loader import MIBILoader
 from src.data_loading.mibi_point_contours import MIBIPointContours
 from src.data_preprocessing.markers_feature_gen import *
+from src.data_preprocessing.object_extractor import ObjectExtractor
 from src.data_visualization.visualizer import Visualizer
 from config.config_settings import Config
 
@@ -22,7 +23,15 @@ Authors: Aswin Visva, John-Paul Oliveria, Ph.D
 
 class MIBIPipeline:
 
-    def __init__(self, config: Config, **kwargs):
+    def __init__(self,
+                 config: Config,
+                 results_dir: str,
+                 max_inward_expansions=10,
+                 max_outward_expansions=10,
+                 expansions=[10],
+                 n_workers=5,
+                 run_async=True,
+                 **kwargs):
         """
         MIBI Pipeline Class
 
@@ -44,6 +53,13 @@ class MIBIPipeline:
         self.all_expansions_features = None
 
         self.csv_loc = kwargs.get("csv_loc", None)
+        self.results_dir = results_dir
+
+        self.max_inward_expansions = max_inward_expansions
+        self.max_outward_expansions = max_outward_expansions
+        self.expansions = expansions
+        self.n_workers = n_workers
+        self.run_async = run_async
 
     def add_feed(self, data_feed: MIBIDataFeed):
         """
@@ -85,17 +101,16 @@ class MIBIPipeline:
         """
 
         for analyzer in self.analyzers:
-            analyzer.analyze(**kwargs)
+            analyzer.analyze(self.results_dir, **kwargs)
 
-    def save_to_csv(self,
-                    csv_name="data.csv"):
+    def save_to_csv(self, csv_name="data.csv"):
         """
         Save data to a csv
         :return:
         """
 
         if self.all_expansions_features is not None:
-            self.all_expansions_features.to_csv(self.config.visualization_results_dir + csv_name)
+            self.all_expansions_features.to_csv(self.results_dir + csv_name)
 
     def _load_csv(self, csv_loc: str):
         """
@@ -339,7 +354,7 @@ class MIBIPipeline:
 
         if self.config.save_to_csv:
             stopped_vessel_df.to_csv(
-                os.path.join(self.config.visualization_results_dir, "inward_vessel_expansion_summary.csv"))
+                os.path.join(self.results_dir, "inward_vessel_expansion_summary.csv"))
 
         return all_expansions_features, current_expansion_no
 
@@ -351,8 +366,6 @@ class MIBIPipeline:
         """
 
         assert self.visualizer is not None, "Please run preprocess_data() first!"
-
-        expansions = self.config.expansion_to_run
 
         # Pseudo-Time Heatmaps
         if self.config.create_pseudo_time_heatmap:
@@ -407,7 +420,7 @@ class MIBIPipeline:
             self.visualizer.vessel_images_by_categorical_variable(**kwargs)
 
         # Iterate through selected expansions to create heatmaps and line plots
-        for x in expansions:
+        for x in self.expansions:
 
             # Brain region expansion heatmaps
             if self.config.create_brain_region_expansion_heatmaps:
@@ -449,18 +462,13 @@ class MIBIPipeline:
             if self.config.create_vessel_expansion_line_plots:
                 self.visualizer.vessel_region_plots(x, **kwargs)
 
-    def load_preprocess_data(self,
-                             max_inward_expansions=10,
-                             max_outward_expansions=10,
-                             expansions=[10],
-                             n_workers=5,
-                             run_async=True):
+    def load_preprocess_data(self):
         """
         Create the visualizations for inward and outward vessel expansions and populate all results in the directory
         set in the configuration settings.
         """
 
-        assert max_outward_expansions >= max(expansions), "More expansions selected than available!"
+        assert self.max_outward_expansions >= max(self.expansions), "More expansions selected than available!"
 
         self.all_feeds_metadata, self.all_feeds_data, self.all_feeds_mask, self.marker_names = self.mibi_loader.read()
         # Collect all marker and mask data
@@ -470,11 +478,16 @@ class MIBIPipeline:
         # Collect vessel contours from each segmentation mask
         all_feeds_contour_data = []
 
+        object_extractor = ObjectExtractor(self.config, self.results_dir)
+
         for feed_idx in range(self.all_feeds_mask.shape[0]):
             all_points_contour_data = []
 
             for point_idx in range(self.all_feeds_mask.shape[1]):
-                mibi_contours = MIBIPointContours(self.all_feeds_mask[feed_idx, point_idx], point_idx, self.config)
+                mibi_contours = MIBIPointContours(self.all_feeds_mask[feed_idx, point_idx],
+                                                  point_idx,
+                                                  self.config,
+                                                  object_extractor)
 
                 contour_df = pd.DataFrame({
                     "Contours": mibi_contours
@@ -493,7 +506,7 @@ class MIBIPipeline:
             # Inward expansion data
             if self.config.perform_inward_expansions:
                 all_inward_expansions_features, current_expansion_no = self._get_inward_expansion_data(
-                    max_inward_expansions=max_inward_expansions
+                    max_inward_expansions=self.max_inward_expansions
                 )
 
                 logging.debug("Finished inward expansions with a maximum of %s %s"
@@ -504,9 +517,9 @@ class MIBIPipeline:
 
             # Collect outward microenvironment expansion data, nonvessel space expansion data and vessel space expansion
             # data
-            all_expansions_features = self._get_outward_expansion_data(max_outward_expansions=max_outward_expansions,
-                                                                       n_workers=n_workers,
-                                                                       run_async=run_async)
+            all_expansions_features = self._get_outward_expansion_data(max_outward_expansions=self.max_outward_expansions,
+                                                                       n_workers=self.n_workers,
+                                                                       run_async=self.run_async)
 
             if self.config.perform_inward_expansions:
                 all_expansions_features = all_expansions_features.append(all_inward_expansions_features)
@@ -523,5 +536,6 @@ class MIBIPipeline:
             self.marker_names,
             self.all_feeds_contour_data,
             self.all_feeds_metadata,
-            self.all_feeds_data
+            self.all_feeds_data,
+            self.results_dir
         )

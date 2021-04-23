@@ -7,7 +7,11 @@ from src.utils.utils_functions import get_contour_areas_list
 
 class MIBIPointContours:
 
-    def __init__(self, segmentation_mask: np.array, point_idx: int, config: Config):
+    def __init__(self,
+                 segmentation_mask: np.array,
+                 point_idx: int,
+                 config: Config,
+                 object_extractor: ObjectExtractor):
         """
         Data structure for storing MIBI contours
 
@@ -15,7 +19,7 @@ class MIBIPointContours:
         :param point_idx: int, Point index
         """
         self.config = config
-        self.object_extractor = ObjectExtractor(self.config)
+        self.object_extractor = object_extractor
 
         self._rois, self._contours, self._removed_contours = self.object_extractor.extract(
             segmentation_mask,

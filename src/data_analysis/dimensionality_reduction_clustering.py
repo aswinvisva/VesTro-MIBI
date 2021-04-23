@@ -46,7 +46,7 @@ class DimensionalityReductionClusteringAnalyzer(BaseAnalyzer, ABC):
         self.all_feeds_metadata = all_feeds_metadata
         self.all_feeds_data = all_points_marker_data
 
-    def analyze(self, **kwargs):
+    def analyze(self, results_dir, **kwargs):
         """
         Vessel Contiguity Analysis
         :return:
@@ -60,7 +60,7 @@ class DimensionalityReductionClusteringAnalyzer(BaseAnalyzer, ABC):
                              "mask_and_expansion_weighted",
                              "expansion_only"], "Unknown Mask Type!"
 
-        parent_dir = "%s/Clustering" % self.config.visualization_results_dir
+        parent_dir = "%s/Clustering" % results_dir
         mkdir_p(parent_dir)
 
         cluster_features = loc_by_expansion(self.all_samples_features.copy(),

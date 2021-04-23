@@ -38,7 +38,7 @@ class PositiveVesselSummaryAnalyzer(BaseAnalyzer, ABC):
         self.all_feeds_metadata = all_feeds_metadata
         self.all_feeds_data = all_points_marker_data
 
-    def analyze(self, **kwargs):
+    def analyze(self, results_dir, **kwargs):
         """
         Positive vessel summary Analysis
         :return:
@@ -78,6 +78,6 @@ class PositiveVesselSummaryAnalyzer(BaseAnalyzer, ABC):
         vessel_proportion_df = pd.DataFrame.from_dict(vessel_proportion_dict)
 
         vessel_proportion_df.to_csv(
-            os.path.join(self.config.visualization_results_dir, "vessel_positive_proportion.csv"))
+            os.path.join(results_dir, "vessel_positive_proportion.csv"))
 
         logging.info("\n" + vessel_proportion_df.to_markdown())

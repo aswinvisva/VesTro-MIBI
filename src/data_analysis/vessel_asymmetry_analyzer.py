@@ -54,7 +54,7 @@ class VesselAsymmetryAnalyzer(BaseAnalyzer, ABC):
         self.all_feeds_metadata = all_feeds_metadata
         self.all_feeds_data = all_points_marker_data
 
-    def analyze(self, **kwargs):
+    def analyze(self, results_dir, **kwargs):
         """
         Vessel Contiguity Analysis
         :return:
@@ -67,10 +67,10 @@ class VesselAsymmetryAnalyzer(BaseAnalyzer, ABC):
             "Metric": circularity
         })
 
+        img_shape = kwargs.get("img_shape", self.config.segmentation_mask_size)
+
         shape_quantification_name = shape_quantification_method["Name"]
         shape_quantification_metric = shape_quantification_method["Metric"]
-
-        img_shape = self.config.segmentation_mask_size
 
         for feed_idx in self.all_feeds_contour_data.index.get_level_values('Feed Index').unique():
             feed_data = self.all_feeds_contour_data.loc[feed_idx]
