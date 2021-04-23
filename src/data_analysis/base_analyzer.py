@@ -39,5 +39,5 @@ class BaseAnalyzer:
         self.all_feeds_metadata = all_feeds_metadata
         self.all_feeds_data = all_points_marker_data
 
-    def analyze(self, **kwargs):
+    def analyze(self, results_dir, **kwargs):
         raise NotImplementedError("Please implement base analyzer to use its functionality")

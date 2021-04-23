@@ -61,6 +61,7 @@ class Visualizer:
                  all_feeds_contour_data: pd.DataFrame,
                  all_feeds_metadata: pd.DataFrame,
                  all_points_marker_data: np.array,
+                 results_dir: str
                  ):
 
         """
@@ -77,6 +78,7 @@ class Visualizer:
         self.all_feeds_contour_data = all_feeds_contour_data
         self.all_feeds_metadata = all_feeds_metadata
         self.all_feeds_data = all_points_marker_data
+        self.results_dir = results_dir
 
     def vessel_region_plots(self, n_expansions: int, **kwargs):
         """
@@ -89,7 +91,8 @@ class Visualizer:
         color_maps = self.config.line_plots_color_maps
         colors = self.config.line_plots_bin_colors
 
-        output_dir = "%s/Line Plots Per Vessel" % self.config.visualization_results_dir
+        output_dir = "%s/Line Plots Per Vessel" % self.results_dir
+
         mkdir_p(output_dir)
 
         output_dir = "%s/%s%s Expansion" % (output_dir, str(round_to_nearest_half((n_expansions) *
@@ -223,7 +226,8 @@ class Visualizer:
         color_maps = self.config.line_plots_color_maps
         colors = self.config.line_plots_bin_colors
 
-        output_dir = "%s/Line Plots Per Point" % self.config.visualization_results_dir
+        output_dir = "%s/Line Plots Per Point" % self.results_dir
+
         mkdir_p(output_dir)
 
         output_dir = "%s/%s%s Expansion" % (output_dir,
@@ -395,7 +399,8 @@ class Visualizer:
         plot_features = plot_features.rename(
             columns={'Expansion': "Distance Expanded (%s)" % self.config.data_resolution_units})
 
-        output_dir = "%s/Line Plots All Points Average" % self.config.visualization_results_dir
+        output_dir = "%s/Line Plots All Points Average" % self.results_dir
+
         mkdir_p(output_dir)
 
         output_dir = "%s/%s%s Expansion" % (output_dir,
@@ -538,7 +543,8 @@ class Visualizer:
                                                  self.config.brain_region_names[1],
                                                  self.config.brain_region_names[2]])
 
-        output_dir = "%s/Line Plots Per Region" % self.config.visualization_results_dir
+        output_dir = "%s/Line Plots Per Region" % self.results_dir
+
         mkdir_p(output_dir)
 
         output_dir = "%s/%s%s Expansion" % (output_dir,
@@ -641,7 +647,8 @@ class Visualizer:
 
         expansion_upper_bound = kwargs.get('expansion_upper_bound', 60)
 
-        parent_dir = "%s/Expanded Vessel Masks" % self.config.visualization_results_dir
+        parent_dir = "%s/Expanded Vessel Masks" % self.results_dir
+
         mkdir_p(parent_dir)
 
         parent_dir = "%s/%s %s" % (parent_dir,
@@ -710,7 +717,8 @@ class Visualizer:
 
         expansion_upper_bound = kwargs.get('expansion_upper_bound', 60)
 
-        parent_dir = "%s/Embedded Vessel Masks" % self.config.visualization_results_dir
+        parent_dir = "%s/Embedded Vessel Masks" % self.results_dir
+
         mkdir_p(parent_dir)
 
         parent_dir = "%s/%s %s" % (parent_dir,
@@ -778,7 +786,8 @@ class Visualizer:
         n_points = self.config.n_points
         expansions = self.config.expansion_to_run
 
-        parent_dir = "%s/Ring Plots" % self.config.visualization_results_dir
+        parent_dir = "%s/Ring Plots" % self.results_dir
+
         mkdir_p(parent_dir)
 
         for feed_idx in self.all_feeds_contour_data.index.get_level_values('Feed Index').unique():
@@ -824,7 +833,8 @@ class Visualizer:
         :return:
         """
 
-        output_dir = "%s/Expression Histograms" % self.config.visualization_results_dir
+        output_dir = "%s/Expression Histograms" % self.results_dir
+
         mkdir_p(output_dir)
 
         idx = pd.IndexSlice
@@ -850,7 +860,8 @@ class Visualizer:
 
         :return:
         """
-        output_dir = "%s/Biaxial Scatter Plots" % self.config.visualization_results_dir
+        output_dir = "%s/Biaxial Scatter Plots" % self.results_dir
+
         mkdir_p(output_dir)
 
         idx = pd.IndexSlice
@@ -932,7 +943,8 @@ class Visualizer:
         mask_type = kwargs.get('mask_type', "expansion_only")
         analysis_variable = kwargs.get('analysis_variable', "Asymmetry Score")
 
-        parent_dir = "%s/Categorical Violin Plots" % self.config.visualization_results_dir
+        parent_dir = "%s/Categorical Violin Plots" % self.results_dir
+
         mkdir_p(parent_dir)
 
         marker_clusters = self.config.marker_clusters
@@ -1029,7 +1041,8 @@ class Visualizer:
 
         dist_upper_end = 1.75
 
-        output_dir = "%s/Expansion Violin Plots" % self.config.visualization_results_dir
+        output_dir = "%s/Expansion Violin Plots" % self.results_dir
+
         mkdir_p(output_dir)
 
         bins_dir = "%s/Per Bin" % output_dir
@@ -1176,7 +1189,8 @@ class Visualizer:
 
         dist_upper_end = 1.75
 
-        output_dir = "%s/Expansion Box Plots" % self.config.visualization_results_dir
+        output_dir = "%s/Expansion Box Plots" % self.results_dir
+
         mkdir_p(output_dir)
 
         bins_dir = "%s/Per Bin" % output_dir
@@ -1299,7 +1313,8 @@ class Visualizer:
         :return:
         """
 
-        parent_dir = "%s/Pixel Expression Spatial Maps" % self.config.visualization_results_dir
+        parent_dir = "%s/Pixel Expression Spatial Maps" % self.results_dir
+
         mkdir_p(parent_dir)
 
         for feed_idx in range(self.all_feeds_data.shape[0]):
@@ -1453,7 +1468,8 @@ class Visualizer:
 
         assert analysis_variable is not None, "There must be a primary categorical splitter"
 
-        parent_dir = "%s/%s Vessel Images" % (self.config.visualization_results_dir,
+        parent_dir = "%s/%s Vessel Images" % (self.results_dir
+,
                                               analysis_variable)
 
         img_shape = self.config.segmentation_mask_size
@@ -1548,7 +1564,7 @@ class Visualizer:
                                          expansion_type=mask_type,
                                          average=False)
 
-        output_dir = self.config.visualization_results_dir + "/UMAP Scatter Plot Projection"
+        output_dir = self.results_dir + "/UMAP Scatter Plot Projection"
 
         for marker_cluster in self.config.marker_clusters.keys():
             plot_features[marker_cluster] = \
@@ -2000,7 +2016,8 @@ class Visualizer:
         assert primary_categorical_splitter is not None, "Must have a primary categorical variable"
         assert secondary_categorical_splitter is not None, "Must have a secondary categorical variable"
 
-        parent_dir = "%s/%s Scatter Plots" % (self.config.visualization_results_dir, analysis_variable)
+        parent_dir = "%s/%s Scatter Plots" % (self.results_dir
+, analysis_variable)
         mkdir_p(parent_dir)
 
         for feed_idx in range(self.all_feeds_data.shape[0]):
@@ -2135,7 +2152,8 @@ class Visualizer:
         brain_regions = self.config.brain_region_point_ranges
         marker_clusters = self.config.marker_clusters
 
-        parent_dir = "%s/Heatmaps & Clustermaps" % self.config.visualization_results_dir
+        parent_dir = "%s/Heatmaps & Clustermaps" % self.results_dir
+
         mkdir_p(parent_dir)
 
         for feed_idx in range(self.all_feeds_data.shape[0]):
@@ -2311,7 +2329,8 @@ class Visualizer:
         :return:
         """
 
-        parent_dir = "%s/Categorical Expansion Heatmaps & Clustermaps" % self.config.visualization_results_dir
+        parent_dir = "%s/Categorical Expansion Heatmaps & Clustermaps" % self.results_dir
+
         mkdir_p(parent_dir)
 
         assert self.config.primary_categorical_splitter is not None, "No categorical splitter selected!"
@@ -2697,7 +2716,8 @@ class Visualizer:
 
         :param n_expansions: int, Number of expansions
         """
-        parent_dir = "%s/Expansion Heatmaps & Clustermaps" % self.config.visualization_results_dir
+        parent_dir = "%s/Expansion Heatmaps & Clustermaps" % self.results_dir
+
         mkdir_p(parent_dir)
 
         for feed_idx in range(self.all_feeds_data.shape[0]):
@@ -2741,7 +2761,8 @@ class Visualizer:
         :return:
         """
 
-        parent_dir = "%s/Expression Masks" % self.config.visualization_results_dir
+        parent_dir = "%s/Expression Masks" % self.results_dir
+
         mkdir_p(parent_dir)
 
         for feed_idx in self.all_feeds_contour_data.index.get_level_values('Feed Index').unique():
@@ -2794,7 +2815,8 @@ class Visualizer:
         all_points_vessels_expression = []
         all_points_removed_vessels_expression = []
 
-        parent_dir = "%s/Kept Vs. Removed Vessel Boxplots" % self.config.visualization_results_dir
+        parent_dir = "%s/Kept Vs. Removed Vessel Boxplots" % self.results_dir
+
         mkdir_p(parent_dir)
 
         for feed_idx in self.all_feeds_contour_data.index.get_level_values('Feed Index').unique():
@@ -2937,7 +2959,8 @@ class Visualizer:
         """
         Create visualizations of vessel areas
         """
-        output_dir = "%s/Vessel Areas Histogram" % self.config.visualization_results_dir
+        output_dir = "%s/Vessel Areas Histogram" % self.results_dir
+
         mkdir_p(output_dir)
 
         masks = self.config.all_masks
@@ -3008,7 +3031,8 @@ class Visualizer:
         :return:
         """
 
-        output_dir = "%s/Pseudo-Time Heatmaps" % self.config.visualization_results_dir
+        output_dir = "%s/Pseudo-Time Heatmaps" % self.results_dir
+
         mkdir_p(output_dir)
 
         if cmap is None:
@@ -3154,7 +3178,8 @@ class Visualizer:
         assert "Asymmetry" in self.all_samples_features, "Asymmetry analysis has not been performed, please run " \
                                                          "vessel_contiguity_analysis() first!"
 
-        output_dir = "%s/Vessel Areas Spread Boxplot" % self.config.visualization_results_dir
+        output_dir = "%s/Vessel Areas Spread Boxplot" % self.results_dir
+
         mkdir_p(output_dir)
         idx = pd.IndexSlice
 
@@ -3329,7 +3354,8 @@ class Visualizer:
         example_img = np.zeros(img_shape, np.uint8)
         example_img = cv.cvtColor(example_img, cv.COLOR_GRAY2BGR)
 
-        parent_dir = "%s/Associated Area Masks" % self.config.visualization_results_dir
+        parent_dir = "%s/Associated Area Masks" % self.results_dir
+
 
         for feed_idx in self.all_feeds_contour_data.index.get_level_values('Feed Index').unique():
 
