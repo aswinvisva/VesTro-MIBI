@@ -47,20 +47,21 @@ def hires_example():
     pipe.load_preprocess_data()
 
     pipe.add_analyzer(VesselAsymmetryAnalyzer)
-    pipe.add_analyzer(PositiveVesselSummaryAnalyzer)
-    pipe.add_analyzer(DimensionalityReductionClusteringAnalyzer)
+    # pipe.add_analyzer(PositiveVesselSummaryAnalyzer)
+    # pipe.add_analyzer(DimensionalityReductionClusteringAnalyzer)
 
     pipe.analyze_data(mask_type="expansion_only",
                       marker_settings="all_markers",
                       shape_quantification_method={
-                          "Name": "Solidity",
-                          "Metric": solidity
+                          "Name": "Eccentricity",
+                          "Metric": eccentricity
                       })
 
     # pipe.save_to_csv()
 
     pipe.generate_visualizations(mask_type="mask_only",
-                                 analysis_variable="Solidity")
+                                 analysis_variable="Eccentricity",
+                                 order=["25%", "50%", "75%", "100%"])
 
 
 if __name__ == '__main__':

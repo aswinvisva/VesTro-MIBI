@@ -197,13 +197,14 @@ class Config:
     create_spatial_probability_maps = False  #
     create_expression_histogram = False
     create_expansion_violin_plots = False  #
-    create_categorical_violin_plot = True  #
+    create_categorical_violin_plot = False  #
     create_expansion_box_plots = False  #
     create_vessel_asymmetry_area_spread_plot = False  #
     create_continuous_scatter_plot = False  #
-    create_umap_projection_scatter_plots = True  #
-    create_vessel_images_by_categorical_variable = True  #
+    create_umap_projection_scatter_plots = False  #
+    create_vessel_images_by_categorical_variable = False  #
     create_pseudo_time_heatmap = False  #
+    create_categorical_violin_plot_with_images = True  #
 
     if create_vessel_areas_histograms_and_boxplots:
         show_boxplot_outliers = False

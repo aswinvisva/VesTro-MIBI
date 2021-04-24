@@ -935,6 +935,130 @@ class Visualizer:
         plt.savefig(output_dir + '/%s_%s.png' % (x, y), bbox_inches='tight')
         plt.clf()
 
+    def categorical_violin_plot_with_images(self, **kwargs):
+        """
+        Categorical Violin Plot with Images
+        """
+
+        mask_type = kwargs.get('mask_type', "expansion_only")
+        analysis_variable = kwargs.get('analysis_variable', "Asymmetry Score")
+        order = kwargs.get("order", None)
+        img_shape = kwargs.get("img_shape", self.config.segmentation_mask_size)
+        n_examples = kwargs.get("n_examples", 1)
+
+        parent_dir = "%s/Categorical Violin Plots with Images" % self.results_dir
+
+        mkdir_p(parent_dir)
+
+        marker_clusters = self.config.marker_clusters
+
+        for feed_idx in range(self.all_feeds_data.shape[0]):
+            idx = pd.IndexSlice
+            feed_name = self.all_feeds_metadata.loc[idx[feed_idx, 0], "Feed Name"]
+            feed_data = self.all_feeds_contour_data.loc[feed_idx]
+
+            feed_dir = "%s/%s" % (parent_dir, feed_name)
+            mkdir_p(feed_dir)
+            feed_features = self.all_samples_features.loc[self.all_samples_features["Data Type"] == feed_name]
+
+            feed_features = loc_by_expansion(feed_features,
+                                             expansion_type=mask_type,
+                                             average=False)
+
+            feed_features = melt_markers(feed_features,
+                                         non_id_vars=self.markers_names,
+                                         )
+
+            feed_features['Size'] = pd.cut(feed_features['Contour Area'],
+                                           bins=[self.config.small_vessel_threshold,
+                                                 self.config.medium_vessel_threshold,
+                                                 self.config.large_vessel_threshold,
+                                                 float('Inf')],
+                                           labels=["Small",
+                                                   "Medium",
+                                                   "Large"])
+
+            split_dir = "%s/By %s" % (feed_dir, analysis_variable)
+            mkdir_p(split_dir)
+
+            vessel_images = {}
+            for size in feed_features['Size'].unique():
+
+                vessel_images[size] = {}
+
+                for val in feed_features[analysis_variable].unique():
+
+                    split_features = feed_features[(feed_features[analysis_variable] == val) &
+                                                   (feed_features['Size'] == size)]
+
+                    vessel_images[size][val] = []
+
+                    for i in random.sample(list(split_features.index),
+                                           min(n_examples, len(list(split_features.index)))):
+                        point_idx = i[0]
+                        cnt_idx = i[1]
+
+                        cnt = feed_data.loc[point_idx - 1, "Contours"].contours[cnt_idx]
+
+                        example_mask = np.zeros((img_shape[0], img_shape[1], 3), np.uint8)
+                        cv.drawContours(example_mask, [cnt], -1, (255, 255, 255), cv.FILLED)
+
+                        x, y, w, h = cv.boundingRect(cnt)
+                        roi = example_mask[y:y + h, x:x + w]
+
+                        vessel_images[size][val].append({
+                            "Index": (point_idx, cnt_idx),
+                            "Image": roi
+                        })
+
+            for key in marker_clusters.keys():
+                marker_cluster_dir = "%s/%s" % (split_dir, key)
+                mkdir_p(marker_cluster_dir)
+
+                for marker, marker_name in enumerate(marker_clusters[key]):
+                    marker_features = feed_features[(feed_features["Marker"] == marker_name)]
+
+                    fig = plt.figure(constrained_layout=True, figsize=(30, 10))
+
+                    ax = fig.add_gridspec(4, 8)
+
+                    row = 0
+
+                    for size_key in vessel_images.keys():
+                        column = 0
+
+                        for key_val in order:
+
+                            for img_pair in vessel_images[size_key][key_val]:
+                                img = img_pair["Image"]
+                                ax1 = fig.add_subplot(ax[row, column])
+                                ax1.imshow(img)
+                                ax1.set_title(key_val + ", " + size_key)
+
+                            column += 1
+
+                        row += 1
+
+                    violin_ax = fig.add_subplot(ax[0:, 4:])
+
+                    sns.violinplot(x="Size",
+                                   y="Expression",
+                                   hue=analysis_variable,
+                                   hue_order=order,
+                                   inner="box",
+                                   data=marker_features,
+                                   bw=0.2,
+                                   ax=violin_ax
+                                   )
+                    violin_ax.set_ylim(-0.15, 1.75)
+
+                    violin_ax.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.,
+                                   title=analysis_variable)
+
+                    fig.savefig(marker_cluster_dir + '/%s.png' % str(marker_name),
+                                bbox_inches='tight')
+                    fig.clf()
+
     def categorical_violin_plot(self, **kwargs):
         """
         Categorical Violin Plot
@@ -942,6 +1066,7 @@ class Visualizer:
 
         mask_type = kwargs.get('mask_type', "expansion_only")
         analysis_variable = kwargs.get('analysis_variable', "Asymmetry Score")
+        order = kwargs.get("order", None)
 
         parent_dir = "%s/Categorical Violin Plots" % self.results_dir
 
@@ -977,8 +1102,6 @@ class Visualizer:
             split_dir = "%s/By %s" % (feed_dir, analysis_variable)
             mkdir_p(split_dir)
 
-            cmap = colors.ListedColormap(['blue', 'red'])(np.linspace(0, 1, 2))
-
             for key in marker_clusters.keys():
                 marker_cluster_dir = "%s/%s" % (split_dir, key)
                 mkdir_p(marker_cluster_dir)
@@ -991,7 +1114,7 @@ class Visualizer:
                     ax = sns.violinplot(x="Size",
                                         y="Expression",
                                         hue=analysis_variable,
-                                        hue_order=["25%", "50%", "75%", "100%"],
+                                        hue_order=order,
                                         inner="box",
                                         data=marker_features,
                                         bw=0.2,
@@ -1019,7 +1142,7 @@ class Visualizer:
 
                     ax = sns.violinplot(x=analysis_variable,
                                         y="Expression",
-                                        order=["25%", "50%", "75%", "100%"],
+                                        order=order,
                                         inner="box",
                                         data=marker_features,
                                         bw=0.2,
@@ -1469,7 +1592,7 @@ class Visualizer:
         assert analysis_variable is not None, "There must be a primary categorical splitter"
 
         parent_dir = "%s/%s Vessel Images" % (self.results_dir
-,
+                                              ,
                                               analysis_variable)
 
         img_shape = self.config.segmentation_mask_size
@@ -2017,7 +2140,7 @@ class Visualizer:
         assert secondary_categorical_splitter is not None, "Must have a secondary categorical variable"
 
         parent_dir = "%s/%s Scatter Plots" % (self.results_dir
-, analysis_variable)
+                                              , analysis_variable)
         mkdir_p(parent_dir)
 
         for feed_idx in range(self.all_feeds_data.shape[0]):
@@ -3355,7 +3478,6 @@ class Visualizer:
         example_img = cv.cvtColor(example_img, cv.COLOR_GRAY2BGR)
 
         parent_dir = "%s/Associated Area Masks" % self.results_dir
-
 
         for feed_idx in self.all_feeds_contour_data.index.get_level_values('Feed Index').unique():
 
