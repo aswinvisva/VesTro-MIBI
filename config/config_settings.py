@@ -67,12 +67,17 @@ class Config:
                        "Data Type",
                        "Asymmetry",
                        "Asymmetry Score",
-                       "UMAP0",
-                       "UMAP1",
-                       "K-Means",
-                       # "DBSCAN",
-                       # "HDBSCAN",
-                       "Hierarchical"
+                       "Region"
+                       # "UMAP0",
+                       # "UMAP1",
+                       # "TSNE0",
+                       # "TSNE1",
+                       # "PCA0",
+                       # "PCA1",
+                       # "SVD0",
+                       # "SVD1",
+                       # "K-Means",
+                       # "Hierarchical"
                        ]
 
     n_markers = 34
@@ -144,11 +149,6 @@ class Config:
     show_probability_distribution_for_expression = False
     show_vessel_masks_when_generating_expression = False
 
-    # Visualization settings for plotting data
-    now = datetime.now().strftime("%d_%m_%Y_%H:%M:%S")
-    visualization_results_dir = "results/experiment_%s/" % now
-    mkdir_p(visualization_results_dir)
-
     distance_interval = 0.5
 
     if distance_interval is None:
@@ -197,12 +197,12 @@ class Config:
     create_spatial_probability_maps = False  #
     create_expression_histogram = False
     create_expansion_violin_plots = False  #
-    create_categorical_violin_plot = False  #
+    create_categorical_violin_plot = True  #
     create_expansion_box_plots = False  #
     create_vessel_asymmetry_area_spread_plot = False  #
-    create_categorical_scatter_plots = False  #
+    create_continuous_scatter_plot = False  #
     create_umap_projection_scatter_plots = True  #
-    create_vessel_images_by_categorical_variable = False  #
+    create_vessel_images_by_categorical_variable = True  #
     create_pseudo_time_heatmap = False  #
 
     if create_vessel_areas_histograms_and_boxplots:

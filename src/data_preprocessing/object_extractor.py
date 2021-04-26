@@ -14,12 +14,16 @@ Authors: Aswin Visva, John-Paul Oliveria, Ph.D
 
 class ObjectExtractor:
 
-    def __init__(self, config: Config):
+    def __init__(self,
+                 config: Config,
+                 results_dir: str):
         """
         Object Extractor class
         :param config: Config, configuration settings
+        :param results_dir: str, Results directory
         """
         self.config = config
+        self.results_dir = results_dir
 
     def extract(self,
                 img: np.ndarray,
@@ -51,7 +55,7 @@ class ObjectExtractor:
             imgray = cv.blur(imgray, self.config.guassian_blur)
 
             if self.config.create_blurred_vessels_mask:
-                output_dir = os.path.join(self.config.visualization_results_dir,
+                output_dir = os.path.join(self.results_dir,
                                           "guassian_blur_%s" % str(self.config.guassian_blur))
                 mkdir_p(output_dir)
 
@@ -105,7 +109,7 @@ class ObjectExtractor:
             usable_contours.append(cnt)
 
         if self.config.create_removed_vessels_mask:
-            output_dir = os.path.join(self.config.visualization_results_dir,
+            output_dir = os.path.join(self.results_dir,
                                       "removed_vessels")
             mkdir_p(output_dir)
 

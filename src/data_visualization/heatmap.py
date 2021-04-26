@@ -11,7 +11,7 @@ from src.data_preprocessing.object_extractor import ObjectExtractor
 from src.data_preprocessing.markers_feature_gen import *
 from src.utils.utils_functions import mkdir_p
 
-from src.plotting.base import BaseMIBIPlot
+from src.data_visualization.base import BaseMIBIPlot
 
 
 class Heatmap(BaseMIBIPlot, ABC):

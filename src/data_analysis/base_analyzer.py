@@ -10,7 +10,7 @@ from src.data_loading.mibi_data_feed import MIBIDataFeed
 from src.data_loading.mibi_loader import MIBILoader
 from src.data_loading.mibi_point_contours import MIBIPointContours
 from src.data_preprocessing.markers_feature_gen import *
-from src.plotting.visualizer import Visualizer
+from src.data_visualization.visualizer import Visualizer
 from config.config_settings import Config
 
 
@@ -39,5 +39,5 @@ class BaseAnalyzer:
         self.all_feeds_metadata = all_feeds_metadata
         self.all_feeds_data = all_points_marker_data
 
-    def analyze(self, **kwargs):
+    def analyze(self, results_dir, **kwargs):
         raise NotImplementedError("Please implement base analyzer to use its functionality")

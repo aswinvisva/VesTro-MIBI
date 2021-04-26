@@ -1,35 +1,53 @@
+import os
+import tempfile
 import unittest
+
+from PIL import Image
+import numpy as np
 
 from config.config_settings import Config
 from src.data_loading.mibi_data_feed import MIBIDataFeed
 from src.data_loading.mibi_loader import MIBILoader
+from src.utils.test_utils import create_test_data
 
 
 class TestMIBILoader(unittest.TestCase):
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        self.config = Config()
-        self.loader = MIBILoader(self.config)
-        self.example_feed = MIBIDataFeed(
-            feed_data_loc="/media/large_storage/oliveria_data/data/hires",
-            feed_mask_loc="/media/large_storage/oliveria_data/masks/hires",
-            feed_name="Hires",
-            n_points=48
-        )
-
     def test_add_feed(self):
-        self.loader.add_feed(self.example_feed)
+        with tempfile.TemporaryDirectory() as temp_dir:
+            create_test_data(temp_dir, n_points=1, resolution=(2048, 2048))
 
-        self.assertEqual(self.loader.feeds[self.example_feed.name], self.example_feed)
+            config = Config()
+            loader = MIBILoader(config)
+            example_feed = MIBIDataFeed(
+                feed_data_loc="%s/data" % temp_dir,
+                feed_mask_loc="%s/masks" % temp_dir,
+                feed_name="Test",
+                n_points=1
+            )
+
+            loader.add_feed(example_feed)
+
+            self.assertEqual(loader.feeds[example_feed.name], example_feed)
 
     def test_read(self):
-        self.loader.add_feed(self.example_feed)
+        with tempfile.TemporaryDirectory() as temp_dir:
+            create_test_data(temp_dir, n_points=1, resolution=(2048, 2048))
 
-        all_feeds_metadata, all_feeds_data, all_feeds_mask, marker_names = self.loader.read()
+            config = Config()
+            loader = MIBILoader(config)
+            example_feed = MIBIDataFeed(
+                feed_data_loc="%s/data" % temp_dir,
+                feed_mask_loc="%s/masks" % temp_dir,
+                feed_name="Test",
+                n_points=1
+            )
 
-        self.assertEqual(len(all_feeds_data), 1)
+            loader.add_feed(example_feed)
+
+            all_feeds_metadata, all_feeds_data, all_feeds_mask, marker_names = loader.read()
+
+            self.assertEqual(len(all_feeds_data), 1)
 
 
 if __name__ == '__main__':
