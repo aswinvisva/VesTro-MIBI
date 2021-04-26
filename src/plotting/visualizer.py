@@ -12,10 +12,10 @@ from scipy.ndimage import gaussian_filter
 from scipy.stats import gaussian_kde
 from seaborn.utils import axis_ticklabels_overlap
 
-from mibipy.data_loading.mibi_reader import MIBIReader
-from mibipy.data_preprocessing.object_extractor import ObjectExtractor
-from mibipy.data_preprocessing.markers_feature_gen import *
-from mibipy.utils.utils_functions import mkdir_p
+from src.data_loading.mibi_reader import MIBIReader
+from src.data_preprocessing.object_extractor import ObjectExtractor
+from src.data_preprocessing.markers_feature_gen import *
+from src.utils.utils_functions import mkdir_p
 
 '''
 Authors: Aswin Visva, John-Paul Oliveria, Ph.D

@@ -1,9 +1,9 @@
 from config.config_settings import Config
-from mibipy.data_analysis.umap_analyzer import UMAPAnalyzer
-from mibipy.data_analysis.vessel_asymmetry_analyzer import VesselAsymmetryAnalyzer
-from mibipy.data_loading.mibi_data_feed import MIBIDataFeed
-from mibipy.data_loading.mibi_loader import MIBILoader
-from mibipy.mibi_pipeline import MIBIPipeline
+from src.data_analysis.umap_analyzer import UMAPAnalyzer
+from src.data_analysis.vessel_asymmetry_analyzer import VesselAsymmetryAnalyzer
+from src.data_loading.mibi_data_feed import MIBIDataFeed
+from src.data_loading.mibi_loader import MIBILoader
+from src.mibi_pipeline import MIBIPipeline
 
 
 def medres_example():

@@ -2,7 +2,7 @@ import unittest
 import os
 
 from config.config_settings import Config
-from mibipy.data_loading.mibi_reader import MIBIReader
+from src.data_loading.mibi_reader import MIBIReader
 
 
 class TestStitchMarkersMethods(unittest.TestCase):

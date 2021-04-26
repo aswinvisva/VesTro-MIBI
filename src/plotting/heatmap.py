@@ -6,12 +6,12 @@ from abc import ABC
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from seaborn.utils import axis_ticklabels_overlap
 
-from mibipy.data_loading.mibi_reader import MIBIReader
-from mibipy.data_preprocessing.object_extractor import ObjectExtractor
-from mibipy.data_preprocessing.markers_feature_gen import *
-from mibipy.utils.utils_functions import mkdir_p
+from src.data_loading.mibi_reader import MIBIReader
+from src.data_preprocessing.object_extractor import ObjectExtractor
+from src.data_preprocessing.markers_feature_gen import *
+from src.utils.utils_functions import mkdir_p
 
-from mibipy.plotting.base import BaseMIBIPlot
+from src.plotting.base import BaseMIBIPlot
 
 
 class Heatmap(BaseMIBIPlot, ABC):

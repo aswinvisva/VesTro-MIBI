@@ -7,7 +7,7 @@ import cv2 as cv
 from PIL import Image
 
 from config.config_settings import Config
-from mibipy.data_loading import tiff_reader
+from src.data_loading import tiff_reader
 
 '''
 Authors: Aswin Visva, John-Paul Oliveria, Ph.D

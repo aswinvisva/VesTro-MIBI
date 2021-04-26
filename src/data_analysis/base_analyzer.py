@@ -6,11 +6,11 @@ from sklearn.preprocessing import MinMaxScaler
 from tqdm import tqdm
 import cv2 as cv
 
-from mibipy.data_loading.mibi_data_feed import MIBIDataFeed
-from mibipy.data_loading.mibi_loader import MIBILoader
-from mibipy.data_loading.mibi_point_contours import MIBIPointContours
-from mibipy.data_preprocessing.markers_feature_gen import *
-from mibipy.plotting.visualizer import Visualizer
+from src.data_loading.mibi_data_feed import MIBIDataFeed
+from src.data_loading.mibi_loader import MIBILoader
+from src.data_loading.mibi_point_contours import MIBIPointContours
+from src.data_preprocessing.markers_feature_gen import *
+from src.plotting.visualizer import Visualizer
 from config.config_settings import Config
 
 

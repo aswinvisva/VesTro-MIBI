@@ -5,7 +5,7 @@ import numpy as np
 import cv2 as cv
 
 from config.config_settings import Config
-from mibipy.utils.utils_functions import mkdir_p
+from src.utils.utils_functions import mkdir_p
 
 '''
 Authors: Aswin Visva, John-Paul Oliveria, Ph.D

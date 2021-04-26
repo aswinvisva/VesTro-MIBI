@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 
-from mibipy.utils.utils_functions import mkdir_p
+from src.utils.utils_functions import mkdir_p
 
 
 class BaseMIBIPlot:
