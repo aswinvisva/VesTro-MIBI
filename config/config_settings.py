@@ -203,7 +203,7 @@ class Config:
     create_continuous_scatter_plot = False  #
     create_umap_projection_scatter_plots = False  #
     create_vessel_images_by_categorical_variable = False  #
-    create_pseudo_time_heatmap = False  #
+    create_pseudo_time_heatmap = True  #
     create_categorical_violin_plot_with_images = True  #
 
     if create_vessel_areas_histograms_and_boxplots:

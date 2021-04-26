@@ -50,18 +50,35 @@ def hires_example():
     # pipe.add_analyzer(PositiveVesselSummaryAnalyzer)
     # pipe.add_analyzer(DimensionalityReductionClusteringAnalyzer)
 
-    pipe.analyze_data(mask_type="expansion_only",
-                      marker_settings="all_markers",
-                      shape_quantification_method={
-                          "Name": "Eccentricity",
-                          "Metric": eccentricity
-                      })
+    shape_quantification_method = {
+        "Name": "Solidity",
+        "Metric": solidity
+    }
+
+    pipe.analyze_data(marker_settings="all_markers",
+                      shape_quantification_method=shape_quantification_method)
 
     # pipe.save_to_csv()
 
-    pipe.generate_visualizations(mask_type="mask_only",
-                                 analysis_variable="Eccentricity",
-                                 order=["25%", "50%", "75%", "100%"])
+    # pipe.generate_visualizations(mask_type="mask_only",
+    #                              analysis_variable="Eccentricity",
+    #                              order=["25%", "50%", "75%", "100%"])
+
+    pipe.visualizer.average_quartile_violin_plot_subplots(mask_type="mask_and_expansion",
+                                                          analysis_variable=shape_quantification_method["Name"],
+                                                          order=["25%", "50%", "75%", "100%"])
+
+    pipe.visualizer.categorical_violin_plot_with_images(mask_type="mask_and_expansion",
+                                                        analysis_variable=shape_quantification_method["Name"],
+                                                        outward_expansion=10,
+                                                        order=["25%", "50%", "75%", "100%"])
+
+    # pipe.visualizer.continuous_scatter_plot(mask_type="mask_only",
+    #                                         analysis_variable="Eccentricity Score",
+    #                                         primary_categorical_splitter="Eccentricity")
+
+    pipe.visualizer.pseudo_time_heatmap(mask_type="mask_and_expansion",
+                                        analysis_variable="%s Score" % shape_quantification_method["Name"])
 
 
 if __name__ == '__main__':

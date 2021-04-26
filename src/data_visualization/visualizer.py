@@ -3,6 +3,7 @@ import math
 import random
 from collections import Collection
 
+import cv2
 import matplotlib
 import matplotlib.pylab as pl
 import seaborn as sns
@@ -935,22 +936,25 @@ class Visualizer:
         plt.savefig(output_dir + '/%s_%s.png' % (x, y), bbox_inches='tight')
         plt.clf()
 
-    def categorical_violin_plot_with_images(self, **kwargs):
+    def average_quartile_violin_plot_subplots(self, **kwargs):
         """
-        Categorical Violin Plot with Images
+        Pseduotime Heatmap and Violin Plot subplot
         """
-
         mask_type = kwargs.get('mask_type', "expansion_only")
-        analysis_variable = kwargs.get('analysis_variable', "Asymmetry Score")
+        analysis_variable = kwargs.get('analysis_variable', "Asymmetry")
         order = kwargs.get("order", None)
-        img_shape = kwargs.get("img_shape", self.config.segmentation_mask_size)
-        n_examples = kwargs.get("n_examples", 1)
-
-        parent_dir = "%s/Categorical Violin Plots with Images" % self.results_dir
-
-        mkdir_p(parent_dir)
-
+        parent_dir = "%s/Average Quartile Violin Plots" % self.results_dir
         marker_clusters = self.config.marker_clusters
+        selected_clusters = ["Vessels", "Astrocytes"]
+
+        norm = matplotlib.colors.Normalize(-1, 1)
+        colors = [[norm(-1.0), "black"],
+                  [norm(-0.5), "indigo"],
+                  [norm(0), "firebrick"],
+                  [norm(0.5), "orange"],
+                  [norm(1.0), "khaki"]]
+
+        cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", colors)
 
         for feed_idx in range(self.all_feeds_data.shape[0]):
             idx = pd.IndexSlice
@@ -969,14 +973,99 @@ class Visualizer:
                                          non_id_vars=self.markers_names,
                                          )
 
+            n_rows = 2
+            n_cols = 8
+            row = 0
+            column = 0
+            i = 0
+
+            fig = plt.figure(constrained_layout=True, figsize=(40, 15))
+
+            ax = fig.add_gridspec(n_rows, n_cols)
+
+            for key in selected_clusters:
+
+                for marker, marker_name in enumerate(marker_clusters[key]):
+                    marker_features = feed_features[(feed_features["Marker"] == marker_name)]
+
+                    ax2 = fig.add_subplot(ax[row, column])
+
+                    sns.violinplot(x=analysis_variable,
+                                   y="Expression",
+                                   order=order,
+                                   inner="quartile",
+                                   data=marker_features,
+                                   bw=0.2,
+                                   ax=ax2
+                                   )
+                    ax2.set_ylim(-0.15, 1.75)
+                    ax2.set_title(marker_name)
+
+                    i += 1
+
+                    column += 1
+
+                    if i == n_cols - 1:
+                        row += 1
+                        column = 0
+
+            fig.savefig(feed_dir + '/average_quartile_violins.png',
+                        bbox_inches='tight')
+            fig.clf()
+
+    def categorical_violin_plot_with_images(self, **kwargs):
+        """
+        Categorical Violin Plot with Images
+        """
+
+        mask_type = kwargs.get('mask_type', "expansion_only")
+        outward_expansion = kwargs.get("outward_expansion", 0)
+        inward_expansion = kwargs.get("inward_expansion", 0)
+
+        analysis_variable = kwargs.get('analysis_variable', "Asymmetry Score")
+        order = kwargs.get("order", None)
+
+        # random.seed(10)  # 568, 570
+
+        parent_dir = "%s/Categorical Violin Plots with Images" % self.results_dir
+
+        mkdir_p(parent_dir)
+
+        marker_clusters = self.config.marker_clusters
+
+        cmap = matplotlib.cm.get_cmap('viridis')
+
+        for feed_idx in range(self.all_feeds_data.shape[0]):
+            idx = pd.IndexSlice
+            feed_name = self.all_feeds_metadata.loc[idx[feed_idx, 0], "Feed Name"]
+            feed_data = self.all_feeds_contour_data.loc[feed_idx]
+
+            feed_dir = "%s/%s" % (parent_dir, feed_name)
+            mkdir_p(feed_dir)
+            feed_features = self.all_samples_features.loc[self.all_samples_features["Data Type"] == feed_name]
+
+            feed_features = loc_by_expansion(feed_features,
+                                             expansion_type=mask_type,
+                                             average=False)
+
+            feed_features = melt_markers(feed_features,
+                                         non_id_vars=self.markers_names,
+                                         )
+
+            quartile_25 = np.percentile(feed_features['Contour Area'], 25)
+            quartile_50 = np.percentile(feed_features['Contour Area'], 50)
+            quartile_75 = np.percentile(feed_features['Contour Area'], 75)
+
             feed_features['Size'] = pd.cut(feed_features['Contour Area'],
-                                           bins=[self.config.small_vessel_threshold,
-                                                 self.config.medium_vessel_threshold,
-                                                 self.config.large_vessel_threshold,
+                                           bins=[0,
+                                                 quartile_25,
+                                                 quartile_50,
+                                                 quartile_75,
                                                  float('Inf')],
-                                           labels=["Small",
-                                                   "Medium",
-                                                   "Large"])
+                                           labels=["25%",
+                                                   "50%",
+                                                   "75%",
+                                                   "100%"])
 
             split_dir = "%s/By %s" % (feed_dir, analysis_variable)
             mkdir_p(split_dir)
@@ -993,23 +1082,55 @@ class Visualizer:
 
                     vessel_images[size][val] = []
 
-                    for i in random.sample(list(split_features.index),
-                                           min(n_examples, len(list(split_features.index)))):
-                        point_idx = i[0]
-                        cnt_idx = i[1]
+                    sample_index = random.sample(list(split_features.index), 1)[0]
 
-                        cnt = feed_data.loc[point_idx - 1, "Contours"].contours[cnt_idx]
+                    point_idx = sample_index[0]
+                    cnt_idx = sample_index[1]
 
-                        example_mask = np.zeros((img_shape[0], img_shape[1], 3), np.uint8)
-                        cv.drawContours(example_mask, [cnt], -1, (255, 255, 255), cv.FILLED)
+                    cnt = feed_data.loc[point_idx - 1, "Contours"].contours[cnt_idx]
+
+                    if mask_type == "mask_and_expansion":
+                        mask = expand_vessel_region(cnt,
+                                                    self.config.segmentation_mask_size,
+                                                    upper_bound=outward_expansion,
+                                                    lower_bound=0)
+                    elif mask_type == "expansion_only":
+                        original_mask = np.zeros(self.config.segmentation_mask_size, np.uint8)
+                        cv.drawContours(original_mask, [cnt], -1, (1, 1, 1), cv.FILLED)
+
+                        mask_expanded = expand_vessel_region(cnt,
+                                                             self.config.segmentation_mask_size,
+                                                             upper_bound=outward_expansion,
+                                                             lower_bound=0)
+                        mask = mask_expanded - original_mask
+                    elif mask_type == "mask_only":
+                        mask = np.zeros(self.config.segmentation_mask_size, np.uint8)
+                        cv.drawContours(mask, [cnt], -1, (1, 1, 1), cv.FILLED)
+
+                    marker_data = self.all_feeds_data[feed_idx, point_idx - 1]
+
+                    marker_dict = dict(zip(self.markers_names, marker_data))
+
+                    for marker in self.markers_names:
+                        marker_dict[marker] = gaussian_filter(marker_dict[marker], sigma=4)
+
+                        normed_data = (marker_dict[marker] - np.min(marker_dict[marker])) / (
+                                np.max(marker_dict[marker]) - np.min(marker_dict[marker]))
+
+                        mapped_data = cmap(normed_data)
+
+                        result = (cv.bitwise_and(mapped_data, mapped_data, mask=mask) * 255).astype("uint8")
+                        result = cv.cvtColor(result, cv.COLOR_RGBA2RGB)
 
                         x, y, w, h = cv.boundingRect(cnt)
-                        roi = example_mask[y:y + h, x:x + w]
+                        marker_dict[marker] = result[
+                                              max(0, y-outward_expansion):y + h + outward_expansion,
+                                              max(0, x-outward_expansion):x + w + outward_expansion]
 
-                        vessel_images[size][val].append({
-                            "Index": (point_idx, cnt_idx),
-                            "Image": roi
-                        })
+                    vessel_images[size][val].append({
+                        "Index": (point_idx, cnt_idx),
+                        "Image": marker_dict
+                    })
 
             for key in marker_clusters.keys():
                 marker_cluster_dir = "%s/%s" % (split_dir, key)
@@ -1018,34 +1139,39 @@ class Visualizer:
                 for marker, marker_name in enumerate(marker_clusters[key]):
                     marker_features = feed_features[(feed_features["Marker"] == marker_name)]
 
-                    fig = plt.figure(constrained_layout=True, figsize=(30, 10))
+                    fig = plt.figure(constrained_layout=True, figsize=(40, 15))
 
-                    ax = fig.add_gridspec(4, 8)
+                    ax = fig.add_gridspec(4, 9)
 
                     row = 0
 
-                    for size_key in vessel_images.keys():
+                    for size_key in order:
                         column = 0
 
                         for key_val in order:
 
                             for img_pair in vessel_images[size_key][key_val]:
-                                img = img_pair["Image"]
+                                img = img_pair["Image"][marker_name]
                                 ax1 = fig.add_subplot(ax[row, column])
-                                ax1.imshow(img)
+                                color_map = ax1.imshow(img, origin='lower')
+
+                                divider = make_axes_locatable(ax1)
+                                cax = divider.append_axes('right', size='5%', pad=0.05)
+                                fig.colorbar(color_map, cax=cax, orientation='vertical')
+
                                 ax1.set_title(key_val + ", " + size_key)
 
                             column += 1
 
                         row += 1
 
-                    violin_ax = fig.add_subplot(ax[0:, 4:])
+                    violin_ax = fig.add_subplot(ax[0:, 5:])
 
                     sns.violinplot(x="Size",
                                    y="Expression",
                                    hue=analysis_variable,
                                    hue_order=order,
-                                   inner="box",
+                                   inner="quartile",
                                    data=marker_features,
                                    bw=0.2,
                                    ax=violin_ax
@@ -1053,7 +1179,7 @@ class Visualizer:
                     violin_ax.set_ylim(-0.15, 1.75)
 
                     violin_ax.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.,
-                                   title=analysis_variable)
+                                     title=analysis_variable)
 
                     fig.savefig(marker_cluster_dir + '/%s.png' % str(marker_name),
                                 bbox_inches='tight')
@@ -1588,6 +1714,7 @@ class Visualizer:
         """
         analysis_variable = kwargs.get("analysis_variable", "Asymmetry")
         n_examples = kwargs.get("n_examples", 10)
+        random.seed(42)
 
         assert analysis_variable is not None, "There must be a primary categorical splitter"
 
@@ -2179,7 +2306,13 @@ class Visualizer:
 
             feed_features = feed_features[feed_features["Expansion"] == feed_features["Expansion"].max()]
 
-            cmap = colors.ListedColormap(['blue', 'red'])(np.linspace(0, 1, 2))
+            if len(feed_features[primary_categorical_splitter].unique()) <= 2:
+                cmap = colors.ListedColormap(['blue', 'red'])(np.linspace(0, 1, 2))
+            else:
+                cmap = matplotlib.cm.get_cmap('Set1')(np.linspace(0,
+                                                                  1,
+                                                                  len(feed_features[
+                                                                          primary_categorical_splitter].unique())))
 
             for marker in feed_features["Marker"].unique():
                 marker_features = feed_features[feed_features["Marker"] == marker]
@@ -2198,7 +2331,13 @@ class Visualizer:
                 plt.savefig(by_primary_analysis_variable_dir + '/%s.png' % str(marker), bbox_inches='tight')
                 plt.clf()
 
-            cmap = colors.ListedColormap(['cyan', 'pink', 'yellow'])(np.linspace(0, 1, 3))
+            if len(feed_features[primary_categorical_splitter].unique()) <= 3:
+                cmap = colors.ListedColormap(['cyan', 'pink', 'yellow'])(np.linspace(0, 1, 3))
+            else:
+                cmap = matplotlib.cm.get_cmap('Set1')(np.linspace(0,
+                                                                  1,
+                                                                  len(feed_features[
+                                                                          primary_categorical_splitter].unique())))
 
             for marker in feed_features["Marker"].unique():
                 marker_features = feed_features[feed_features["Marker"] == marker]
@@ -2509,7 +2648,8 @@ class Visualizer:
                                       x_tick_values=None,
                                       x_tick_indices=None,
                                       vmin=None,
-                                      vmax=None):
+                                      vmax=None,
+                                      ax=None):
 
         """
         Helper method to save heatmap and clustermap output
@@ -2530,51 +2670,94 @@ class Visualizer:
 
         if not cluster:
 
-            plt.figure(figsize=(22, 10))
+            if ax is None:
+                plt.figure(figsize=(22, 10))
 
-            ax = sns.heatmap(data,
-                             cmap=cmap,
-                             xticklabels=x_tick_labels,
-                             yticklabels=y_tick_labels,
-                             linewidths=0,
-                             vmin=vmin,
-                             vmax=vmax
-                             )
+                ax = sns.heatmap(data,
+                                 cmap=cmap,
+                                 xticklabels=x_tick_labels,
+                                 yticklabels=y_tick_labels,
+                                 linewidths=0,
+                                 vmin=vmin,
+                                 vmax=vmax
+                                 )
 
-            ax.set_xticklabels(ax.get_xticklabels(), rotation="horizontal")
+                ax.set_xticklabels(ax.get_xticklabels(), rotation="horizontal")
 
-            if axis_ticklabels_overlap(ax.get_xticklabels()):
-                ax.set_xticklabels(ax.get_xticklabels(), rotation=45, ha="right")
+                if axis_ticklabels_overlap(ax.get_xticklabels()):
+                    ax.set_xticklabels(ax.get_xticklabels(), rotation=45, ha="right")
 
-            if len(x_tick_labels) != data.shape[1] or x_tick_values is not None or x_tick_indices is not None:
-                xticks = ax.get_xticklabels()
+                if len(x_tick_labels) != data.shape[1] or x_tick_values is not None or x_tick_indices is not None:
+                    xticks = ax.get_xticklabels()
 
-                for xtick in xticks:
-                    xtick.set_visible(False)
+                    for xtick in xticks:
+                        xtick.set_visible(False)
 
-                if x_tick_values is not None:
-                    for i, val in enumerate(x_tick_labels):
-                        if val in x_tick_values:
+                    if x_tick_values is not None:
+                        for i, val in enumerate(x_tick_labels):
+                            if val in x_tick_values:
+                                xticks[i].set_visible(True)
+                                x_tick_values.remove(val)
+
+                    if x_tick_indices is not None:
+                        for i in x_tick_indices:
                             xticks[i].set_visible(True)
-                            x_tick_values.remove(val)
 
-                if x_tick_indices is not None:
-                    for i in x_tick_indices:
-                        xticks[i].set_visible(True)
+                plt.xlabel("%s" % x_label)
 
-            plt.xlabel("%s" % x_label)
+                h_line_idx = 0
 
-            h_line_idx = 0
+                for key in marker_clusters.keys():
+                    if h_line_idx != 0:
+                        ax.axhline(h_line_idx, 0, len(self.markers_names), linewidth=3, c='w')
 
-            for key in marker_clusters.keys():
-                if h_line_idx != 0:
-                    ax.axhline(h_line_idx, 0, len(self.markers_names), linewidth=3, c='w')
+                    for _ in marker_clusters[key]:
+                        h_line_idx += 1
 
-                for _ in marker_clusters[key]:
-                    h_line_idx += 1
+                plt.savefig(output_dir + '/%s.png' % map_name, bbox_inches='tight')
+                plt.clf()
+            else:
+                ax = sns.heatmap(data,
+                                 cmap=cmap,
+                                 xticklabels=x_tick_labels,
+                                 yticklabels=y_tick_labels,
+                                 linewidths=0,
+                                 vmin=vmin,
+                                 vmax=vmax,
+                                 ax=ax
+                                 )
 
-            plt.savefig(output_dir + '/%s.png' % map_name, bbox_inches='tight')
-            plt.clf()
+                ax.set_xticklabels(ax.get_xticklabels(), rotation="horizontal")
+
+                if axis_ticklabels_overlap(ax.get_xticklabels()):
+                    ax.set_xticklabels(ax.get_xticklabels(), rotation=45, ha="right")
+
+                if len(x_tick_labels) != data.shape[1] or x_tick_values is not None or x_tick_indices is not None:
+                    xticks = ax.get_xticklabels()
+
+                    for xtick in xticks:
+                        xtick.set_visible(False)
+
+                    if x_tick_values is not None:
+                        for i, val in enumerate(x_tick_labels):
+                            if val in x_tick_values:
+                                xticks[i].set_visible(True)
+                                x_tick_values.remove(val)
+
+                    if x_tick_indices is not None:
+                        for i in x_tick_indices:
+                            xticks[i].set_visible(True)
+
+                plt.xlabel("%s" % x_label)
+
+                h_line_idx = 0
+
+                for key in marker_clusters.keys():
+                    if h_line_idx != 0:
+                        ax.axhline(h_line_idx, 0, len(self.markers_names), linewidth=3, c='w')
+
+                    for _ in marker_clusters[key]:
+                        h_line_idx += 1
 
         else:
             ax = sns.clustermap(data,
@@ -3143,6 +3326,125 @@ class Visualizer:
         plt.savefig(os.path.join(output_dir, "Vessel_Areas_Histogram.png"))
         plt.clf()
 
+    def _pseudo_time_heatmap(self,
+                             mibi_features,
+                             ax=None,
+                             save_dir=None,
+                             binned=False,
+                             cmap=None,
+                             map_name="Example",
+                             **kwargs):
+        """
+        Pseudo Time Heatmap
+        """
+
+        mask_type = kwargs.get("mask_type", "mask_only")
+        analysis_variable = kwargs.get("analysis_variable", "Eccentricity")
+
+        mibi_features = loc_by_expansion(mibi_features,
+                                         expansion_type=mask_type,
+                                         average=False)
+
+        mibi_features = melt_markers(mibi_features,
+                                     non_id_vars=self.markers_names,
+                                     add_marker_group=False)
+
+        mibi_features["Expression"] = pd.to_numeric(mibi_features["Expression"])
+
+        mibi_features['Mean Expression'] = \
+            mibi_features.groupby(['Vessel', 'Point', 'Marker'])['Expression'].transform('mean')
+
+        mibi_features.reset_index(level=['Vessel', 'Point', 'Expansion'], inplace=True)
+
+        mibi_features = mibi_features[mibi_features["Expansion"] == mibi_features["Expansion"].max()]
+
+        all_mask_data = []
+        x_tick_labels = []
+
+        for val in sorted(mibi_features[analysis_variable].unique()):
+            y_tick_labels = mibi_features[mibi_features[analysis_variable] == val].groupby(['Marker'],
+                                                                                           sort=False)[
+                'Mean Expression'].mean().reset_index()["Marker"].values
+
+        if binned:
+            for val in np.linspace(mibi_features[analysis_variable].min(),
+                                   mibi_features[analysis_variable].max(), 5):
+
+                current_expansion_all = mibi_features[(mibi_features[analysis_variable] >= val) &
+                                                      (mibi_features[analysis_variable] < val + mibi_features[
+                                                          analysis_variable].max() / 5)].groupby(
+                    ['Marker'])[
+                    'Mean Expression'].mean().to_numpy()
+
+                x_tick_labels.append(round(val, 2))
+
+                if current_expansion_all.size > 0:
+                    all_mask_data.append(current_expansion_all)
+                else:
+                    all_mask_data.append(np.zeros((self.config.n_markers,), np.uint8))
+
+            all_mask_data = np.array(all_mask_data)
+
+            all_mask_data = all_mask_data.T
+
+            self._heatmap_clustermap_generator(data=all_mask_data,
+                                               x_tick_labels=x_tick_labels,
+                                               x_label=analysis_variable,
+                                               x_tick_indices=np.linspace(0,
+                                                                          all_mask_data.shape[1] - 1,
+                                                                          5,
+                                                                          dtype=int),
+                                               cmap=cmap,
+                                               marker_clusters=self.config.marker_clusters,
+                                               output_dir=save_dir,
+                                               map_name="%s_pseudo_time_heatmap_binned_%s" % (analysis_variable,
+                                                                                              map_name),
+                                               cluster=False,
+                                               y_tick_labels=y_tick_labels,
+                                               vmin=0,
+                                               vmax=1.25
+                                               )
+        else:
+
+            for val in sorted(mibi_features[analysis_variable].unique()):
+
+                current_expansion_all = \
+                    mibi_features[mibi_features[analysis_variable] == val].groupby(['Marker'],
+                                                                                   sort=False)[
+                        'Mean Expression'].mean().to_numpy()
+
+                x_tick_labels.append(round(val, 2))
+
+                if current_expansion_all.size > 0:
+                    all_mask_data.append(current_expansion_all)
+                else:
+                    all_mask_data.append(np.zeros((self.config.n_markers,), np.uint8))
+
+            all_mask_data = np.array(all_mask_data)
+
+            all_mask_data = all_mask_data.T
+
+            self._heatmap_clustermap_generator(data=all_mask_data,
+                                               x_tick_labels=x_tick_labels,
+                                               x_label=analysis_variable,
+                                               x_tick_indices=np.linspace(0,
+                                                                          all_mask_data.shape[1] - 1,
+                                                                          5,
+                                                                          dtype=int),
+                                               cmap=cmap,
+                                               marker_clusters=self.config.marker_clusters,
+                                               output_dir=save_dir,
+                                               map_name="%s_pseudo_time_heatmap_%s" % (analysis_variable,
+                                                                                       map_name),
+                                               cluster=False,
+                                               y_tick_labels=y_tick_labels,
+                                               ax=ax,
+                                               vmin=0,
+                                               vmax=1.25
+                                               )
+
+        return ax
+
     def pseudo_time_heatmap(self,
                             cmap=None,
                             **kwargs):
@@ -3199,98 +3501,28 @@ class Visualizer:
 
                 region_features = feed_features[feed_features['Region'] == region]
 
-                region_features = loc_by_expansion(region_features,
-                                                   expansion_type=mask_type,
-                                                   average=False)
+                self._pseudo_time_heatmap(region_features,
+                                          save_dir=region_dir,
+                                          analysis_variable=analysis_variable,
+                                          mask_type=mask_type,
+                                          map_name=region,
+                                          cmap=cmap)
 
-                region_features = melt_markers(region_features,
-                                               non_id_vars=self.markers_names,
-                                               add_marker_group=False)
+                self._pseudo_time_heatmap(region_features,
+                                          save_dir=region_dir,
+                                          binned=True,
+                                          analysis_variable=analysis_variable,
+                                          mask_type=mask_type,
+                                          map_name=region,
+                                          cmap=cmap)
 
-                region_features["Expression"] = pd.to_numeric(region_features["Expression"])
-
-                region_features['Mean Expression'] = \
-                    region_features.groupby(['Vessel', 'Point', 'Marker'])['Expression'].transform('mean')
-
-                region_features.reset_index(level=['Vessel', 'Point', 'Expansion'], inplace=True)
-
-                region_features = region_features[region_features["Expansion"] == region_features["Expansion"].max()]
-
-                all_mask_data = []
-                x_tick_labels = []
-
-                for val in sorted(region_features[analysis_variable].unique()):
-
-                    y_tick_labels = region_features[region_features[analysis_variable] == val].groupby(['Marker'],
-                                                                                                       sort=False)[
-                        'Mean Expression'].mean().reset_index()["Marker"].values
-
-                    current_expansion_all = \
-                        region_features[region_features[analysis_variable] == val].groupby(['Marker'],
-                                                                                           sort=False)[
-                            'Mean Expression'].mean().to_numpy()
-
-                    x_tick_labels.append(round(val, 2))
-
-                    if current_expansion_all.size > 0:
-                        all_mask_data.append(current_expansion_all)
-                    else:
-                        all_mask_data.append(np.zeros((self.config.n_markers,), np.uint8))
-
-                all_mask_data = np.array(all_mask_data)
-
-                all_mask_data = all_mask_data.T
-
-                self._heatmap_clustermap_generator(data=all_mask_data,
-                                                   x_tick_labels=x_tick_labels,
-                                                   x_label=analysis_variable,
-                                                   x_tick_indices=np.linspace(0,
-                                                                              all_mask_data.shape[1] - 1,
-                                                                              5,
-                                                                              dtype=int),
-                                                   cmap=cmap,
-                                                   marker_clusters=self.config.marker_clusters,
-                                                   output_dir=region_dir,
-                                                   map_name="%s_heatmap" % analysis_variable,
-                                                   cluster=False,
-                                                   y_tick_labels=y_tick_labels)
-
-                all_mask_data = []
-                x_tick_labels = []
-
-                for val in np.linspace(region_features[analysis_variable].min(),
-                                       region_features[analysis_variable].max(), 5):
-
-                    current_expansion_all = region_features[(region_features[analysis_variable] >= val) &
-                                                            (region_features[analysis_variable] < val + region_features[
-                                                                analysis_variable].max() / 5)].groupby(
-                        ['Marker'])[
-                        'Mean Expression'].mean().to_numpy()
-
-                    x_tick_labels.append(round(val, 2))
-
-                    if current_expansion_all.size > 0:
-                        all_mask_data.append(current_expansion_all)
-                    else:
-                        all_mask_data.append(np.zeros((self.config.n_markers,), np.uint8))
-
-                all_mask_data = np.array(all_mask_data)
-
-                all_mask_data = all_mask_data.T
-
-                self._heatmap_clustermap_generator(data=all_mask_data,
-                                                   x_tick_labels=x_tick_labels,
-                                                   x_label="Normalized Roughness",
-                                                   x_tick_indices=np.linspace(0,
-                                                                              all_mask_data.shape[1] - 1,
-                                                                              5,
-                                                                              dtype=int),
-                                                   cmap=cmap,
-                                                   marker_clusters=self.config.marker_clusters,
-                                                   output_dir=region_dir,
-                                                   map_name="%s_heatmap_binned" % analysis_variable,
-                                                   cluster=False,
-                                                   y_tick_labels=y_tick_labels)
+            self._pseudo_time_heatmap(feed_features,
+                                      save_dir=feed_dir,
+                                      binned=False,
+                                      analysis_variable=analysis_variable,
+                                      mask_type=mask_type,
+                                      map_name="all_points",
+                                      cmap=cmap)
 
     def vessel_asymmetry_area_spread_plot(self, **kwargs):
         """

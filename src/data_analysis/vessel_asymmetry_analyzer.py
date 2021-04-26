@@ -4,7 +4,7 @@ from collections import Counter
 from multiprocessing import Pool
 
 from scipy.stats import iqr
-from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import MinMaxScaler, PowerTransformer
 from tqdm import tqdm
 import cv2 as cv
 
@@ -107,6 +107,10 @@ class VesselAsymmetryAnalyzer(BaseAnalyzer, ABC):
                     self.all_samples_features["%s Score" % shape_quantification_name],
                     self.config.percentile_to_normalize,
                     axis=0)
+            # pt = PowerTransformer()
+            # self.all_samples_features["%s Score" % shape_quantification_name] =\
+            #     pt.fit_transform(self.all_samples_features[
+            #                          "%s Score" % shape_quantification_name].values.reshape(-1, 1))
 
             self.all_samples_features[shape_quantification_name] = "No"
 
