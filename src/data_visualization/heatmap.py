@@ -1,5 +1,8 @@
+from functools import partial
+
 import matplotlib
 import matplotlib.pyplot as plt
+import pandas as pd
 import seaborn as sns
 from abc import ABC
 
@@ -9,7 +12,7 @@ from seaborn.utils import axis_ticklabels_overlap
 from src.data_loading.mibi_reader import MIBIReader
 from src.data_preprocessing.object_extractor import ObjectExtractor
 from src.data_preprocessing.markers_feature_gen import *
-from src.utils.utils_functions import mkdir_p
+from src.utils.utils_functions import mkdir_p, round_to_nearest_half
 
 from src.data_visualization.base import BaseMIBIPlot
 
@@ -28,15 +31,12 @@ class Heatmap(BaseMIBIPlot, ABC):
                  y_tick_labels=None,
                  x_axis_label=None,
                  y_axis_label=None,
-                 save=True,
-                 show=False,
-                 save_dir=None,
-                 figsize=(22, 10),
-                 fig_name="Test",
-                 ax=None
+                 ax=None,
+                 vmin=None,
+                 vmax=None
                  ):
         """
-        Heatmap Plot
+        Base MIBI Plot
 
         :param x: str, Column name for x data
         :param y: str, Column name for y data
@@ -47,10 +47,6 @@ class Heatmap(BaseMIBIPlot, ABC):
         :param palette: matplotlib.Palette, Palette
         :param x_tick_labels: array_like, X tick labels
         :param y_tick_labels: array_like, Y tick labels
-        :param save: bool, Save figure
-        :param show: bool, Show figure
-        :param figsize: tuple, Figure size
-        :param fig_name: str, Figure name
         :param ax: matplotlib.SubplotAxes, Matplotlib Axis
         """
 
@@ -60,45 +56,116 @@ class Heatmap(BaseMIBIPlot, ABC):
         self.x_tick_labels = x_tick_labels
         self.data = data
         self.ax = ax
-        self.figsize = figsize
-        self.show = show
-        self.save = save
         self.palette = palette
         self.cmap = color_map
         self.style = style
         self.hue = hue
         self.y = y
         self.x = x
+        self.vmin = vmin
+        self.vmax = vmax
 
-    def make_figure(self, **kwargs):
+    def make_figure(self, marker_clusters, **kwargs):
         """
         Make the figure
-
-        :param kwargs:
-        :return:
         """
 
         cluster = kwargs.get("cluster", False)
         row_cluster = kwargs.get("row_cluster", True)
         col_cluster = kwargs.get("col_cluster", False)
         x_tick_label_rotation = kwargs.get("x_tick_label_rotation", 45)
+        x_tick_values = kwargs.get("x_tick_values", None)
+        x_tick_indices = kwargs.get("x_tick_indices", None)
 
         if not cluster:
-            plt.figure(figsize=self.figsize)
 
-            ax = sns.heatmap(self.data,
-                             cmap=self.cmap,
-                             xticklabels=self.x_tick_labels,
-                             yticklabels=self.y_tick_labels,
-                             linewidths=0,
-                             )
+            if self.ax is None:
+                plt.figure(figsize=(22, 10))
 
-            ax.set_xticklabels(ax.get_xticklabels(), rotation="horizontal")
+                ax = sns.heatmap(self.data,
+                                 cmap=self.cmap,
+                                 xticklabels=self.x_tick_labels,
+                                 yticklabels=self.y_tick_labels,
+                                 linewidths=0,
+                                 vmin=self.vmin,
+                                 vmax=self.vmax
+                                 )
 
-            if axis_ticklabels_overlap(ax.get_xticklabels()):
-                ax.set_xticklabels(ax.get_xticklabels(), rotation=x_tick_label_rotation, ha="right")
+                ax.set_xticklabels(ax.get_xticklabels(), rotation="horizontal")
 
-            plt.xlabel("%s" % self.x_axis_label)
+                if axis_ticklabels_overlap(ax.get_xticklabels()):
+                    ax.set_xticklabels(ax.get_xticklabels(), rotation=45, ha="right")
+
+                if len(self.x_tick_labels) != self.data.shape[
+                    1] or x_tick_values is not None or x_tick_indices is not None:
+                    xticks = ax.get_xticklabels()
+
+                    for xtick in xticks:
+                        xtick.set_visible(False)
+
+                    if x_tick_values is not None:
+                        for i, val in enumerate(self.x_tick_labels):
+                            if val in x_tick_values:
+                                xticks[i].set_visible(True)
+                                x_tick_values.remove(val)
+
+                    if x_tick_indices is not None:
+                        for i in x_tick_indices:
+                            xticks[i].set_visible(True)
+
+                plt.xlabel("%s" % self.x_axis_label)
+
+                h_line_idx = 0
+
+                for key in marker_clusters.keys():
+                    if h_line_idx != 0:
+                        ax.axhline(h_line_idx, 0, len(self.y_tick_labels), linewidth=3, c='w')
+
+                    for _ in marker_clusters[key]:
+                        h_line_idx += 1
+            else:
+                ax = sns.heatmap(self.data,
+                                 cmap=self.cmap,
+                                 xticklabels=self.x_tick_labels,
+                                 yticklabels=self.y_tick_labels,
+                                 linewidths=0,
+                                 vmin=self.vmin,
+                                 vmax=self.vmax,
+                                 ax=self.ax
+                                 )
+
+                ax.set_xticklabels(ax.get_xticklabels(), rotation="horizontal")
+
+                if axis_ticklabels_overlap(ax.get_xticklabels()):
+                    ax.set_xticklabels(ax.get_xticklabels(), rotation=x_tick_label_rotation, ha="right")
+
+                if len(self.x_tick_labels) != self.data.shape[
+                    1] or x_tick_values is not None or x_tick_indices is not None:
+                    xticks = ax.get_xticklabels()
+
+                    for xtick in xticks:
+                        xtick.set_visible(False)
+
+                    if x_tick_values is not None:
+                        for i, val in enumerate(self.x_tick_labels):
+                            if val in x_tick_values:
+                                xticks[i].set_visible(True)
+                                x_tick_values.remove(val)
+
+                    if x_tick_indices is not None:
+                        for i in x_tick_indices:
+                            xticks[i].set_visible(True)
+
+                plt.xlabel("%s" % self.x_axis_label)
+
+                h_line_idx = 0
+
+                for key in marker_clusters.keys():
+                    if h_line_idx != 0:
+                        ax.axhline(h_line_idx, 0, len(self.markers_names), linewidth=3, c='w')
+
+                    for _ in marker_clusters[key]:
+                        h_line_idx += 1
 
         else:
             ax = sns.clustermap(self.data,
@@ -108,9 +175,9 @@ class Heatmap(BaseMIBIPlot, ABC):
                                 linewidths=0,
                                 xticklabels=self.x_tick_labels,
                                 yticklabels=self.y_tick_labels,
-                                figsize=self.figsize
-                                )
-
+                                figsize=(20, 10),
+                                vmin=0,
+                                vmax=1)
             ax_ax = ax.ax_heatmap
             ax_ax.set_xlabel("%s" % self.x_axis_label)
 
@@ -118,6 +185,22 @@ class Heatmap(BaseMIBIPlot, ABC):
 
             if axis_ticklabels_overlap(ax_ax.get_xticklabels()):
                 ax_ax.set_xticklabels(ax_ax.get_xticklabels(), rotation=x_tick_label_rotation, ha="right")
+
+            if len(self.x_tick_labels) != self.data.shape[1] or x_tick_values is not None or x_tick_indices is not None:
+                xticks = ax_ax.get_xticklabels()
+
+                for xtick in xticks:
+                    xtick.set_visible(False)
+
+                if x_tick_values is not None:
+                    for i, val in enumerate(self.x_tick_labels):
+                        if val in x_tick_values:
+                            xticks[i].set_visible(True)
+                            x_tick_values.remove(val)
+
+                if x_tick_indices is not None:
+                    for i in x_tick_indices:
+                        xticks[i].set_visible(True)
 
         return ax
 
@@ -450,10 +533,7 @@ def vessel_nonvessel_heatmap(config: Config,
     hm = Heatmap(data=all_data,
                  color_map=cmap,
                  x_tick_labels=markers_names,
-                 y_tick_labels=yticklabels,
-                 figsize=(22, 10),
-                 save=True,
-                 show=False
+                 y_tick_labels=yticklabels
                  )
 
     ax = hm.make_figure(cluster=False)
@@ -485,3 +565,154 @@ def vessel_nonvessel_heatmap(config: Config,
     hm.savefig_or_show(save_dir="%s/Clustermaps" % feed_dir,
                        fig_name='Expansion_%s.png' % str(n_expansions),
                        ax=ax)
+
+
+def _marker_expression_at_expansion(expansion: int,
+                                    mibi_features: pd.DataFrame,
+                                    marker_names: list,
+                                    region: list = None,
+                                    data_type: str = "Data"):
+    """
+    Helper Function to Calculate the Average Marker Expression at a Given Expansion
+    """
+
+    try:
+        if region is None:
+            marker_expression_matrix = mibi_features.loc[pd.IndexSlice[:, :,
+                                                         expansion,
+                                                         data_type], marker_names].to_numpy()
+        else:
+            marker_expression_matrix = mibi_features.loc[pd.IndexSlice[region[0]:region[1],
+                                                         :,
+                                                         expansion,
+                                                         data_type], marker_names].to_numpy()
+
+    except KeyError:
+        return np.zeros((len(marker_names),), np.uint8)
+
+    return np.mean(marker_expression_matrix, axis=0)
+
+
+def brain_region_expansion_heatmap(expansion_features: pd.DataFrame,
+                                   heatmaps_dir: str,
+                                   clustermaps_dir: str,
+                                   marker_names: list,
+                                   pixel_interval: float,
+                                   brain_regions: list,
+                                   brain_region_names: list,
+                                   marker_clusters: dict,
+                                   data_resolution_units: str,
+                                   ):
+    """
+    Brain Region Expansion Heatmap
+    """
+
+    regions_mask_data = []
+
+    marker_mask_expression_map_fn_all_regions = partial(_marker_expression_at_expansion,
+                                                        mibi_features=expansion_features,
+                                                        marker_names=marker_names,
+                                                        data_type="Data")
+
+    all_regions_mask_data = np.array(list(map(marker_mask_expression_map_fn_all_regions,
+                                              sorted(expansion_features.index.unique("Expansion").tolist()))))
+
+    all_nonmask_data = expansion_features.loc[pd.IndexSlice[:, :,
+                                              max(expansion_features.index.unique("Expansion").tolist()),
+                                              "Non-Vascular Space"], marker_names].to_numpy()
+
+    mean_nonmask_data = np.mean(all_nonmask_data, axis=0)
+
+    all_mask_data = np.append(all_regions_mask_data, [mean_nonmask_data], axis=0)
+
+    all_mask_data = np.transpose(all_mask_data)
+
+    for region in brain_regions:
+        region_marker_mask_expression_map_fn = partial(_marker_expression_at_expansion,
+                                                       mibi_features=expansion_features,
+                                                       marker_names=marker_names,
+                                                       region=region,
+                                                       data_type="Data")
+
+        region_mask_data = np.array(list(map(region_marker_mask_expression_map_fn,
+                                             sorted(expansion_features.index.unique("Expansion").tolist()))))
+
+        region_non_mask_data = expansion_features.loc[pd.IndexSlice[region[0]:region[1],
+                                                      :,
+                                                      max(expansion_features.index.unique("Expansion").tolist()),
+                                                      "Non-Vascular Space"], marker_names].to_numpy()
+
+        region_mean_non_mask_data = np.mean(region_non_mask_data, axis=0)
+
+        region_mask_data = np.append(region_mask_data, [region_mean_non_mask_data], axis=0)
+
+        region_mask_data = np.transpose(region_mask_data)
+
+        regions_mask_data.append(region_mask_data)
+
+    x_tick_labels = np.array(sorted(expansion_features.index.unique("Expansion").tolist())) * pixel_interval
+    x_tick_labels = x_tick_labels.tolist()
+    x_tick_labels = [str(x) for x in x_tick_labels]
+    x_tick_labels.append("Nonvessel Space")
+
+    norm = matplotlib.colors.Normalize(-1, 1)
+    colors = [[norm(-1.0), "black"],
+              [norm(-0.5), "indigo"],
+              [norm(0), "firebrick"],
+              [norm(0.5), "orange"],
+              [norm(1.0), "khaki"]]
+
+    cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", colors)
+
+    # Heatmaps Output
+
+    hm = Heatmap(data=all_mask_data,
+                 color_map=cmap,
+                 x_tick_labels=x_tick_labels,
+                 y_tick_labels=marker_names,
+                 x_axis_label="Distance Expanded (%s)" % data_resolution_units,
+                 )
+
+    hm.make_figure(marker_clusters=marker_clusters,
+                   cluster=False)
+
+    hm.savefig_or_show(heatmaps_dir, "All_Points")
+
+    hm_cluster = Heatmap(data=all_mask_data,
+                         color_map=cmap,
+                         x_tick_labels=x_tick_labels,
+                         y_tick_labels=marker_names,
+                         x_axis_label="Distance Expanded (%s)" % data_resolution_units,
+                         )
+
+    hm_cluster.make_figure(marker_clusters=marker_clusters,
+                           cluster=True)
+
+    hm_cluster.savefig_or_show(clustermaps_dir, "All_Points")
+
+    for idx, region_data in enumerate(regions_mask_data):
+        region_name = brain_region_names[idx]
+
+        hm = Heatmap(data=region_data,
+                     color_map=cmap,
+                     x_tick_labels=x_tick_labels,
+                     y_tick_labels=marker_names,
+                     x_axis_label="Distance Expanded (%s)" % data_resolution_units,
+                     )
+
+        hm.make_figure(marker_clusters=marker_clusters,
+                       cluster=False)
+
+        hm.savefig_or_show(heatmaps_dir, "All_Points")
+
+        hm_cluster = Heatmap(data=region_data,
+                             color_map=cmap,
+                             x_tick_labels=x_tick_labels,
+                             y_tick_labels=marker_names,
+                             x_axis_label="Distance Expanded (%s)" % data_resolution_units,
+                             )
+
+        hm_cluster.make_figure(marker_clusters=marker_clusters,
+                               cluster=True)
+
+        hm_cluster.savefig_or_show(clustermaps_dir, "%s_Region" % region_name)

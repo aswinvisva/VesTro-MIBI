@@ -17,20 +17,12 @@ from src.data_loading.mibi_reader import MIBIReader
 from src.data_preprocessing.object_extractor import ObjectExtractor
 from src.data_preprocessing.markers_feature_gen import *
 from src.data_preprocessing.transforms import melt_markers, loc_by_expansion
-from src.utils.utils_functions import mkdir_p
+from src.utils.iterators import feed_features_iterator
+from src.utils.utils_functions import mkdir_p, round_to_nearest_half
 
 '''
 Authors: Aswin Visva, John-Paul Oliveria, Ph.D
 '''
-
-
-def round_to_nearest_half(number):
-    """
-    Round float to nearest 0.5
-    :param number: float, number to round
-    :return: float, number rounded to nearest 0.5
-    """
-    return round(number * 2) / 2
 
 
 def save_figure(save_dir: str,
@@ -656,24 +648,21 @@ class Visualizer:
                                    self.config.data_resolution_units)
         mkdir_p(parent_dir)
 
-        for feed_idx in self.all_feeds_contour_data.index.get_level_values('Feed Index').unique():
+        for feed_idx, feed_contours, feed_features, feed_dir in feed_features_iterator(self.all_samples_features,
+                                                                                       self.all_feeds_data,
+                                                                                       self.all_feeds_contour_data,
+                                                                                       self.all_feeds_metadata,
+                                                                                       save_to_dir=True,
+                                                                                       parent_dir=parent_dir):
 
-            feed_data = self.all_feeds_contour_data.loc[feed_idx]
-
-            idx = pd.IndexSlice
-            feed_name = self.all_feeds_metadata.loc[idx[feed_idx, 0], "Feed Name"]
-
-            output_dir = "%s/%s" % (parent_dir, feed_name)
-            mkdir_p(output_dir)
-
-            distinct_dir = "%s/Original Mask Excluded" % output_dir
+            distinct_dir = "%s/Original Mask Excluded" % feed_dir
             mkdir_p(distinct_dir)
 
-            nondistinct_dir = "%s/Original Mask Included" % output_dir
+            nondistinct_dir = "%s/Original Mask Included" % feed_dir
             mkdir_p(nondistinct_dir)
 
             for idx in range(self.config.n_points):
-                point_contours = feed_data.loc[idx, "Contours"].contours
+                point_contours = feed_contours.loc[idx, "Contours"].contours
 
                 original_not_included_point_mask = np.zeros(self.config.segmentation_mask_size, np.uint8)
                 original_included_point_mask = np.zeros(self.config.segmentation_mask_size, np.uint8)
@@ -726,27 +715,24 @@ class Visualizer:
                                    self.config.data_resolution_units)
         mkdir_p(parent_dir)
 
-        for feed_idx in self.all_feeds_contour_data.index.get_level_values('Feed Index').unique():
+        for feed_idx, feed_contours, feed_features, feed_dir in feed_features_iterator(self.all_samples_features,
+                                                                                       self.all_feeds_data,
+                                                                                       self.all_feeds_contour_data,
+                                                                                       self.all_feeds_metadata,
+                                                                                       save_to_dir=True,
+                                                                                       parent_dir=parent_dir):
 
-            feed_data = self.all_feeds_contour_data.loc[feed_idx]
-
-            idx = pd.IndexSlice
-            feed_name = self.all_feeds_metadata.loc[idx[feed_idx, 0], "Feed Name"]
-
-            output_dir = "%s/%s" % (parent_dir, feed_name)
-            mkdir_p(output_dir)
-
-            distinct_dir = "%s/Original Mask Excluded" % output_dir
+            distinct_dir = "%s/Original Mask Excluded" % feed_dir
             mkdir_p(distinct_dir)
 
-            nondistinct_dir = "%s/Original Mask Included" % output_dir
+            nondistinct_dir = "%s/Original Mask Included" % feed_dir
             mkdir_p(nondistinct_dir)
 
             for idx in range(self.config.n_points):
                 original_not_included_point_mask = np.zeros(self.config.segmentation_mask_size, np.uint8)
                 original_included_point_mask = np.zeros(self.config.segmentation_mask_size, np.uint8)
 
-                point_contours = feed_data.loc[idx, "Contours"].contours
+                point_contours = feed_contours.loc[idx, "Contours"].contours
 
                 regions = get_assigned_regions(point_contours, self.config.segmentation_mask_size)
 
@@ -790,15 +776,12 @@ class Visualizer:
 
         mkdir_p(parent_dir)
 
-        for feed_idx in self.all_feeds_contour_data.index.get_level_values('Feed Index').unique():
-
-            feed_data = self.all_feeds_contour_data.loc[feed_idx]
-
-            idx = pd.IndexSlice
-            feed_name = self.all_feeds_metadata.loc[idx[feed_idx, 0], "Feed Name"]
-
-            output_dir = "%s/%s" % (parent_dir, feed_name)
-            mkdir_p(output_dir)
+        for feed_idx, feed_contours, feed_features, feed_dir in feed_features_iterator(self.all_samples_features,
+                                                                                       self.all_feeds_data,
+                                                                                       self.all_feeds_contour_data,
+                                                                                       self.all_feeds_metadata,
+                                                                                       save_to_dir=True,
+                                                                                       parent_dir=parent_dir):
 
             for point_num in range(n_points):
                 current_interval = interval
@@ -808,7 +791,7 @@ class Visualizer:
                 colors = pl.cm.Greys(np.linspace(0, 1, n_expansions + 10))
 
                 for x in range(n_expansions):
-                    per_point_vessel_contours = feed_data.loc[point_num, "Contours"].contours
+                    per_point_vessel_contours = feed_contours.loc[point_num, "Contours"].contours
                     expansion_ring_plots(per_point_vessel_contours,
                                          expansion_image,
                                          pixel_expansion_upper_bound=current_interval,
@@ -949,13 +932,12 @@ class Visualizer:
 
         marker_clusters = self.config.marker_clusters
 
-        for feed_idx in range(self.all_feeds_data.shape[0]):
-            idx = pd.IndexSlice
-            feed_name = self.all_feeds_metadata.loc[idx[feed_idx, 0], "Feed Name"]
-
-            feed_dir = "%s/%s" % (parent_dir, feed_name)
-            mkdir_p(feed_dir)
-            feed_features = self.all_samples_features.loc[self.all_samples_features["Data Type"] == feed_name]
+        for feed_idx, feed_contours, feed_features, feed_dir in feed_features_iterator(self.all_samples_features,
+                                                                                       self.all_feeds_data,
+                                                                                       self.all_feeds_contour_data,
+                                                                                       self.all_feeds_metadata,
+                                                                                       save_to_dir=True,
+                                                                                       parent_dir=parent_dir):
 
             feed_features = loc_by_expansion(feed_features,
                                              expansion_type=mask_type,
@@ -1317,23 +1299,21 @@ class Visualizer:
 
         mkdir_p(parent_dir)
 
-        for feed_idx in range(self.all_feeds_data.shape[0]):
-            idx = pd.IndexSlice
-            feed_name = self.all_feeds_metadata.loc[idx[feed_idx, 0], "Feed Name"]
+        for feed_idx, feed_contours, feed_features, feed_dir in feed_features_iterator(self.all_samples_features,
+                                                                                       self.all_feeds_data,
+                                                                                       self.all_feeds_contour_data,
+                                                                                       self.all_feeds_metadata,
+                                                                                       save_to_dir=True,
+                                                                                       parent_dir=parent_dir):
 
-            output_dir = "%s/%s" % (parent_dir, feed_name)
-            mkdir_p(output_dir)
-
-            vessels_dir = "%s/Vessels" % output_dir
+            vessels_dir = "%s/Vessels" % feed_dir
             mkdir_p(vessels_dir)
 
-            astrocytes_dir = "%s/Astrocytes" % output_dir
+            astrocytes_dir = "%s/Astrocytes" % feed_dir
             mkdir_p(astrocytes_dir)
 
-            all_markers_dir = "%s/All Markers" % output_dir
+            all_markers_dir = "%s/All Markers" % feed_dir
             mkdir_p(all_markers_dir)
-
-            feed_contours = self.all_feeds_contour_data.loc[feed_idx]
 
             for point_idx in range(self.config.n_points):
 
@@ -1469,20 +1449,17 @@ class Visualizer:
         assert analysis_variable is not None, "There must be a primary categorical splitter"
 
         parent_dir = "%s/%s Vessel Images" % (self.results_dir
-,
+                                              ,
                                               analysis_variable)
 
         img_shape = self.config.segmentation_mask_size
 
-        for feed_idx in self.all_feeds_contour_data.index.get_level_values('Feed Index').unique():
-            feed_data = self.all_feeds_contour_data.loc[feed_idx]
-            idx = pd.IndexSlice
-            feed_name = self.all_feeds_metadata.loc[idx[feed_idx, 0], "Feed Name"]
-
-            feed_dir = "%s/%s" % (parent_dir, feed_name)
-            mkdir_p(feed_dir)
-
-            feed_features = self.all_samples_features.loc[self.all_samples_features["Data Type"] == feed_name]
+        for feed_idx, feed_contours, feed_features, feed_dir in feed_features_iterator(self.all_samples_features,
+                                                                                       self.all_feeds_data,
+                                                                                       self.all_feeds_contour_data,
+                                                                                       self.all_feeds_metadata,
+                                                                                       save_to_dir=True,
+                                                                                       parent_dir=parent_dir):
 
             for val in feed_features[analysis_variable].unique():
 
@@ -1495,7 +1472,7 @@ class Visualizer:
                     point_idx = i[0]
                     cnt_idx = i[1]
 
-                    cnt = feed_data.loc[point_idx - 1, "Contours"].contours[cnt_idx]
+                    cnt = feed_contours.loc[point_idx - 1, "Contours"].contours[cnt_idx]
 
                     example_mask = np.zeros((img_shape[0], img_shape[1], 3), np.uint8)
                     cv.drawContours(example_mask, [cnt], -1, (255, 255, 255), cv.FILLED)
@@ -2017,15 +1994,15 @@ class Visualizer:
         assert secondary_categorical_splitter is not None, "Must have a secondary categorical variable"
 
         parent_dir = "%s/%s Scatter Plots" % (self.results_dir
-, analysis_variable)
+                                              , analysis_variable)
         mkdir_p(parent_dir)
 
-        for feed_idx in range(self.all_feeds_data.shape[0]):
-            idx = pd.IndexSlice
-            feed_name = self.all_feeds_metadata.loc[idx[feed_idx, 0], "Feed Name"]
-
-            feed_dir = "%s/%s" % (parent_dir, feed_name)
-            mkdir_p(feed_dir)
+        for feed_idx, feed_contours, feed_features, feed_dir in feed_features_iterator(self.all_samples_features,
+                                                                                       self.all_feeds_data,
+                                                                                       self.all_feeds_contour_data,
+                                                                                       self.all_feeds_metadata,
+                                                                                       save_to_dir=True,
+                                                                                       parent_dir=parent_dir):
 
             by_primary_analysis_variable_dir = "%s/By %s" % (feed_dir, primary_categorical_splitter)
             mkdir_p(by_primary_analysis_variable_dir)
@@ -2038,8 +2015,6 @@ class Visualizer:
 
             secondary_separate_dir = "%s/Separate By %s" % (feed_dir, secondary_categorical_splitter)
             mkdir_p(secondary_separate_dir)
-
-            feed_features = self.all_samples_features.loc[self.all_samples_features["Data Type"] == feed_name]
 
             feed_features = loc_by_expansion(feed_features,
                                              expansion_type=mask_type,
@@ -2156,14 +2131,12 @@ class Visualizer:
 
         mkdir_p(parent_dir)
 
-        for feed_idx in range(self.all_feeds_data.shape[0]):
-            idx = pd.IndexSlice
-            feed_name = self.all_feeds_metadata.loc[idx[feed_idx, 0], "Feed Name"]
-
-            feed_dir = "%s/%s" % (parent_dir, feed_name)
-            mkdir_p(feed_dir)
-
-            feed_features = self.all_samples_features.loc[self.all_samples_features["Data Type"] == feed_name]
+        for feed_idx, feed_contours, feed_features, feed_dir in feed_features_iterator(self.all_samples_features,
+                                                                                       self.all_feeds_data,
+                                                                                       self.all_feeds_contour_data,
+                                                                                       self.all_feeds_metadata,
+                                                                                       save_to_dir=True,
+                                                                                       parent_dir=parent_dir):
 
             if self.config.primary_categorical_splitter is None:
                 self._vessel_nonvessel_heatmap(n_expansions, feed_features, brain_regions, marker_clusters, feed_dir)
@@ -2335,16 +2308,14 @@ class Visualizer:
 
         assert self.config.primary_categorical_splitter is not None, "No categorical splitter selected!"
 
-        for feed_idx in range(self.all_feeds_data.shape[0]):
-            idx = pd.IndexSlice
-            feed_name = self.all_feeds_metadata.loc[idx[feed_idx, 0], "Feed Name"]
+        for feed_idx, feed_contours, feed_features, feed_dir in feed_features_iterator(self.all_samples_features,
+                                                                                       self.all_feeds_data,
+                                                                                       self.all_feeds_contour_data,
+                                                                                       self.all_feeds_metadata,
+                                                                                       save_to_dir=True,
+                                                                                       parent_dir=parent_dir):
 
-            feed_dir = "%s/%s" % (parent_dir, feed_name)
-            mkdir_p(feed_dir)
-
-            feed_features = self.all_samples_features.loc[self.all_samples_features["Data Type"] == feed_name]
-
-            expansion_features = feed_features.loc[idx[:, :, :n_expansions, :], :]
+            expansion_features = feed_features.loc[pd.IndexSlice[:, :, :n_expansions, :], :]
 
             heatmaps_dir = "%s/Categorical Split Expansion Heatmaps" % feed_dir
             mkdir_p(heatmaps_dir)
@@ -2719,16 +2690,14 @@ class Visualizer:
 
         mkdir_p(parent_dir)
 
-        for feed_idx in range(self.all_feeds_data.shape[0]):
-            idx = pd.IndexSlice
-            feed_name = self.all_feeds_metadata.loc[idx[feed_idx, 0], "Feed Name"]
+        for feed_idx, feed_contours, feed_features, feed_dir in feed_features_iterator(self.all_samples_features,
+                                                                                       self.all_feeds_data,
+                                                                                       self.all_feeds_contour_data,
+                                                                                       self.all_feeds_metadata,
+                                                                                       save_to_dir=True,
+                                                                                       parent_dir=parent_dir):
 
-            feed_dir = "%s/%s" % (parent_dir, feed_name)
-            mkdir_p(feed_dir)
-
-            feed_features = self.all_samples_features.loc[self.all_samples_features["Data Type"] == feed_name]
-
-            expansion_features = feed_features.loc[idx[:, :, :n_expansions, :], :]
+            expansion_features = feed_features.loc[pd.IndexSlice[:, :, :n_expansions, :], :]
 
             if self.config.primary_categorical_splitter is None:
                 heatmaps_dir = "%s/Expansion Heatmaps" % feed_dir
@@ -2764,18 +2733,14 @@ class Visualizer:
 
         mkdir_p(parent_dir)
 
-        for feed_idx in self.all_feeds_contour_data.index.get_level_values('Feed Index').unique():
-
-            feed_data = self.all_feeds_contour_data.loc[feed_idx]
-
-            idx = pd.IndexSlice
-            feed_name = self.all_feeds_metadata.loc[idx[feed_idx, 0], "Feed Name"]
-
-            output_dir = "%s/%s" % (parent_dir, feed_name)
-            mkdir_p(output_dir)
-
+        for feed_idx, feed_contours, feed_features, output_dir in feed_features_iterator(self.all_samples_features,
+                                                                                         self.all_feeds_data,
+                                                                                         self.all_feeds_contour_data,
+                                                                                         self.all_feeds_metadata,
+                                                                                         save_to_dir=True,
+                                                                                         parent_dir=parent_dir):
             for i in range(len(self.config.n_points)):
-                point_contours = feed_data.loc[i, "Contours"]
+                point_contours = feed_contours.loc[i, "Contours"]
 
                 point_dir = output_dir + "/Point %s" % str(i + 1)
                 mkdir_p(point_dir)
@@ -2818,22 +2783,18 @@ class Visualizer:
 
         mkdir_p(parent_dir)
 
-        for feed_idx in self.all_feeds_contour_data.index.get_level_values('Feed Index').unique():
-
-            feed_data = self.all_feeds_contour_data.loc[feed_idx]
-
-            idx = pd.IndexSlice
-            feed_name = self.all_feeds_metadata.loc[idx[feed_idx, 0], "Feed Name"]
-
-            output_dir = "%s/%s" % (parent_dir, feed_name)
-            mkdir_p(output_dir)
-
+        for feed_idx, feed_contours, feed_features, feed_dir in feed_features_iterator(self.all_samples_features,
+                                                                                       self.all_feeds_data,
+                                                                                       self.all_feeds_contour_data,
+                                                                                       self.all_feeds_metadata,
+                                                                                       save_to_dir=True,
+                                                                                       parent_dir=parent_dir):
             # Iterate through each point
             for i in range(n_points):
-                contours = feed_data.loc[i, "Contours"].contours
-                contour_areas = feed_data.loc[i, "Contours"].areas
-                removed_contours = feed_data.loc[i, "Contours"].removed_contours
-                removed_areas = feed_data.loc[i, "Contours"].removed_areas
+                contours = feed_contours.loc[i, "Contours"].contours
+                contour_areas = feed_contours.loc[i, "Contours"].areas
+                removed_contours = feed_contours.loc[i, "Contours"].removed_contours
+                removed_areas = feed_contours.loc[i, "Contours"].removed_areas
                 marker_data = self.all_feeds_data[feed_idx, i]
 
                 start_expression = datetime.datetime.now()
@@ -3030,9 +2991,9 @@ class Visualizer:
         :return:
         """
 
-        output_dir = "%s/Pseudo-Time Heatmaps" % self.results_dir
+        parent_dir = "%s/Pseudo-Time Heatmaps" % self.results_dir
 
-        mkdir_p(output_dir)
+        mkdir_p(parent_dir)
 
         if cmap is None:
             norm = matplotlib.colors.Normalize(-1, 1)
@@ -3047,14 +3008,12 @@ class Visualizer:
         analysis_variable = kwargs.get('analysis_variable', "Asymmetry Score")
         mask_type = kwargs.get('mask_type', "expansion_only")
 
-        for feed_idx in range(self.all_feeds_data.shape[0]):
-            idx = pd.IndexSlice
-            feed_name = self.all_feeds_metadata.loc[idx[feed_idx, 0], "Feed Name"]
-
-            feed_dir = "%s/%s" % (output_dir, feed_name)
-            mkdir_p(feed_dir)
-
-            feed_features = self.all_samples_features.loc[self.all_samples_features["Data Type"] == feed_name]
+        for feed_idx, feed_contours, feed_features, feed_dir in feed_features_iterator(self.all_samples_features,
+                                                                                       self.all_feeds_data,
+                                                                                       self.all_feeds_contour_data,
+                                                                                       self.all_feeds_metadata,
+                                                                                       save_to_dir=True,
+                                                                                       parent_dir=parent_dir):
 
             feed_features.reset_index(level=['Point', 'Vessel', 'Expansion', 'Expansion Type'], inplace=True)
 
@@ -3355,16 +3314,12 @@ class Visualizer:
 
         parent_dir = "%s/Associated Area Masks" % self.results_dir
 
-
-        for feed_idx in self.all_feeds_contour_data.index.get_level_values('Feed Index').unique():
-
-            feed_data = self.all_feeds_contour_data.loc[feed_idx]
-
-            idx = pd.IndexSlice
-            feed_name = self.all_feeds_metadata.loc[idx[feed_idx, 0], "Feed Name"]
-
-            feed_dir = "%s/%s" % (parent_dir, feed_name)
-            mkdir_p(feed_dir)
+        for feed_idx, feed_contours, feed_features, feed_dir in feed_features_iterator(self.all_samples_features,
+                                                                                       self.all_feeds_data,
+                                                                                       self.all_feeds_contour_data,
+                                                                                       self.all_feeds_metadata,
+                                                                                       save_to_dir=True,
+                                                                                       parent_dir=parent_dir):
 
             output_dir = "%s/%s%s Expansion" % (feed_dir,
                                                 str(round_to_nearest_half((n_expansions) *
@@ -3374,7 +3329,7 @@ class Visualizer:
             mkdir_p(output_dir)
 
             for point_num in range(self.config.n_points):
-                per_point_vessel_contours = feed_data.loc[point_num, "Contours"].contours
+                per_point_vessel_contours = feed_contours.loc[point_num, "Contours"].contours
 
                 regions = get_assigned_regions(per_point_vessel_contours, img_shape)
 

@@ -472,6 +472,7 @@ class MIBIPipeline:
         assert self.max_outward_expansions >= max(self.expansions), "More expansions selected than available!"
 
         self.all_feeds_metadata, self.all_feeds_data, self.all_feeds_mask, self.marker_names = self.mibi_loader.read()
+
         # Collect all marker and mask data
 
         self.config.display()
