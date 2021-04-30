@@ -7,7 +7,8 @@ from src.data_analysis.positive_vessel_summary_analyzer import PositiveVesselSum
 from src.data_analysis.vessel_asymmetry_analyzer import VesselAsymmetryAnalyzer
 from src.data_loading.mibi_data_feed import MIBIDataFeed
 from src.data_loading.mibi_loader import MIBILoader
-from src.data_visualization.heatmap import brain_region_expansion_heatmap
+from src.data_visualization.heatmap import brain_region_expansion_heatmap, vessel_nonvessel_heatmap, \
+    pseudo_time_heatmap, categorical_split_expansion_heatmap
 from src.mibi_pipeline import MIBIPipeline
 from src.utils.utils_functions import mkdir_p
 
@@ -47,34 +48,18 @@ def hires_example():
     pipe.add_feed(hires_feed)
     pipe.load_preprocess_data()
 
-    # pipe.add_analyzer(VesselAsymmetryAnalyzer)
+    pipe.add_analyzer(VesselAsymmetryAnalyzer)
     # pipe.add_analyzer(PositiveVesselSummaryAnalyzer)
     # pipe.add_analyzer(DimensionalityReductionClusteringAnalyzer)
 
     pipe.analyze_data(mask_type="expansion_only",
                       marker_settings="all_markers",
                       shape_quantification_method={
-                          "Name": "Solidity",
-                          "Metric": solidity
+                          "Name": "Circularity",
+                          "Metric": circularity
                       })
 
     # pipe.save_to_csv()
-
-    heatmaps_dir = "/media/aswin/large_storage/results/Expansion Heatmaps"
-    clustermaps_dir = "/media/aswin/large_storage/results/Expansion Clustermaps"
-
-    mkdir_p(heatmaps_dir)
-    mkdir_p(clustermaps_dir)
-
-    brain_region_expansion_heatmap(pipe.all_expansions_features,
-                                   heatmaps_dir,
-                                   clustermaps_dir,
-                                   pipe.marker_names,
-                                   0.5,
-                                   conf.brain_region_point_ranges,
-                                   conf.brain_region_names,
-                                   conf.marker_clusters,
-                                   conf.data_resolution_units)
 
 
 if __name__ == '__main__':
