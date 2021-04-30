@@ -65,7 +65,6 @@ Mako==1.0.7
 Markdown==3.2.1
 MarkupSafe==1.1.1
 matplotlib==3.3.2
-MiniSom==2.2.7
 mistune==0.8.4
 nbclient==0.5.1
 nbconvert==6.0.7

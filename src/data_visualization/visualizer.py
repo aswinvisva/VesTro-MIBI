@@ -2,6 +2,7 @@ import datetime
 import math
 import random
 from collections import Collection
+from functools import partial
 
 import matplotlib
 import matplotlib.pylab as pl
@@ -17,39 +18,12 @@ from src.data_loading.mibi_reader import MIBIReader
 from src.data_preprocessing.object_extractor import ObjectExtractor
 from src.data_preprocessing.markers_feature_gen import *
 from src.data_preprocessing.transforms import melt_markers, loc_by_expansion
-from src.utils.utils_functions import mkdir_p
+from src.utils.iterators import feed_features_iterator
+from src.utils.utils_functions import mkdir_p, round_to_nearest_half
 
 '''
 Authors: Aswin Visva, John-Paul Oliveria, Ph.D
 '''
-
-
-def round_to_nearest_half(number):
-    """
-    Round float to nearest 0.5
-    :param number: float, number to round
-    :return: float, number rounded to nearest 0.5
-    """
-    return round(number * 2) / 2
-
-
-def save_figure(save_dir: str,
-                fig_name: str,
-                ax=None):
-    """
-    Save Figure
-
-    :return:
-    """
-
-    mkdir_p(save_dir)
-
-    if ax is not None:
-        ax.savefig(save_dir + '/%s.png' % fig_name, bbox_inches='tight')
-    else:
-        plt.savefig(save_dir + '/%s.png' % fig_name, bbox_inches='tight')
-
-    plt.clf()
 
 
 class Visualizer:
@@ -80,7 +54,7 @@ class Visualizer:
         self.all_feeds_data = all_points_marker_data
         self.results_dir = results_dir
 
-    def vessel_region_plots(self, n_expansions: int, **kwargs):
+    def expansion_line_plots_per_vessel(self, n_expansions: int, **kwargs):
         """
         Create vessel region line plots for all marker bins, average marker bins and per marker bins
 
@@ -91,11 +65,15 @@ class Visualizer:
         color_maps = self.config.line_plots_color_maps
         colors = self.config.line_plots_bin_colors
 
+        style = kwargs.get("style", None)
+        size = kwargs.get("size", None)
+        vessel_line_plots_points = kwargs.get("vessel_line_plots_points", self.config.vessel_line_plots_points)
+
         output_dir = "%s/Line Plots Per Vessel" % self.results_dir
 
         mkdir_p(output_dir)
 
-        output_dir = "%s/%s%s Expansion" % (output_dir, str(round_to_nearest_half((n_expansions) *
+        output_dir = "%s/%s%s Expansion" % (output_dir, str(round_to_nearest_half(n_expansions *
                                                                                   self.config.pixel_interval *
                                                                                   self.config.pixels_to_distance)),
                                             self.config.data_resolution_units)
@@ -134,7 +112,7 @@ class Visualizer:
         plot_features = plot_features.rename(
             columns={'Expansion': "Distance Expanded (%s)" % self.config.data_resolution_units})
 
-        for point in self.config.vessel_line_plots_points:
+        for point in vessel_line_plots_points:
             point_dir = "%s/Point %s" % (output_dir, str(point))
             mkdir_p(point_dir)
 
@@ -162,8 +140,8 @@ class Visualizer:
                                  x="Distance Expanded (%s)" % self.config.data_resolution_units,
                                  y="Expression",
                                  hue="Marker Group",
-                                 style=self.config.primary_categorical_splitter,
-                                 size=self.config.secondary_categorical_splitter,
+                                 style=style,
+                                 size=size,
                                  palette=self.config.line_plots_bin_colors,
                                  ci=None)
 
@@ -202,8 +180,8 @@ class Visualizer:
                                      x="Distance Expanded (%s)" % self.config.data_resolution_units,
                                      y="Expression",
                                      hue="Marker",
-                                     style=self.config.primary_categorical_splitter,
-                                     size=self.config.secondary_categorical_splitter,
+                                     style=style,
+                                     size=size,
                                      palette=perbin_marker_color_dict,
                                      ci=None)
 
@@ -214,7 +192,7 @@ class Visualizer:
                     plt.savefig(bin_dir + '/Vessel_ID_%s.png' % str(vessel), bbox_inches='tight')
                     plt.clf()
 
-    def point_region_plots(self, n_expansions: int, **kwargs):
+    def expansion_line_plots_per_point(self, n_expansions: int, **kwargs):
         """
         Create point region line plots for all marker bins, average marker bins and per marker bins
 
@@ -225,6 +203,10 @@ class Visualizer:
         marker_clusters = self.config.marker_clusters
         color_maps = self.config.line_plots_color_maps
         colors = self.config.line_plots_bin_colors
+
+        style = kwargs.get("style", None)
+        size = kwargs.get("size", None)
+        n_points = len(self.all_samples_features.index.get_level_values("Point").unique())
 
         output_dir = "%s/Line Plots Per Point" % self.results_dir
 
@@ -270,7 +252,7 @@ class Visualizer:
         plot_features = plot_features.rename(
             columns={'Expansion': "Distance Expanded (%s)" % self.config.data_resolution_units})
 
-        for point in range(self.config.n_points):
+        for point in range(n_points):
             point_dir = "%s/Point %s" % (output_dir, str(point + 1))
             mkdir_p(point_dir)
 
@@ -289,7 +271,7 @@ class Visualizer:
                              x="Distance Expanded (%s)" % self.config.data_resolution_units,
                              y="Expression",
                              hue="Marker Group",
-                             style=self.config.primary_categorical_splitter,
+                             style=style,
                              palette=self.config.line_plots_bin_colors,
                              ci=None)
 
@@ -325,7 +307,7 @@ class Visualizer:
                                  x="Distance Expanded (%s)" % self.config.data_resolution_units,
                                  y="Expression",
                                  hue="Marker",
-                                 style=self.config.primary_categorical_splitter,
+                                 style=style,
                                  palette=perbin_marker_color_dict,
                                  ci=None)
 
@@ -342,8 +324,8 @@ class Visualizer:
                                      x="Distance Expanded (%s)" % self.config.data_resolution_units,
                                      y="Expression",
                                      hue="Marker",
-                                     style=self.config.primary_categorical_splitter,
-                                     size=self.config.secondary_categorical_splitter,
+                                     style=style,
+                                     size=size,
                                      palette=perbin_marker_color_dict,
                                      ci=None)
 
@@ -354,7 +336,7 @@ class Visualizer:
                     plt.savefig(per_marker_dir + '/%s.png' % str(marker), bbox_inches='tight')
                     plt.clf()
 
-    def all_points_plots(self, n_expansions: int, **kwargs):
+    def expansion_line_plots_all_points(self, n_expansions: int, **kwargs):
         """
         Create all points average region line plots for all marker bins, average marker bins and per marker bins
 
@@ -365,6 +347,9 @@ class Visualizer:
         marker_clusters = self.config.marker_clusters
         color_maps = self.config.line_plots_color_maps
         colors = self.config.line_plots_bin_colors
+
+        style = kwargs.get("style", None)
+        size = kwargs.get("size", None)
 
         marker_color_dict = {}
         for marker_cluster in marker_clusters.keys():
@@ -404,7 +389,7 @@ class Visualizer:
         mkdir_p(output_dir)
 
         output_dir = "%s/%s%s Expansion" % (output_dir,
-                                            str(round_to_nearest_half((n_expansions) *
+                                            str(round_to_nearest_half(n_expansions *
                                                                       self.config.pixel_interval *
                                                                       self.config.pixels_to_distance)),
                                             self.config.data_resolution_units)
@@ -423,7 +408,7 @@ class Visualizer:
                          x="Distance Expanded (%s)" % self.config.data_resolution_units,
                          y="Expression",
                          hue="Marker Group",
-                         style=self.config.primary_categorical_splitter,
+                         style=style,
                          palette=self.config.line_plots_bin_colors,
                          ci=None)
 
@@ -459,7 +444,7 @@ class Visualizer:
                              x="Distance Expanded (%s)" % self.config.data_resolution_units,
                              y="Expression",
                              hue="Marker",
-                             style=self.config.primary_categorical_splitter,
+                             style=style,
                              palette=perbin_marker_color_dict,
                              ci=None)
 
@@ -476,8 +461,8 @@ class Visualizer:
                                  x="Distance Expanded (%s)" % self.config.data_resolution_units,
                                  y="Expression",
                                  hue="Marker",
-                                 style=self.config.primary_categorical_splitter,
-                                 size=self.config.secondary_categorical_splitter,
+                                 style=style,
+                                 size=size,
                                  palette=perbin_marker_color_dict,
                                  ci=None)
 
@@ -488,8 +473,8 @@ class Visualizer:
                 plt.savefig(per_marker_dir + '/%s.png' % str(marker), bbox_inches='tight')
                 plt.clf()
 
-    def brain_region_plots(self, n_expansions: int,
-                           **kwargs):
+    def expansion_line_plots_per_region(self, n_expansions: int,
+                                        **kwargs):
         """
         Create brain region average region line plots for all marker bins, average marker bins and per marker bins
 
@@ -500,6 +485,9 @@ class Visualizer:
         marker_clusters = self.config.marker_clusters
         color_maps = self.config.line_plots_color_maps
         colors = self.config.line_plots_bin_colors
+
+        style = kwargs.get("style", None)
+        size = kwargs.get("size", None)
 
         marker_color_dict = {}
         for marker_cluster in marker_clusters.keys():
@@ -573,7 +561,7 @@ class Visualizer:
                              x="Distance Expanded (%s)" % self.config.data_resolution_units,
                              y="Expression",
                              hue="Marker Group",
-                             style=self.config.primary_categorical_splitter,
+                             style=style,
                              palette=self.config.line_plots_bin_colors,
                              ci=None)
 
@@ -609,7 +597,7 @@ class Visualizer:
                                  x="Distance Expanded (%s)" % self.config.data_resolution_units,
                                  y="Expression",
                                  hue="Marker",
-                                 style=self.config.primary_categorical_splitter,
+                                 style=style,
                                  palette=perbin_marker_color_dict,
                                  ci=None)
 
@@ -626,8 +614,8 @@ class Visualizer:
                                      x="Distance Expanded (%s)" % self.config.data_resolution_units,
                                      y="Expression",
                                      hue="Marker",
-                                     style=self.config.primary_categorical_splitter,
-                                     size=self.config.secondary_categorical_splitter,
+                                     style=style,
+                                     size=size,
                                      palette=perbin_marker_color_dict,
                                      ci=None)
 
@@ -646,34 +634,32 @@ class Visualizer:
         """
 
         expansion_upper_bound = kwargs.get('expansion_upper_bound', 60)
+        n_points = len(self.all_samples_features.index.get_level_values("Point").unique())
 
         parent_dir = "%s/Expanded Vessel Masks" % self.results_dir
 
         mkdir_p(parent_dir)
 
         parent_dir = "%s/%s %s" % (parent_dir,
-                                   int(expansion_upper_bound * self.config.pixels_to_distance),
+                                   str(round_to_nearest_half(expansion_upper_bound * self.config.pixels_to_distance)),
                                    self.config.data_resolution_units)
         mkdir_p(parent_dir)
 
-        for feed_idx in self.all_feeds_contour_data.index.get_level_values('Feed Index').unique():
+        for feed_idx, feed_contours, feed_features, feed_dir in feed_features_iterator(self.all_samples_features,
+                                                                                       self.all_feeds_data,
+                                                                                       self.all_feeds_contour_data,
+                                                                                       self.all_feeds_metadata,
+                                                                                       save_to_dir=True,
+                                                                                       parent_dir=parent_dir):
 
-            feed_data = self.all_feeds_contour_data.loc[feed_idx]
-
-            idx = pd.IndexSlice
-            feed_name = self.all_feeds_metadata.loc[idx[feed_idx, 0], "Feed Name"]
-
-            output_dir = "%s/%s" % (parent_dir, feed_name)
-            mkdir_p(output_dir)
-
-            distinct_dir = "%s/Original Mask Excluded" % output_dir
+            distinct_dir = "%s/Original Mask Excluded" % feed_dir
             mkdir_p(distinct_dir)
 
-            nondistinct_dir = "%s/Original Mask Included" % output_dir
+            nondistinct_dir = "%s/Original Mask Included" % feed_dir
             mkdir_p(nondistinct_dir)
 
-            for idx in range(self.config.n_points):
-                point_contours = feed_data.loc[idx, "Contours"].contours
+            for idx in range(n_points):
+                point_contours = feed_contours.loc[idx, "Contours"].contours
 
                 original_not_included_point_mask = np.zeros(self.config.segmentation_mask_size, np.uint8)
                 original_included_point_mask = np.zeros(self.config.segmentation_mask_size, np.uint8)
@@ -716,37 +702,35 @@ class Visualizer:
         """
 
         expansion_upper_bound = kwargs.get('expansion_upper_bound', 60)
+        n_points = len(self.all_samples_features.index.get_level_values("Point").unique())
 
         parent_dir = "%s/Embedded Vessel Masks" % self.results_dir
 
         mkdir_p(parent_dir)
 
         parent_dir = "%s/%s %s" % (parent_dir,
-                                   int(expansion_upper_bound * self.config.pixels_to_distance),
+                                   str(round_to_nearest_half(expansion_upper_bound * self.config.pixels_to_distance)),
                                    self.config.data_resolution_units)
         mkdir_p(parent_dir)
 
-        for feed_idx in self.all_feeds_contour_data.index.get_level_values('Feed Index').unique():
+        for feed_idx, feed_contours, feed_features, feed_dir in feed_features_iterator(self.all_samples_features,
+                                                                                       self.all_feeds_data,
+                                                                                       self.all_feeds_contour_data,
+                                                                                       self.all_feeds_metadata,
+                                                                                       save_to_dir=True,
+                                                                                       parent_dir=parent_dir):
 
-            feed_data = self.all_feeds_contour_data.loc[feed_idx]
-
-            idx = pd.IndexSlice
-            feed_name = self.all_feeds_metadata.loc[idx[feed_idx, 0], "Feed Name"]
-
-            output_dir = "%s/%s" % (parent_dir, feed_name)
-            mkdir_p(output_dir)
-
-            distinct_dir = "%s/Original Mask Excluded" % output_dir
+            distinct_dir = "%s/Original Mask Excluded" % feed_dir
             mkdir_p(distinct_dir)
 
-            nondistinct_dir = "%s/Original Mask Included" % output_dir
+            nondistinct_dir = "%s/Original Mask Included" % feed_dir
             mkdir_p(nondistinct_dir)
 
-            for idx in range(self.config.n_points):
+            for idx in range(n_points):
                 original_not_included_point_mask = np.zeros(self.config.segmentation_mask_size, np.uint8)
                 original_included_point_mask = np.zeros(self.config.segmentation_mask_size, np.uint8)
 
-                point_contours = feed_data.loc[idx, "Contours"].contours
+                point_contours = feed_contours.loc[idx, "Contours"].contours
 
                 regions = get_assigned_regions(point_contours, self.config.segmentation_mask_size)
 
@@ -781,24 +765,21 @@ class Visualizer:
 
         """
 
-        n_expansions = self.config.max_expansions
+        n_expansions = kwargs.get("n_expansions", 10)
         interval = self.config.pixel_interval
-        n_points = self.config.n_points
-        expansions = self.config.expansion_to_run
+        n_points = len(self.all_samples_features.index.get_level_values("Point").unique())
+        expansions = kwargs.get("expansions", self.config.expansion_to_run)
 
         parent_dir = "%s/Ring Plots" % self.results_dir
 
         mkdir_p(parent_dir)
 
-        for feed_idx in self.all_feeds_contour_data.index.get_level_values('Feed Index').unique():
-
-            feed_data = self.all_feeds_contour_data.loc[feed_idx]
-
-            idx = pd.IndexSlice
-            feed_name = self.all_feeds_metadata.loc[idx[feed_idx, 0], "Feed Name"]
-
-            output_dir = "%s/%s" % (parent_dir, feed_name)
-            mkdir_p(output_dir)
+        for feed_idx, feed_contours, feed_features, feed_dir in feed_features_iterator(self.all_samples_features,
+                                                                                       self.all_feeds_data,
+                                                                                       self.all_feeds_contour_data,
+                                                                                       self.all_feeds_metadata,
+                                                                                       save_to_dir=True,
+                                                                                       parent_dir=parent_dir):
 
             for point_num in range(n_points):
                 current_interval = interval
@@ -808,7 +789,7 @@ class Visualizer:
                 colors = pl.cm.Greys(np.linspace(0, 1, n_expansions + 10))
 
                 for x in range(n_expansions):
-                    per_point_vessel_contours = feed_data.loc[point_num, "Contours"].contours
+                    per_point_vessel_contours = feed_contours.loc[point_num, "Contours"].contours
                     expansion_ring_plots(per_point_vessel_contours,
                                          expansion_image,
                                          pixel_expansion_upper_bound=current_interval,
@@ -816,7 +797,7 @@ class Visualizer:
                                          color=colors[x + 5] * 255)
 
                     if x + 1 in expansions:
-                        child_dir = parent_dir + "/%s%s Expansion" % (str(round_to_nearest_half((n_expansions) *
+                        child_dir = parent_dir + "/%s%s Expansion" % (str(round_to_nearest_half(n_expansions *
                                                                                                 self.config.pixel_interval *
                                                                                                 self.config.pixels_to_distance)),
                                                                       self.config.data_resolution_units)
@@ -879,6 +860,9 @@ class Visualizer:
 
         # Calculate the point density
         xy = np.vstack([x_data, y_data])
+
+        print(xy)
+
         z = gaussian_kde(xy)(xy)
 
         plt.scatter(x_data, y_data, c=z, s=35, edgecolor='')
@@ -949,13 +933,12 @@ class Visualizer:
 
         marker_clusters = self.config.marker_clusters
 
-        for feed_idx in range(self.all_feeds_data.shape[0]):
-            idx = pd.IndexSlice
-            feed_name = self.all_feeds_metadata.loc[idx[feed_idx, 0], "Feed Name"]
-
-            feed_dir = "%s/%s" % (parent_dir, feed_name)
-            mkdir_p(feed_dir)
-            feed_features = self.all_samples_features.loc[self.all_samples_features["Data Type"] == feed_name]
+        for feed_idx, feed_contours, feed_features, feed_dir in feed_features_iterator(self.all_samples_features,
+                                                                                       self.all_feeds_data,
+                                                                                       self.all_feeds_contour_data,
+                                                                                       self.all_feeds_metadata,
+                                                                                       save_to_dir=True,
+                                                                                       parent_dir=parent_dir):
 
             feed_features = loc_by_expansion(feed_features,
                                              expansion_type=mask_type,
@@ -1317,23 +1300,21 @@ class Visualizer:
 
         mkdir_p(parent_dir)
 
-        for feed_idx in range(self.all_feeds_data.shape[0]):
-            idx = pd.IndexSlice
-            feed_name = self.all_feeds_metadata.loc[idx[feed_idx, 0], "Feed Name"]
+        for feed_idx, feed_contours, feed_features, feed_dir in feed_features_iterator(self.all_samples_features,
+                                                                                       self.all_feeds_data,
+                                                                                       self.all_feeds_contour_data,
+                                                                                       self.all_feeds_metadata,
+                                                                                       save_to_dir=True,
+                                                                                       parent_dir=parent_dir):
 
-            output_dir = "%s/%s" % (parent_dir, feed_name)
-            mkdir_p(output_dir)
-
-            vessels_dir = "%s/Vessels" % output_dir
+            vessels_dir = "%s/Vessels" % feed_dir
             mkdir_p(vessels_dir)
 
-            astrocytes_dir = "%s/Astrocytes" % output_dir
+            astrocytes_dir = "%s/Astrocytes" % feed_dir
             mkdir_p(astrocytes_dir)
 
-            all_markers_dir = "%s/All Markers" % output_dir
+            all_markers_dir = "%s/All Markers" % feed_dir
             mkdir_p(all_markers_dir)
-
-            feed_contours = self.all_feeds_contour_data.loc[feed_idx]
 
             for point_idx in range(self.config.n_points):
 
@@ -1469,20 +1450,17 @@ class Visualizer:
         assert analysis_variable is not None, "There must be a primary categorical splitter"
 
         parent_dir = "%s/%s Vessel Images" % (self.results_dir
-,
+                                              ,
                                               analysis_variable)
 
         img_shape = self.config.segmentation_mask_size
 
-        for feed_idx in self.all_feeds_contour_data.index.get_level_values('Feed Index').unique():
-            feed_data = self.all_feeds_contour_data.loc[feed_idx]
-            idx = pd.IndexSlice
-            feed_name = self.all_feeds_metadata.loc[idx[feed_idx, 0], "Feed Name"]
-
-            feed_dir = "%s/%s" % (parent_dir, feed_name)
-            mkdir_p(feed_dir)
-
-            feed_features = self.all_samples_features.loc[self.all_samples_features["Data Type"] == feed_name]
+        for feed_idx, feed_contours, feed_features, feed_dir in feed_features_iterator(self.all_samples_features,
+                                                                                       self.all_feeds_data,
+                                                                                       self.all_feeds_contour_data,
+                                                                                       self.all_feeds_metadata,
+                                                                                       save_to_dir=True,
+                                                                                       parent_dir=parent_dir):
 
             for val in feed_features[analysis_variable].unique():
 
@@ -1495,7 +1473,7 @@ class Visualizer:
                     point_idx = i[0]
                     cnt_idx = i[1]
 
-                    cnt = feed_data.loc[point_idx - 1, "Contours"].contours[cnt_idx]
+                    cnt = feed_contours.loc[point_idx - 1, "Contours"].contours[cnt_idx]
 
                     example_mask = np.zeros((img_shape[0], img_shape[1], 3), np.uint8)
                     cv.drawContours(example_mask, [cnt], -1, (255, 255, 255), cv.FILLED)
@@ -1629,9 +1607,92 @@ class Visualizer:
         plt.savefig(region_dir + '/umap_projection_by_region.png', bbox_inches='tight')
         plt.clf()
 
+    def _average_expression_across_expansions(self,
+                                              n_expansions: int,
+                                              mibi_features: pd.DataFrame,
+                                              marker_names: list,
+                                              region: list = None,
+                                              data_type: str = "Data"):
+        """
+        Helper function to calculate the average marker expression across several expansions
+        """
+        idx = pd.IndexSlice
+
+        try:
+
+            if region is None:
+                expression_matrix = mibi_features.loc[idx[:, :,
+                                                      :n_expansions,
+                                                      data_type], marker_names].to_numpy()
+            else:
+                expression_matrix = mibi_features.loc[idx[region[0]:region[1],
+                                                      :,
+                                                      :n_expansions,
+                                                      data_type], marker_names].to_numpy()
+
+            average_expression = np.mean(expression_matrix, axis=0)
+        except KeyError:
+            average_expression = np.zeros((len(marker_names),), np.uint8)
+
+        return average_expression
+
+    def _vessel_non_vessel_heatmap_block(self,
+                                         n_expansions: int,
+                                         mibi_features: pd.DataFrame,
+                                         marker_names: list,
+                                         brain_regions: list,
+                                         heatmap_data_list: list,
+                                         data_type: str = "Data"):
+        """
+        Computes the data for the vessel-non-vessel heatmap for a n+1 row block, n = # of regions
+        """
+
+        average_expression_all_points = self._average_expression_across_expansions(n_expansions,
+                                                                                   mibi_features,
+                                                                                   marker_names,
+                                                                                   data_type=data_type)
+
+        heatmap_data_list.append(average_expression_all_points)
+
+        for region in brain_regions:
+            average_expression_per_region = self._average_expression_across_expansions(n_expansions,
+                                                                                       mibi_features,
+                                                                                       marker_names,
+                                                                                       region=region,
+                                                                                       data_type=data_type)
+
+            heatmap_data_list.append(average_expression_per_region)
+
+    def _vessel_non_vessel_heatmap_block(self,
+                                         n_expansions: int,
+                                         mibi_features: pd.DataFrame,
+                                         marker_names: list,
+                                         brain_regions: list,
+                                         heatmap_data_list: list,
+                                         data_type: str = "Data"):
+        """
+        Computes the data for the vessel-non-vessel heatmap for a n+1 row block, n = # of regions
+        """
+
+        average_expression_all_points = self._average_expression_across_expansions(n_expansions,
+                                                                                   mibi_features,
+                                                                                   marker_names,
+                                                                                   data_type=data_type)
+
+        heatmap_data_list.append(average_expression_all_points)
+
+        for region in brain_regions:
+            average_expression_per_region = self._average_expression_across_expansions(n_expansions,
+                                                                                       mibi_features,
+                                                                                       marker_names,
+                                                                                       region=region,
+                                                                                       data_type=data_type)
+
+            heatmap_data_list.append(average_expression_per_region)
+
     def _vessel_nonvessel_heatmap(self,
                                   n_expansions: int,
-                                  feed_features: pd.DataFrame,
+                                  mibi_features: pd.DataFrame,
                                   brain_regions: list,
                                   marker_clusters: list,
                                   feed_dir: str):
@@ -1644,300 +1705,86 @@ class Visualizer:
         """
 
         # Vessel Space (SMA Positive)
-        positve_sma = feed_features.loc[
-            feed_features["SMA"] >= self.config.SMA_positive_threshold]
-
-        idx = pd.IndexSlice
-
-        try:
-            all_vessels_sma_data = positve_sma.loc[idx[:, :,
-                                                   :n_expansions,
-                                                   "Data"], self.markers_names].to_numpy()
-            all_vessels_sma_data = np.mean(all_vessels_sma_data, axis=0)
-        except KeyError:
-            all_vessels_sma_data = np.zeros((self.config.n_markers,), np.uint8)
-
-        try:
-            mfg_vessels_sma_data = positve_sma.loc[idx[brain_regions[0][0]:brain_regions[0][1],
-                                                   :,
-                                                   :n_expansions,
-                                                   "Data"], self.markers_names].to_numpy()
-            mfg_vessels_sma_data = np.mean(mfg_vessels_sma_data, axis=0)
-
-        except KeyError:
-            mfg_vessels_sma_data = np.zeros((self.config.n_markers,), np.uint8)
-
-        try:
-            hip_vessels_sma_data = positve_sma.loc[idx[brain_regions[1][0]:brain_regions[1][1],
-                                                   :,
-                                                   :n_expansions,
-                                                   "Data"], self.markers_names].to_numpy()
-            hip_vessels_sma_data = np.mean(hip_vessels_sma_data, axis=0)
-        except KeyError:
-            hip_vessels_sma_data = np.zeros((self.config.n_markers,), np.uint8)
-
-        try:
-            caud_vessels_sma_data = positve_sma.loc[idx[brain_regions[2][0]:brain_regions[2][1],
-                                                    :,
-                                                    :n_expansions,
-                                                    "Data"], self.markers_names].to_numpy()
-            caud_vessels_sma_data = np.mean(caud_vessels_sma_data, axis=0)
-
-        except KeyError:
-            caud_vessels_sma_data = np.zeros((self.config.n_markers,), np.uint8)
+        positve_sma = mibi_features.loc[
+            mibi_features["SMA"] >= self.config.SMA_positive_threshold]
 
         # Vessel Space (SMA Negative)
-        negative_sma = feed_features.loc[
-            feed_features["SMA"] < self.config.SMA_positive_threshold]
+        negative_sma = mibi_features.loc[
+            mibi_features["SMA"] < self.config.SMA_positive_threshold]
 
-        idx = pd.IndexSlice
+        heatmap_data = []
 
-        try:
-            all_vessels_non_sma_data = negative_sma.loc[idx[:, :,
-                                                        :n_expansions,
-                                                        "Data"], self.markers_names].to_numpy()
-            all_vessels_non_sma_data = np.mean(all_vessels_non_sma_data, axis=0)
+        self._vessel_non_vessel_heatmap_block(n_expansions,
+                                              positve_sma,
+                                              self.markers_names,
+                                              brain_regions,
+                                              heatmap_data,
+                                              data_type="Data")
 
-        except KeyError:
-            all_vessels_non_sma_data = np.zeros((self.config.n_markers,), np.uint8)
-
-        try:
-            mfg_vessels_non_sma_data = negative_sma.loc[idx[brain_regions[0][0]:brain_regions[0][1],
-                                                        :,
-                                                        :n_expansions,
-                                                        "Data"], self.markers_names].to_numpy()
-            mfg_vessels_non_sma_data = np.mean(mfg_vessels_non_sma_data, axis=0)
-
-        except KeyError:
-            mfg_vessels_non_sma_data = np.zeros((self.config.n_markers,), np.uint8)
-
-        try:
-            hip_vessels_non_sma_data = negative_sma.loc[idx[brain_regions[1][0]:brain_regions[1][1],
-                                                        :,
-                                                        :n_expansions,
-                                                        "Data"], self.markers_names].to_numpy()
-            hip_vessels_non_sma_data = np.mean(hip_vessels_non_sma_data, axis=0)
-
-        except KeyError:
-            hip_vessels_non_sma_data = np.zeros((self.config.n_markers,), np.uint8)
-
-        try:
-            caud_vessels_non_sma_data = negative_sma.loc[idx[brain_regions[2][0]:brain_regions[2][1],
-                                                         :,
-                                                         :n_expansions,
-                                                         "Data"], self.markers_names].to_numpy()
-            caud_vessels_non_sma_data = np.mean(caud_vessels_non_sma_data, axis=0)
-
-        except KeyError:
-            caud_vessels_non_sma_data = np.zeros((self.config.n_markers,), np.uint8)
+        self._vessel_non_vessel_heatmap_block(n_expansions,
+                                              negative_sma,
+                                              self.markers_names,
+                                              brain_regions,
+                                              heatmap_data,
+                                              data_type="Data")
 
         # Non-vessel Space
 
-        try:
-            all_nonmask_sma_data = positve_sma.loc[idx[:, :, :,
-                                                   "Non-Vascular Space"], self.markers_names].to_numpy()
-            all_nonmask_sma_data = np.mean(all_nonmask_sma_data, axis=0)
+        self._vessel_non_vessel_heatmap_block(n_expansions,
+                                              positve_sma,
+                                              self.markers_names,
+                                              brain_regions,
+                                              heatmap_data,
+                                              data_type="Non-Vascular Space")
 
-        except KeyError:
-            all_nonmask_sma_data = np.zeros((self.config.n_markers,), np.uint8)
-
-        try:
-            mfg_nonmask_sma_data = positve_sma.loc[idx[brain_regions[0][0]:brain_regions[0][1],
-                                                   :,
-                                                   :n_expansions,
-                                                   "Non-Vascular Space"], self.markers_names].to_numpy()
-            mfg_nonmask_sma_data = np.mean(mfg_nonmask_sma_data, axis=0)
-
-        except KeyError:
-            mfg_nonmask_sma_data = np.zeros((self.config.n_markers,), np.uint8)
-
-        try:
-            hip_nonmask_sma_data = positve_sma.loc[idx[brain_regions[1][0]:brain_regions[1][1],
-                                                   :,
-                                                   :n_expansions,
-                                                   "Non-Vascular Space"], self.markers_names].to_numpy()
-            hip_nonmask_sma_data = np.mean(hip_nonmask_sma_data, axis=0)
-
-        except KeyError:
-            hip_nonmask_sma_data = np.zeros((self.config.n_markers,), np.uint8)
-
-        try:
-            caud_nonmask_sma_data = positve_sma.loc[idx[brain_regions[2][0]:brain_regions[2][1],
-                                                    :,
-                                                    :n_expansions,
-                                                    "Non-Vascular Space"], self.markers_names].to_numpy()
-            caud_nonmask_sma_data = np.mean(caud_nonmask_sma_data, axis=0)
-
-        except KeyError:
-            caud_nonmask_sma_data = np.zeros((self.config.n_markers,), np.uint8)
-
-        try:
-            all_nonmask_non_sma_data = negative_sma.loc[idx[:, :, :,
-                                                        "Non-Vascular Space"], self.markers_names].to_numpy()
-            all_nonmask_non_sma_data = np.mean(all_nonmask_non_sma_data, axis=0)
-
-        except KeyError:
-            all_nonmask_non_sma_data = np.zeros((self.config.n_markers,), np.uint8)
-
-        try:
-            mfg_nonmask_non_sma_data = negative_sma.loc[idx[brain_regions[0][0]:brain_regions[0][1],
-                                                        :,
-                                                        :n_expansions,
-                                                        "Non-Vascular Space"], self.markers_names].to_numpy()
-            mfg_nonmask_non_sma_data = np.mean(mfg_nonmask_non_sma_data, axis=0)
-
-        except KeyError:
-            mfg_nonmask_non_sma_data = np.zeros((self.config.n_markers,), np.uint8)
-
-        try:
-            hip_nonmask_non_sma_data = negative_sma.loc[idx[brain_regions[1][0]:brain_regions[1][1],
-                                                        :,
-                                                        :n_expansions,
-                                                        "Non-Vascular Space"], self.markers_names].to_numpy()
-            hip_nonmask_non_sma_data = np.mean(hip_nonmask_non_sma_data, axis=0)
-
-        except KeyError:
-            hip_nonmask_non_sma_data = np.zeros((self.config.n_markers,), np.uint8)
-
-        try:
-            caud_nonmask_non_sma_data = negative_sma.loc[idx[brain_regions[2][0]:brain_regions[2][1],
-                                                         :,
-                                                         :n_expansions,
-                                                         "Non-Vascular Space"], self.markers_names].to_numpy()
-            caud_nonmask_non_sma_data = np.mean(caud_nonmask_non_sma_data, axis=0)
-
-        except KeyError:
-            caud_nonmask_non_sma_data = np.zeros((self.config.n_markers,), np.uint8)
+        self._vessel_non_vessel_heatmap_block(n_expansions,
+                                              negative_sma,
+                                              self.markers_names,
+                                              brain_regions,
+                                              heatmap_data,
+                                              data_type="Non-Vascular Space")
 
         # Vessel environment space
 
-        try:
-            all_vessels_environment_sma_data = positve_sma.loc[idx[:, :,
-                                                               :n_expansions,
-                                                               "Vascular Space"], self.markers_names].to_numpy()
-            all_vessels_environment_sma_data = np.mean(all_vessels_environment_sma_data, axis=0)
+        self._vessel_non_vessel_heatmap_block(n_expansions,
+                                              positve_sma,
+                                              self.markers_names,
+                                              brain_regions,
+                                              heatmap_data,
+                                              data_type="Vascular Space")
 
-        except KeyError:
-            all_vessels_environment_sma_data = np.zeros((self.config.n_markers,), np.uint8)
-
-        try:
-            mfg_vessels_environment_sma_data = positve_sma.loc[idx[brain_regions[0][0]:brain_regions[0][1],
-                                                               :,
-                                                               :n_expansions,
-                                                               "Vascular Space"], self.markers_names].to_numpy()
-            mfg_vessels_environment_sma_data = np.mean(mfg_vessels_environment_sma_data, axis=0)
-
-        except KeyError:
-            mfg_vessels_environment_sma_data = np.zeros((self.config.n_markers,), np.uint8)
-
-        try:
-            hip_vessels_environment_sma_data = positve_sma.loc[idx[brain_regions[1][0]:brain_regions[1][1],
-                                                               :,
-                                                               :n_expansions,
-                                                               "Vascular Space"], self.markers_names].to_numpy()
-            hip_vessels_environment_sma_data = np.mean(hip_vessels_environment_sma_data, axis=0)
-
-        except KeyError:
-            hip_vessels_environment_sma_data = np.zeros((self.config.n_markers,), np.uint8)
-
-        try:
-            caud_vessels_environment_sma_data = positve_sma.loc[idx[brain_regions[2][0]:brain_regions[2][1],
-                                                                :,
-                                                                :n_expansions,
-                                                                "Vascular Space"], self.markers_names].to_numpy()
-            caud_vessels_environment_sma_data = np.mean(caud_vessels_environment_sma_data, axis=0)
-
-        except KeyError:
-            caud_vessels_environment_sma_data = np.zeros((self.config.n_markers,), np.uint8)
-
-        try:
-            all_vessels_environment_non_sma_data = negative_sma.loc[idx[:, :,
-                                                                    :n_expansions,
-                                                                    "Vascular Space"], self.markers_names].to_numpy()
-            all_vessels_environment_non_sma_data = np.mean(all_vessels_environment_non_sma_data, axis=0)
-
-        except KeyError:
-            all_vessels_environment_non_sma_data = np.zeros((self.config.n_markers,), np.uint8)
-
-        try:
-            mfg_vessels_environment_non_sma_data = negative_sma.loc[idx[brain_regions[0][0]:brain_regions[0][1],
-                                                                    :,
-                                                                    :n_expansions,
-                                                                    "Vascular Space"], self.markers_names].to_numpy()
-            mfg_vessels_environment_non_sma_data = np.mean(mfg_vessels_environment_non_sma_data, axis=0)
-
-        except KeyError:
-            mfg_vessels_environment_non_sma_data = np.zeros((self.config.n_markers,), np.uint8)
-
-        try:
-            hip_vessels_environment_non_sma_data = negative_sma.loc[idx[brain_regions[1][0]:brain_regions[1][1],
-                                                                    :,
-                                                                    :n_expansions,
-                                                                    "Vascular Space"], self.markers_names].to_numpy()
-            hip_vessels_environment_non_sma_data = np.mean(hip_vessels_environment_non_sma_data, axis=0)
-
-        except KeyError:
-            hip_vessels_environment_non_sma_data = np.zeros((self.config.n_markers,), np.uint8)
-
-        try:
-            caud_vessels_environment_non_sma_data = negative_sma.loc[idx[brain_regions[2][0]:brain_regions[2][1],
-                                                                     :,
-                                                                     :n_expansions,
-                                                                     "Vascular Space"], self.markers_names].to_numpy()
-            caud_vessels_environment_non_sma_data = np.mean(caud_vessels_environment_non_sma_data, axis=0)
-
-        except KeyError:
-            caud_vessels_environment_non_sma_data = np.zeros((self.config.n_markers,), np.uint8)
-
-        all_data = [all_vessels_sma_data,
-                    all_vessels_non_sma_data,
-                    all_vessels_environment_sma_data,
-                    all_vessels_environment_non_sma_data,
-                    all_nonmask_sma_data,
-                    all_nonmask_non_sma_data,
-                    mfg_vessels_sma_data,
-                    mfg_vessels_non_sma_data,
-                    mfg_vessels_environment_sma_data,
-                    mfg_vessels_environment_non_sma_data,
-                    mfg_nonmask_sma_data,
-                    mfg_nonmask_non_sma_data,
-                    hip_vessels_sma_data,
-                    hip_vessels_non_sma_data,
-                    hip_vessels_environment_sma_data,
-                    hip_vessels_environment_non_sma_data,
-                    hip_nonmask_sma_data,
-                    hip_nonmask_non_sma_data,
-                    caud_vessels_sma_data,
-                    caud_vessels_non_sma_data,
-                    caud_vessels_environment_sma_data,
-                    caud_vessels_environment_non_sma_data,
-                    caud_nonmask_sma_data,
-                    caud_nonmask_non_sma_data]
+        self._vessel_non_vessel_heatmap_block(n_expansions,
+                                              negative_sma,
+                                              self.markers_names,
+                                              brain_regions,
+                                              heatmap_data,
+                                              data_type="Vascular Space")
 
         yticklabels = ["Vascular Space (SMA+) - All Points",
+                       "Vascular Space (SMA+) - MFG",
+                       "Vascular Space (SMA+) - HIP",
+                       "Vascular Space (SMA+) - CAUD",
                        "Vascular Space (SMA-) - All Points",
-                       "Vascular Expansion Space (SMA+) - All Points",
-                       "Vascular Expansion Space (SMA-) - All Points",
+                       "Vascular Space (SMA-) - MFG",
+                       "Vascular Space (SMA-) - HIP",
+                       "Vascular Space (SMA-) - CAUD",
                        "Non-Vascular Space (SMA+) - All Points",
                        "Non-Vascular Space (SMA-) - All Points",
-                       "Vascular Space (SMA+) - MFG",
-                       "Vascular Space (SMA-) - MFG",
-                       "Vascular Expansion Space (SMA+) - MFG",
-                       "Vascular Expansion Space (SMA-) - MFG",
                        "Non-Vascular Space (SMA+) - MFG",
                        "Non-Vascular Space (SMA-) - MFG",
-                       "Vascular Space (SMA+) - HIP",
-                       "Vascular Space (SMA-) - HIP",
-                       "Vascular Expansion Space (SMA+) - HIP",
-                       "Vascular Expansion Space (SMA-) - HIP",
                        "Non-Vascular Space (SMA+) - HIP",
                        "Non-Vascular Space (SMA-) - HIP",
-                       "Vascular Space (SMA+) - CAUD",
-                       "Vascular Space (SMA-) - CAUD",
-                       "Vascular Expansion Space (SMA+) - CAUD",
-                       "Vascular Expansion Space (SMA-) - CAUD",
                        "Non-Vascular Space (SMA+) - CAUD",
-                       "Non-Vascular Space (SMA-) - CAUD", ]
+                       "Non-Vascular Space (SMA-) - CAUD",
+                       "Vascular Expansion Space (SMA+) - All Points",
+                       "Vascular Expansion Space (SMA+) - MFG",
+                       "Vascular Expansion Space (SMA+) - HIP",
+                       "Vascular Expansion Space (SMA+) - CAUD",
+                       "Vascular Expansion Space (SMA-) - All Points",
+                       "Vascular Expansion Space (SMA-) - MFG",
+                       "Vascular Expansion Space (SMA-) - HIP",
+                       "Vascular Expansion Space (SMA-) - CAUD",
+                       ]
 
         norm = matplotlib.colors.Normalize(-1, 1)
         colors = [[norm(-1.0), "black"],
@@ -1950,7 +1797,7 @@ class Visualizer:
 
         plt.figure(figsize=(22, 10))
 
-        ax = sns.heatmap(all_data,
+        ax = sns.heatmap(heatmap_data,
                          cmap=cmap,
                          xticklabels=self.markers_names,
                          yticklabels=yticklabels,
@@ -1977,10 +1824,10 @@ class Visualizer:
         output_dir = "%s/Heatmaps" % feed_dir
         mkdir_p(output_dir)
 
-        plt.savefig(output_dir + '/Expansion_%s.png' % str((n_expansions)), bbox_inches='tight')
+        plt.savefig(output_dir + '/Expansion_%s.png' % str(n_expansions), bbox_inches='tight')
         plt.clf()
 
-        ax = sns.clustermap(all_data,
+        ax = sns.clustermap(heatmap_data,
                             cmap=cmap,
                             row_cluster=False,
                             col_cluster=True,
@@ -2017,15 +1864,15 @@ class Visualizer:
         assert secondary_categorical_splitter is not None, "Must have a secondary categorical variable"
 
         parent_dir = "%s/%s Scatter Plots" % (self.results_dir
-, analysis_variable)
+                                              , analysis_variable)
         mkdir_p(parent_dir)
 
-        for feed_idx in range(self.all_feeds_data.shape[0]):
-            idx = pd.IndexSlice
-            feed_name = self.all_feeds_metadata.loc[idx[feed_idx, 0], "Feed Name"]
-
-            feed_dir = "%s/%s" % (parent_dir, feed_name)
-            mkdir_p(feed_dir)
+        for feed_idx, feed_contours, feed_features, feed_dir in feed_features_iterator(self.all_samples_features,
+                                                                                       self.all_feeds_data,
+                                                                                       self.all_feeds_contour_data,
+                                                                                       self.all_feeds_metadata,
+                                                                                       save_to_dir=True,
+                                                                                       parent_dir=parent_dir):
 
             by_primary_analysis_variable_dir = "%s/By %s" % (feed_dir, primary_categorical_splitter)
             mkdir_p(by_primary_analysis_variable_dir)
@@ -2038,8 +1885,6 @@ class Visualizer:
 
             secondary_separate_dir = "%s/Separate By %s" % (feed_dir, secondary_categorical_splitter)
             mkdir_p(secondary_separate_dir)
-
-            feed_features = self.all_samples_features.loc[self.all_samples_features["Data Type"] == feed_name]
 
             feed_features = loc_by_expansion(feed_features,
                                              expansion_type=mask_type,
@@ -2156,14 +2001,12 @@ class Visualizer:
 
         mkdir_p(parent_dir)
 
-        for feed_idx in range(self.all_feeds_data.shape[0]):
-            idx = pd.IndexSlice
-            feed_name = self.all_feeds_metadata.loc[idx[feed_idx, 0], "Feed Name"]
-
-            feed_dir = "%s/%s" % (parent_dir, feed_name)
-            mkdir_p(feed_dir)
-
-            feed_features = self.all_samples_features.loc[self.all_samples_features["Data Type"] == feed_name]
+        for feed_idx, feed_contours, feed_features, feed_dir in feed_features_iterator(self.all_samples_features,
+                                                                                       self.all_feeds_data,
+                                                                                       self.all_feeds_contour_data,
+                                                                                       self.all_feeds_metadata,
+                                                                                       save_to_dir=True,
+                                                                                       parent_dir=parent_dir):
 
             if self.config.primary_categorical_splitter is None:
                 self._vessel_nonvessel_heatmap(n_expansions, feed_features, brain_regions, marker_clusters, feed_dir)
@@ -2335,16 +2178,14 @@ class Visualizer:
 
         assert self.config.primary_categorical_splitter is not None, "No categorical splitter selected!"
 
-        for feed_idx in range(self.all_feeds_data.shape[0]):
-            idx = pd.IndexSlice
-            feed_name = self.all_feeds_metadata.loc[idx[feed_idx, 0], "Feed Name"]
+        for feed_idx, feed_contours, feed_features, feed_dir in feed_features_iterator(self.all_samples_features,
+                                                                                       self.all_feeds_data,
+                                                                                       self.all_feeds_contour_data,
+                                                                                       self.all_feeds_metadata,
+                                                                                       save_to_dir=True,
+                                                                                       parent_dir=parent_dir):
 
-            feed_dir = "%s/%s" % (parent_dir, feed_name)
-            mkdir_p(feed_dir)
-
-            feed_features = self.all_samples_features.loc[self.all_samples_features["Data Type"] == feed_name]
-
-            expansion_features = feed_features.loc[idx[:, :, :n_expansions, :], :]
+            expansion_features = feed_features.loc[pd.IndexSlice[:, :, :n_expansions, :], :]
 
             heatmaps_dir = "%s/Categorical Split Expansion Heatmaps" % feed_dir
             mkdir_p(heatmaps_dir)
@@ -2406,7 +2247,6 @@ class Visualizer:
             y_tick_labels = self.markers_names
 
         if not cluster:
-
             plt.figure(figsize=(22, 10))
 
             ax = sns.heatmap(data,
@@ -2494,7 +2334,7 @@ class Visualizer:
 
     def _brain_region_expansion_heatmap(self,
                                         n_expansions: int,
-                                        expansion_features: pd.DataFrame,
+                                        mibi_features: pd.DataFrame,
                                         heatmaps_dir: str,
                                         clustermaps_dir: str
                                         ):
@@ -2504,110 +2344,56 @@ class Visualizer:
         :param n_expansions: int, Number of expansions to run
         :return:
         """
-        idx = pd.IndexSlice
+        regions_mask_data = []
 
-        all_mask_data = []
-        mfg_mask_data = []
-        hip_mask_data = []
-        caud_mask_data = []
-        pixel_interval = round_to_nearest_half(abs(self.config.pixel_interval) * self.config.pixels_to_distance)
-
-        brain_regions = self.config.brain_region_point_ranges
+        marker_names = self.config.marker_names
+        pixel_interval = self.config.pixel_interval
         marker_clusters = self.config.marker_clusters
+        brain_region_names = self.config.brain_region_names
+        brain_regions = self.config.brain_region_point_ranges
 
-        for i in sorted(expansion_features.index.unique("Expansion").tolist()):
-            try:
-                current_expansion_all = expansion_features.loc[idx[:, :,
-                                                               i,
-                                                               "Data"], self.markers_names].to_numpy()
-            except KeyError:
-                current_expansion_all = np.array([])
+        marker_mask_expression_map_fn_all_regions = partial(self._marker_expression_at_expansion,
+                                                            mibi_features=mibi_features,
+                                                            marker_names=marker_names,
+                                                            data_type="Data")
 
-            try:
-                current_expansion_mfg = expansion_features.loc[idx[brain_regions[0][0]:brain_regions[0][1],
-                                                               :,
-                                                               i,
-                                                               "Data"], self.markers_names].to_numpy()
-            except KeyError:
-                current_expansion_mfg = np.array([])
+        all_regions_mask_data = np.array(list(map(marker_mask_expression_map_fn_all_regions,
+                                                  sorted(mibi_features.index.unique("Expansion").tolist()))))
 
-            try:
-                current_expansion_hip = expansion_features.loc[idx[brain_regions[1][0]:brain_regions[1][1],
-                                                               :,
-                                                               i,
-                                                               "Data"], self.markers_names].to_numpy()
-            except KeyError:
-                current_expansion_hip = np.array([])
-
-            try:
-                current_expansion_caud = expansion_features.loc[idx[brain_regions[2][0]:brain_regions[2][1],
-                                                                :,
-                                                                i,
-                                                                "Data"], self.markers_names].to_numpy()
-            except KeyError:
-                current_expansion_caud = np.array([])
-
-            if current_expansion_all.size > 0:
-                all_mask_data.append(np.mean(np.array(current_expansion_all), axis=0))
-            else:
-                all_mask_data.append(np.zeros((self.config.n_markers,), np.uint8))
-
-            if current_expansion_mfg.size > 0:
-                mfg_mask_data.append(np.mean(np.array(current_expansion_mfg), axis=0))
-            else:
-                mfg_mask_data.append(np.zeros((self.config.n_markers,), np.uint8))
-
-            if current_expansion_hip.size > 0:
-                hip_mask_data.append(np.mean(np.array(current_expansion_hip), axis=0))
-            else:
-                hip_mask_data.append(np.zeros((self.config.n_markers,), np.uint8))
-
-            if current_expansion_caud.size > 0:
-                caud_mask_data.append(np.mean(np.array(current_expansion_caud), axis=0))
-            else:
-                caud_mask_data.append(np.zeros((self.config.n_markers,), np.uint8))
-
-        all_mask_data = np.array(all_mask_data)
-        mfg_mask_data = np.array(mfg_mask_data)
-        hip_mask_data = np.array(hip_mask_data)
-        caud_mask_data = np.array(caud_mask_data)
-
-        idx = pd.IndexSlice
-        all_nonmask_data = expansion_features.loc[idx[:, :,
-                                                  i,
-                                                  "Non-Vascular Space"], self.markers_names].to_numpy()
-        mfg_nonmask_data = expansion_features.loc[idx[brain_regions[0][0]:brain_regions[0][1],
-                                                  :,
-                                                  i,
-                                                  "Non-Vascular Space"], self.markers_names].to_numpy()
-        hip_nonmask_data = expansion_features.loc[idx[brain_regions[1][0]:brain_regions[1][1],
-                                                  :,
-                                                  i,
-                                                  "Non-Vascular Space"], self.markers_names].to_numpy()
-        caud_nonmask_data = expansion_features.loc[idx[brain_regions[2][0]:brain_regions[2][1],
-                                                   :,
-                                                   i,
-                                                   "Non-Vascular Space"], self.markers_names].to_numpy()
+        all_nonmask_data = mibi_features.loc[pd.IndexSlice[:, :,
+                                             max(mibi_features.index.unique("Expansion").tolist()),
+                                             "Non-Vascular Space"], marker_names].to_numpy()
 
         mean_nonmask_data = np.mean(all_nonmask_data, axis=0)
 
-        mfg_nonmask_data = np.mean(mfg_nonmask_data, axis=0)
-
-        hip_nonmask_data = np.mean(hip_nonmask_data, axis=0)
-
-        caud_nonmask_data = np.mean(caud_nonmask_data, axis=0)
-
-        all_mask_data = np.append(all_mask_data, [mean_nonmask_data], axis=0)
-        mfg_mask_data = np.append(mfg_mask_data, [mfg_nonmask_data], axis=0)
-        hip_mask_data = np.append(hip_mask_data, [hip_nonmask_data], axis=0)
-        caud_mask_data = np.append(caud_mask_data, [caud_nonmask_data], axis=0)
+        all_mask_data = np.append(all_regions_mask_data, [mean_nonmask_data], axis=0)
 
         all_mask_data = np.transpose(all_mask_data)
-        mfg_mask_data = np.transpose(mfg_mask_data)
-        hip_mask_data = np.transpose(hip_mask_data)
-        caud_mask_data = np.transpose(caud_mask_data)
 
-        x_tick_labels = np.array(sorted(expansion_features.index.unique("Expansion").tolist())) * pixel_interval
+        for region in brain_regions:
+            region_marker_mask_expression_map_fn = partial(self._marker_expression_at_expansion,
+                                                           mibi_features=mibi_features,
+                                                           marker_names=marker_names,
+                                                           region=region,
+                                                           data_type="Data")
+
+            region_mask_data = np.array(list(map(region_marker_mask_expression_map_fn,
+                                                 sorted(mibi_features.index.unique("Expansion").tolist()))))
+
+            region_non_mask_data = mibi_features.loc[pd.IndexSlice[region[0]:region[1],
+                                                     :,
+                                                     max(mibi_features.index.unique("Expansion").tolist()),
+                                                     "Non-Vascular Space"], marker_names].to_numpy()
+
+            region_mean_non_mask_data = np.mean(region_non_mask_data, axis=0)
+
+            region_mask_data = np.append(region_mask_data, [region_mean_non_mask_data], axis=0)
+
+            region_mask_data = np.transpose(region_mask_data)
+
+            regions_mask_data.append(region_mask_data)
+
+        x_tick_labels = np.array(sorted(mibi_features.index.unique("Expansion").tolist())) * pixel_interval
         x_tick_labels = x_tick_labels.tolist()
         x_tick_labels = [str(x) for x in x_tick_labels]
         x_tick_labels.append("Nonvessel Space")
@@ -2639,32 +2425,17 @@ class Visualizer:
                                            map_name="All_Points",
                                            cluster=False)
 
-        self._heatmap_clustermap_generator(data=mfg_mask_data,
-                                           x_tick_labels=x_tick_labels,
-                                           x_label="Distance Expanded (%s)" % self.config.data_resolution_units,
-                                           cmap=cmap,
-                                           marker_clusters=marker_clusters,
-                                           output_dir=output_dir,
-                                           map_name="MFG_Region",
-                                           cluster=False)
+        for idx, region_data in enumerate(regions_mask_data):
+            region_name = brain_region_names[idx]
 
-        self._heatmap_clustermap_generator(data=hip_mask_data,
-                                           x_tick_labels=x_tick_labels,
-                                           x_label="Distance Expanded (%s)" % self.config.data_resolution_units,
-                                           cmap=cmap,
-                                           marker_clusters=marker_clusters,
-                                           output_dir=output_dir,
-                                           map_name="HIP_Region",
-                                           cluster=False)
-
-        self._heatmap_clustermap_generator(data=caud_mask_data,
-                                           x_tick_labels=x_tick_labels,
-                                           x_label="Distance Expanded (%s)" % self.config.data_resolution_units,
-                                           cmap=cmap,
-                                           marker_clusters=marker_clusters,
-                                           output_dir=output_dir,
-                                           map_name="CAUD_Region",
-                                           cluster=False)
+            self._heatmap_clustermap_generator(data=region_data,
+                                               x_tick_labels=x_tick_labels,
+                                               x_label="Distance Expanded (%s)" % self.config.data_resolution_units,
+                                               cmap=cmap,
+                                               marker_clusters=marker_clusters,
+                                               output_dir=output_dir,
+                                               map_name="%_Region" % region_name,
+                                               cluster=False)
 
         # Clustermaps Outputs
 
@@ -2683,32 +2454,17 @@ class Visualizer:
                                            map_name="All_Points",
                                            cluster=True)
 
-        self._heatmap_clustermap_generator(data=mfg_mask_data,
-                                           x_tick_labels=x_tick_labels,
-                                           x_label="Distance Expanded (%s)" % self.config.data_resolution_units,
-                                           cmap=cmap,
-                                           marker_clusters=marker_clusters,
-                                           output_dir=output_dir,
-                                           map_name="MFG_Region",
-                                           cluster=True)
+        for idx, region_data in enumerate(regions_mask_data):
+            region_name = brain_region_names[idx]
 
-        self._heatmap_clustermap_generator(data=hip_mask_data,
-                                           x_tick_labels=x_tick_labels,
-                                           x_label="Distance Expanded (%s)" % self.config.data_resolution_units,
-                                           cmap=cmap,
-                                           marker_clusters=marker_clusters,
-                                           output_dir=output_dir,
-                                           map_name="HIP_Region",
-                                           cluster=True)
-
-        self._heatmap_clustermap_generator(data=caud_mask_data,
-                                           x_tick_labels=x_tick_labels,
-                                           x_label="Distance Expanded (%s)" % self.config.data_resolution_units,
-                                           cmap=cmap,
-                                           marker_clusters=marker_clusters,
-                                           output_dir=output_dir,
-                                           map_name="CAUD_Region",
-                                           cluster=True)
+            self._heatmap_clustermap_generator(data=region_data,
+                                               x_tick_labels=x_tick_labels,
+                                               x_label="Distance Expanded (%s)" % self.config.data_resolution_units,
+                                               cmap=cmap,
+                                               marker_clusters=marker_clusters,
+                                               output_dir=output_dir,
+                                               map_name="%_Region" % region_name,
+                                               cluster=True)
 
     def brain_region_expansion_heatmap(self, n_expansions: int, **kwargs):
         """
@@ -2720,16 +2476,14 @@ class Visualizer:
 
         mkdir_p(parent_dir)
 
-        for feed_idx in range(self.all_feeds_data.shape[0]):
-            idx = pd.IndexSlice
-            feed_name = self.all_feeds_metadata.loc[idx[feed_idx, 0], "Feed Name"]
+        for feed_idx, feed_contours, feed_features, feed_dir in feed_features_iterator(self.all_samples_features,
+                                                                                       self.all_feeds_data,
+                                                                                       self.all_feeds_contour_data,
+                                                                                       self.all_feeds_metadata,
+                                                                                       save_to_dir=True,
+                                                                                       parent_dir=parent_dir):
 
-            feed_dir = "%s/%s" % (parent_dir, feed_name)
-            mkdir_p(feed_dir)
-
-            feed_features = self.all_samples_features.loc[self.all_samples_features["Data Type"] == feed_name]
-
-            expansion_features = feed_features.loc[idx[:, :, :n_expansions, :], :]
+            expansion_features = feed_features.loc[pd.IndexSlice[:, :, :n_expansions, :], :]
 
             if self.config.primary_categorical_splitter is None:
                 heatmaps_dir = "%s/Expansion Heatmaps" % feed_dir
@@ -2765,18 +2519,14 @@ class Visualizer:
 
         mkdir_p(parent_dir)
 
-        for feed_idx in self.all_feeds_contour_data.index.get_level_values('Feed Index').unique():
-
-            feed_data = self.all_feeds_contour_data.loc[feed_idx]
-
-            idx = pd.IndexSlice
-            feed_name = self.all_feeds_metadata.loc[idx[feed_idx, 0], "Feed Name"]
-
-            output_dir = "%s/%s" % (parent_dir, feed_name)
-            mkdir_p(output_dir)
-
+        for feed_idx, feed_contours, feed_features, output_dir in feed_features_iterator(self.all_samples_features,
+                                                                                         self.all_feeds_data,
+                                                                                         self.all_feeds_contour_data,
+                                                                                         self.all_feeds_metadata,
+                                                                                         save_to_dir=True,
+                                                                                         parent_dir=parent_dir):
             for i in range(len(self.config.n_points)):
-                point_contours = feed_data.loc[i, "Contours"]
+                point_contours = feed_contours.loc[i, "Contours"]
 
                 point_dir = output_dir + "/Point %s" % str(i + 1)
                 mkdir_p(point_dir)
@@ -2819,22 +2569,18 @@ class Visualizer:
 
         mkdir_p(parent_dir)
 
-        for feed_idx in self.all_feeds_contour_data.index.get_level_values('Feed Index').unique():
-
-            feed_data = self.all_feeds_contour_data.loc[feed_idx]
-
-            idx = pd.IndexSlice
-            feed_name = self.all_feeds_metadata.loc[idx[feed_idx, 0], "Feed Name"]
-
-            output_dir = "%s/%s" % (parent_dir, feed_name)
-            mkdir_p(output_dir)
-
+        for feed_idx, feed_contours, feed_features, feed_dir in feed_features_iterator(self.all_samples_features,
+                                                                                       self.all_feeds_data,
+                                                                                       self.all_feeds_contour_data,
+                                                                                       self.all_feeds_metadata,
+                                                                                       save_to_dir=True,
+                                                                                       parent_dir=parent_dir):
             # Iterate through each point
             for i in range(n_points):
-                contours = feed_data.loc[i, "Contours"].contours
-                contour_areas = feed_data.loc[i, "Contours"].areas
-                removed_contours = feed_data.loc[i, "Contours"].removed_contours
-                removed_areas = feed_data.loc[i, "Contours"].removed_areas
+                contours = feed_contours.loc[i, "Contours"].contours
+                contour_areas = feed_contours.loc[i, "Contours"].areas
+                removed_contours = feed_contours.loc[i, "Contours"].removed_contours
+                removed_areas = feed_contours.loc[i, "Contours"].removed_areas
                 marker_data = self.all_feeds_data[feed_idx, i]
 
                 start_expression = datetime.datetime.now()
@@ -3031,9 +2777,9 @@ class Visualizer:
         :return:
         """
 
-        output_dir = "%s/Pseudo-Time Heatmaps" % self.results_dir
+        parent_dir = "%s/Pseudo-Time Heatmaps" % self.results_dir
 
-        mkdir_p(output_dir)
+        mkdir_p(parent_dir)
 
         if cmap is None:
             norm = matplotlib.colors.Normalize(-1, 1)
@@ -3048,14 +2794,12 @@ class Visualizer:
         analysis_variable = kwargs.get('analysis_variable', "Asymmetry Score")
         mask_type = kwargs.get('mask_type', "expansion_only")
 
-        for feed_idx in range(self.all_feeds_data.shape[0]):
-            idx = pd.IndexSlice
-            feed_name = self.all_feeds_metadata.loc[idx[feed_idx, 0], "Feed Name"]
-
-            feed_dir = "%s/%s" % (output_dir, feed_name)
-            mkdir_p(feed_dir)
-
-            feed_features = self.all_samples_features.loc[self.all_samples_features["Data Type"] == feed_name]
+        for feed_idx, feed_contours, feed_features, feed_dir in feed_features_iterator(self.all_samples_features,
+                                                                                       self.all_feeds_data,
+                                                                                       self.all_feeds_contour_data,
+                                                                                       self.all_feeds_metadata,
+                                                                                       save_to_dir=True,
+                                                                                       parent_dir=parent_dir):
 
             feed_features.reset_index(level=['Point', 'Vessel', 'Expansion', 'Expansion Type'], inplace=True)
 
@@ -3267,78 +3011,6 @@ class Visualizer:
                     bbox_inches='tight')
         plt.clf()
 
-    def plot_vessel_areas(self,
-                          all_points_vessel_contours: list,
-                          segmentation_type: str = 'allvessels',
-                          show_outliers: bool = False) -> list:
-        """
-        Plot box plot vessel areas
-
-        :param all_points_vessel_contours: array_like, [n_points, n_vessels] -> list of vessel contours for each point
-        :param save_csv: bool, Save csv of vessel areas
-        :param segmentation_type: str, Segmentation mask type
-        :param show_outliers: bool, Include outliers in box plots
-        :return: list, [n_points, n_vessels] -> All points vessel areas
-        """
-
-        brain_regions = self.config.brain_region_point_ranges
-        region_data = []
-        current_point = 1
-        current_region = 0
-        areas = []
-        per_point_areas = []
-        total_per_point_areas = []
-
-        all_points_vessel_areas = []
-
-        for idx, contours in enumerate(all_points_vessel_contours):
-            current_per_point_area = []
-
-            for cnt in contours:
-                contour_area = cv.contourArea(cnt)
-                areas.append(contour_area)
-                current_per_point_area.append(contour_area)
-
-            current_point += 1
-            per_point_areas.append(current_per_point_area)
-            all_points_vessel_areas.append(current_per_point_area)
-
-            if not (brain_regions[current_region][0] <= current_point <= brain_regions[current_region][1]):
-                current_region += 1
-                region_data.append(sorted(areas))
-                total_per_point_areas.append(per_point_areas)
-                areas = []
-                per_point_areas = []
-
-        for i, area in enumerate(region_data):
-            area = sorted(area)
-            plt.hist(area, bins=200)
-            plt.title("Points %s to %s" % (str(brain_regions[i][0]), str(brain_regions[i][1])))
-            plt.xlabel("Pixel Area")
-            plt.ylabel("Count")
-            plt.show()
-
-        colors = ['blue', 'green', 'purple', 'tan', 'pink', 'red']
-
-        fig = plt.figure(1, figsize=(9, 6))
-        plt.title("%s Mask Points 1 to 48" % segmentation_type)
-
-        # Create an axes instance
-        ax = fig.add_subplot(111)
-
-        # Create the boxplot
-        bp = ax.boxplot(all_points_vessel_areas, showfliers=show_outliers, patch_artist=True)
-
-        for w, region in enumerate(brain_regions):
-            patches = bp['boxes'][region[0] - 1:region[1]]
-
-            for patch in patches:
-                patch.set(facecolor=colors[w])
-
-        plt.show()
-
-        return all_points_vessel_areas
-
     def vessel_nonvessel_masks(self,
                                n_expansions: int = 5,
                                **kwargs
@@ -3356,16 +3028,12 @@ class Visualizer:
 
         parent_dir = "%s/Associated Area Masks" % self.results_dir
 
-
-        for feed_idx in self.all_feeds_contour_data.index.get_level_values('Feed Index').unique():
-
-            feed_data = self.all_feeds_contour_data.loc[feed_idx]
-
-            idx = pd.IndexSlice
-            feed_name = self.all_feeds_metadata.loc[idx[feed_idx, 0], "Feed Name"]
-
-            feed_dir = "%s/%s" % (parent_dir, feed_name)
-            mkdir_p(feed_dir)
+        for feed_idx, feed_contours, feed_features, feed_dir in feed_features_iterator(self.all_samples_features,
+                                                                                       self.all_feeds_data,
+                                                                                       self.all_feeds_contour_data,
+                                                                                       self.all_feeds_metadata,
+                                                                                       save_to_dir=True,
+                                                                                       parent_dir=parent_dir):
 
             output_dir = "%s/%s%s Expansion" % (feed_dir,
                                                 str(round_to_nearest_half((n_expansions) *
@@ -3375,7 +3043,7 @@ class Visualizer:
             mkdir_p(output_dir)
 
             for point_num in range(self.config.n_points):
-                per_point_vessel_contours = feed_data.loc[point_num, "Contours"].contours
+                per_point_vessel_contours = feed_contours.loc[point_num, "Contours"].contours
 
                 regions = get_assigned_regions(per_point_vessel_contours, img_shape)
 
