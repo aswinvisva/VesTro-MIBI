@@ -7,8 +7,6 @@ from src.data_analysis.positive_vessel_summary_analyzer import PositiveVesselSum
 from src.data_analysis.vessel_asymmetry_analyzer import VesselAsymmetryAnalyzer
 from src.data_loading.mibi_data_feed import MIBIDataFeed
 from src.data_loading.mibi_loader import MIBILoader
-from src.data_visualization.heatmap import brain_region_expansion_heatmap, vessel_nonvessel_heatmap, \
-    pseudo_time_heatmap, categorical_split_expansion_heatmap
 from src.mibi_pipeline import MIBIPipeline
 from src.utils.utils_functions import mkdir_p
 
@@ -32,7 +30,7 @@ def medres_example():
 def hires_example():
     conf = Config()
 
-    results_dir = "results/experiment_%s/" % datetime.now().strftime("%d_%m_%Y_%H:%M:%S")
+    results_dir = "/media/aswin/large_storage/results/experiment_%s/" % datetime.now().strftime("%d_%m_%Y_%H:%M:%S")
     mkdir_p(results_dir)
 
     hires_feed = MIBIDataFeed(

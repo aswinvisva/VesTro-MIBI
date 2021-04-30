@@ -1004,7 +1004,7 @@ class Visualizer:
         mask_size = kwargs.get("mask_size", self.config.segmentation_mask_size)
 
         analysis_variable = kwargs.get('analysis_variable', "Asymmetry Score")
-        order = kwargs.get("order", None)
+        order = kwargs.get("order", ["25%", "50%", "75%", "100%"])
 
         # random.seed(10)  # 568, 570
 
