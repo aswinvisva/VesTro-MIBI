@@ -3,11 +3,6 @@ from abc import ABC
 from collections import Counter
 from multiprocessing import Pool
 
-from scipy.stats import iqr
-from sklearn.preprocessing import MinMaxScaler, PowerTransformer
-from tqdm import tqdm
-import cv2 as cv
-
 from src.data_analysis._shape_quantification_metrics import *
 from src.data_analysis.base_analyzer import BaseAnalyzer
 from src.data_loading.mibi_data_feed import MIBIDataFeed
@@ -107,10 +102,6 @@ class VesselAsymmetryAnalyzer(BaseAnalyzer, ABC):
                     self.all_samples_features["%s Score" % shape_quantification_name],
                     self.config.percentile_to_normalize,
                     axis=0)
-            # pt = PowerTransformer()
-            # self.all_samples_features["%s Score" % shape_quantification_name] =\
-            #     pt.fit_transform(self.all_samples_features[
-            #                          "%s Score" % shape_quantification_name].values.reshape(-1, 1))
 
             self.all_samples_features[shape_quantification_name] = "No"
 
