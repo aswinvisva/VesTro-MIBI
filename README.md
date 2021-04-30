@@ -10,25 +10,26 @@ This project is the main toolbox for MIBI data preprocessing and visualization.
 
 ## Usage for Linux/macOS
 
-1. Create a virtual environment 
+1. Clone the repository
 ```console
-python3 -m venv env
+git clone https://github.com/aswinvisva/oliveria-lab-ml.git
+
+cd oliveria-lab-ml/
 ```
 
-2. Activate the virtual environment:
+2. Install Docker [here](https://docs.docker.com/get-docker/)
+
+3. Build the Docker Image
 ```console
-source env/bin/activate
+sudo docker build -t oliveria-lab-ml .
 ```
 
-3. Install requirements:
+4. Run the Container with Bind Mount to Data Directory Saved in Local File System
 ```console
-pip3 install -r requirements.txt
+sudo docker run -v /path/to/data/ -p 8888:8888 oliveria-lab-ml
 ```
 
-4. Run the script:
-```console
-python3 main.py
-```
+5. Navigate to Jupyter Notebook URL
 
 ## Contributing
 
