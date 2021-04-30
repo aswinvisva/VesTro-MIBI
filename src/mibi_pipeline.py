@@ -10,6 +10,7 @@ from src.data_loading.mibi_data_feed import MIBIDataFeed
 from src.data_loading.mibi_loader import MIBILoader
 from src.data_loading.mibi_point_contours import MIBIPointContours
 from src.data_preprocessing.markers_feature_gen import *
+
 from src.data_preprocessing.object_extractor import ObjectExtractor
 from src.data_visualization.visualizer import Visualizer
 from config.config_settings import Config
@@ -476,6 +477,7 @@ class MIBIPipeline:
         assert self.max_outward_expansions >= max(self.expansions), "More expansions selected than available!"
 
         self.all_feeds_metadata, self.all_feeds_data, self.all_feeds_mask, self.marker_names = self.mibi_loader.read()
+
         # Collect all marker and mask data
 
         self.config.display()

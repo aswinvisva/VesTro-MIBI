@@ -262,7 +262,8 @@ def expansion_ring_plots(per_point_contours: list,
         result_mask = mask_expanded - mask
         result_mask = cv.bitwise_and(result_mask, regions[idx].astype(np.uint8))
 
-        _, temp_contours, _ = cv.findContours(regions[idx].astype(np.uint8), cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
+        temp_contours, _ = cv.findContours(regions[idx].astype(np.uint8), cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
+
         cv.drawContours(expansion_image, temp_contours, 0, (255, 255, 255), 1)
         expansion_image[np.where(result_mask != 0)] = color[0]
 

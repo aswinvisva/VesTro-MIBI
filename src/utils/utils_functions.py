@@ -8,6 +8,15 @@ import cv2 as cv
 import numpy as np
 
 
+def round_to_nearest_half(number):
+    """
+    Round float to nearest 0.5
+    :param number: float, number to round
+    :return: float, number rounded to nearest 0.5
+    """
+    return round(number * 2) / 2
+
+
 def mkdir_p(mypath: str):
     """
     Creates a directory. equivalent to using mkdir -p on the command line

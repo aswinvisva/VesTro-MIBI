@@ -7,6 +7,8 @@ from src.data_analysis.positive_vessel_summary_analyzer import PositiveVesselSum
 from src.data_analysis.vessel_asymmetry_analyzer import VesselAsymmetryAnalyzer
 from src.data_loading.mibi_data_feed import MIBIDataFeed
 from src.data_loading.mibi_loader import MIBILoader
+from src.data_visualization.heatmap import brain_region_expansion_heatmap, vessel_nonvessel_heatmap, \
+    pseudo_time_heatmap, categorical_split_expansion_heatmap
 from src.mibi_pipeline import MIBIPipeline
 from src.utils.utils_functions import mkdir_p
 
@@ -41,7 +43,7 @@ def hires_example():
     )
 
     pipe = MIBIPipeline(conf, results_dir,
-                        csv_loc="results/5um_impansion_5um_expansion.csv"
+                        csv_loc="/media/aswin/large_storage/results/5um_impansion_5um_expansion.csv"
                         )
     pipe.add_feed(hires_feed)
     pipe.load_preprocess_data()
@@ -58,27 +60,11 @@ def hires_example():
     pipe.analyze_data(marker_settings="all_markers",
                       shape_quantification_method=shape_quantification_method)
 
-    # pipe.save_to_csv()
+    pipe.save_to_csv()
 
-    # pipe.generate_visualizations(mask_type="mask_only",
-    #                              analysis_variable="Eccentricity",
-    #                              order=["25%", "50%", "75%", "100%"])
-
-    pipe.visualizer.average_quartile_violin_plot_subplots(mask_type="mask_and_expansion",
-                                                          analysis_variable=shape_quantification_method["Name"],
-                                                          order=["25%", "50%", "75%", "100%"])
-
-    pipe.visualizer.categorical_violin_plot_with_images(mask_type="mask_and_expansion",
-                                                        analysis_variable=shape_quantification_method["Name"],
-                                                        outward_expansion=10,
-                                                        order=["25%", "50%", "75%", "100%"])
-
-    # pipe.visualizer.continuous_scatter_plot(mask_type="mask_only",
-    #                                         analysis_variable="Eccentricity Score",
-    #                                         primary_categorical_splitter="Eccentricity")
-
-    pipe.visualizer.pseudo_time_heatmap(mask_type="mask_and_expansion",
-                                        analysis_variable="%s Score" % shape_quantification_method["Name"])
+    pipe.generate_visualizations(mask_type="mask_only",
+                                 analysis_variable="Eccentricity",
+                                 order=["25%", "50%", "75%", "100%"])
 
 
 if __name__ == '__main__':
