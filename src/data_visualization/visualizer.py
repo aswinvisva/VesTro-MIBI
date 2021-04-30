@@ -862,8 +862,6 @@ class Visualizer:
         # Calculate the point density
         xy = np.vstack([x_data, y_data])
 
-        print(xy)
-
         z = gaussian_kde(xy)(xy)
 
         plt.scatter(x_data, y_data, c=z, s=35, edgecolor='')
@@ -940,14 +938,12 @@ class Visualizer:
 
         cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", colors)
 
-        for feed_idx in range(self.all_feeds_data.shape[0]):
-            idx = pd.IndexSlice
-            feed_name = self.all_feeds_metadata.loc[idx[feed_idx, 0], "Feed Name"]
-            feed_data = self.all_feeds_contour_data.loc[feed_idx]
-
-            feed_dir = "%s/%s" % (parent_dir, feed_name)
-            mkdir_p(feed_dir)
-            feed_features = self.all_samples_features.loc[self.all_samples_features["Data Type"] == feed_name]
+        for feed_idx, feed_contours, feed_features, feed_dir in feed_features_iterator(self.all_samples_features,
+                                                                                       self.all_feeds_data,
+                                                                                       self.all_feeds_contour_data,
+                                                                                       self.all_feeds_metadata,
+                                                                                       save_to_dir=True,
+                                                                                       parent_dir=parent_dir):
 
             feed_features = loc_by_expansion(feed_features,
                                              expansion_type=mask_type,
