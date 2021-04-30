@@ -1005,6 +1005,7 @@ class Visualizer:
         mask_type = kwargs.get('mask_type', "expansion_only")
         outward_expansion = kwargs.get("outward_expansion", 0)
         inward_expansion = kwargs.get("inward_expansion", 0)
+        mask_size = kwargs.get("mask_size", self.config.segmentation_mask_size)
 
         analysis_variable = kwargs.get('analysis_variable', "Asymmetry Score")
         order = kwargs.get("order", None)
@@ -1019,14 +1020,12 @@ class Visualizer:
 
         cmap = matplotlib.cm.get_cmap('viridis')
 
-        for feed_idx in range(self.all_feeds_data.shape[0]):
-            idx = pd.IndexSlice
-            feed_name = self.all_feeds_metadata.loc[idx[feed_idx, 0], "Feed Name"]
-            feed_data = self.all_feeds_contour_data.loc[feed_idx]
-
-            feed_dir = "%s/%s" % (parent_dir, feed_name)
-            mkdir_p(feed_dir)
-            feed_features = self.all_samples_features.loc[self.all_samples_features["Data Type"] == feed_name]
+        for feed_idx, feed_contours, feed_features, feed_dir in feed_features_iterator(self.all_samples_features,
+                                                                                       self.all_feeds_data,
+                                                                                       self.all_feeds_contour_data,
+                                                                                       self.all_feeds_metadata,
+                                                                                       save_to_dir=True,
+                                                                                       parent_dir=parent_dir):
 
             feed_features = loc_by_expansion(feed_features,
                                              expansion_type=mask_type,
@@ -1066,29 +1065,32 @@ class Visualizer:
 
                     vessel_images[size][val] = []
 
+                    if len(split_features.index) == 0:
+                        continue
+
                     sample_index = random.sample(list(split_features.index), 1)[0]
 
                     point_idx = sample_index[0]
                     cnt_idx = sample_index[1]
 
-                    cnt = feed_data.loc[point_idx - 1, "Contours"].contours[cnt_idx]
+                    cnt = feed_contours.loc[point_idx - 1, "Contours"].contours[cnt_idx]
 
                     if mask_type == "mask_and_expansion":
                         mask = expand_vessel_region(cnt,
-                                                    self.config.segmentation_mask_size,
+                                                    mask_size,
                                                     upper_bound=outward_expansion,
                                                     lower_bound=0)
                     elif mask_type == "expansion_only":
-                        original_mask = np.zeros(self.config.segmentation_mask_size, np.uint8)
+                        original_mask = np.zeros(mask_size, np.uint8)
                         cv.drawContours(original_mask, [cnt], -1, (1, 1, 1), cv.FILLED)
 
                         mask_expanded = expand_vessel_region(cnt,
-                                                             self.config.segmentation_mask_size,
+                                                             mask_size,
                                                              upper_bound=outward_expansion,
                                                              lower_bound=0)
                         mask = mask_expanded - original_mask
                     elif mask_type == "mask_only":
-                        mask = np.zeros(self.config.segmentation_mask_size, np.uint8)
+                        mask = np.zeros(mask_size, np.uint8)
                         cv.drawContours(mask, [cnt], -1, (1, 1, 1), cv.FILLED)
 
                     marker_data = self.all_feeds_data[feed_idx, point_idx - 1]
@@ -1136,6 +1138,7 @@ class Visualizer:
 
                             for img_pair in vessel_images[size_key][key_val]:
                                 img = img_pair["Image"][marker_name]
+
                                 ax1 = fig.add_subplot(ax[row, column])
                                 color_map = ax1.imshow(img, origin='lower')
 
