@@ -368,6 +368,11 @@ class MIBIPipeline:
 
         assert self.visualizer is not None, "Please run preprocess_data() first!"
 
+        # Categorical Violin Plots with Vessel Image examples
+
+        if self.config.create_categorical_violin_plot_with_images:
+            self.visualizer.categorical_violin_plot_with_images(**kwargs)
+
         # Pseudo-Time Heatmaps
         if self.config.create_pseudo_time_heatmap:
             self.visualizer.pseudo_time_heatmap(**kwargs)

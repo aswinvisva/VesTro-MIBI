@@ -3,10 +3,12 @@ import unittest
 from os import path
 
 from config.config_settings import Config
+from src.data_analysis.vessel_asymmetry_analyzer import VesselAsymmetryAnalyzer
 from src.data_loading.mibi_data_feed import MIBIDataFeed
 from src.mibi_pipeline import MIBIPipeline
 from src.utils.test_utils import create_test_data
 from src.utils.utils_functions import round_to_nearest_half
+from src.data_analysis._shape_quantification_metrics import *
 
 
 class TestVisualizer(unittest.TestCase):
@@ -209,5 +211,102 @@ class TestVisualizer(unittest.TestCase):
                                                     mask_type="mask_and_expansion")
 
             test_path = "%s/Categorical Violin Plots/Test/By Vessel Size/Vessels/SMA.png" % temp_dir
+
+            assert path.exists(test_path)
+
+    def test_categorical_violin_plot_with_images(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            create_test_data(temp_dir, n_points=2, resolution=(2048, 2048))
+
+            config = Config()
+            example_feed = MIBIDataFeed(
+                feed_data_loc="%s/data" % temp_dir,
+                feed_mask_loc="%s/masks" % temp_dir,
+                feed_name="Test",
+                n_points=2
+            )
+
+            pipe = MIBIPipeline(config, temp_dir,
+                                csv_loc="data/dummy_test_data.csv",
+                                max_inward_expansions=1,
+                                max_outward_expansions=1,
+                                expansions=[1],
+                                n_workers=1,
+                                run_async=False
+                                )
+            pipe.add_feed(example_feed)
+            pipe.load_preprocess_data()
+
+            analyzer = VesselAsymmetryAnalyzer(
+                pipe.config,
+                pipe.all_expansions_features,
+                pipe.marker_names,
+                pipe.all_feeds_contour_data,
+                pipe.all_feeds_metadata,
+                pipe.all_feeds_data
+            )
+
+            analyzer.analyze(temp_dir,
+                             mask_type="expansion_only",
+                             marker_settings="all_markers",
+                             shape_quantification_method={
+                                 "Name": "Solidity",
+                                 "Metric": solidity
+                             },
+                             img_shape=(2048, 2048))
+
+            pipe.visualizer.categorical_violin_plot_with_images(analysis_variable="Solidity",
+                                                                mask_size=(2048, 2048),
+                                                                order=["25%", "50%", "75%", "100%"])
+
+            test_path = "%s/Categorical Violin Plots with Images/Test/By Solidity/Vessels/SMA.png" % temp_dir
+
+            assert path.exists(test_path)
+
+    def test_average_quartile_violin_plot_subplots(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            create_test_data(temp_dir, n_points=2, resolution=(2048, 2048))
+
+            config = Config()
+            example_feed = MIBIDataFeed(
+                feed_data_loc="%s/data" % temp_dir,
+                feed_mask_loc="%s/masks" % temp_dir,
+                feed_name="Test",
+                n_points=2
+            )
+
+            pipe = MIBIPipeline(config, temp_dir,
+                                csv_loc="data/dummy_test_data.csv",
+                                max_inward_expansions=1,
+                                max_outward_expansions=1,
+                                expansions=[1],
+                                n_workers=1,
+                                run_async=False
+                                )
+            pipe.add_feed(example_feed)
+            pipe.load_preprocess_data()
+
+            analyzer = VesselAsymmetryAnalyzer(
+                pipe.config,
+                pipe.all_expansions_features,
+                pipe.marker_names,
+                pipe.all_feeds_contour_data,
+                pipe.all_feeds_metadata,
+                pipe.all_feeds_data
+            )
+
+            analyzer.analyze(temp_dir,
+                             mask_type="expansion_only",
+                             marker_settings="all_markers",
+                             shape_quantification_method={
+                                 "Name": "Solidity",
+                                 "Metric": solidity
+                             },
+                             img_shape=(2048, 2048))
+
+            pipe.visualizer.average_quartile_violin_plot_subplots(analysis_variable="Solidity",
+                                                                  order=["25%", "50%", "75%", "100%"])
+
+            test_path = "%s/Average Quartile Violin Plots/Test/average_quartile_violins.png" % temp_dir
 
             assert path.exists(test_path)

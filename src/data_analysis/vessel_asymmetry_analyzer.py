@@ -3,11 +3,6 @@ from abc import ABC
 from collections import Counter
 from multiprocessing import Pool
 
-from scipy.stats import iqr
-from sklearn.preprocessing import MinMaxScaler
-from tqdm import tqdm
-import cv2 as cv
-
 from src.data_analysis._shape_quantification_metrics import *
 from src.data_analysis.base_analyzer import BaseAnalyzer
 from src.data_loading.mibi_data_feed import MIBIDataFeed
