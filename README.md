@@ -12,7 +12,7 @@ This project is the main toolbox for MIBI data preprocessing and visualization.
 
 1. Clone the repository
 ```console
-git clone https://github.com/aswinvisva/oliveria-lab-ml.git
+git clone https://github.com/aswinvisva/VesTro-MIBI.git
 
 cd oliveria-lab-ml/
 ```
@@ -21,12 +21,12 @@ cd oliveria-lab-ml/
 
 3. Build the Docker Image
 ```console
-sudo docker build -t oliveria-lab-ml .
+sudo docker build -t vestro-mibi .
 ```
 
 4. Run the Container with Bind Mount to Data Directory Saved in Local File System
 ```console
-sudo docker run -v /path/to/data/ -p 8888:8888 oliveria-lab-ml
+sudo docker run -v /path/to/data/ -p 8888:8888 vestro-mibi
 ```
 
 5. Navigate to Jupyter Notebook URL
@@ -35,7 +35,7 @@ sudo docker run -v /path/to/data/ -p 8888:8888 oliveria-lab-ml
 
 1. Clone the repository
 ```console
-git clone https://github.com/aswinvisva/oliveria-lab-ml.git
+git clone https://github.com/aswinvisva/VesTro-MIBI.git
 ```
 
 2. Create new branch and switch to it
