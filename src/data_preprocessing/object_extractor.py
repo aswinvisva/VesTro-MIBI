@@ -27,7 +27,8 @@ class ObjectExtractor:
 
     def extract(self,
                 img: np.ndarray,
-                point_name: str = "Point1") -> (list, list, list):
+                point_name: str = "Point1",
+                removed_contour_threshold: float = 125.0) -> (list, list, list):
         """
         Extract vessel contours and vessel ROI's from a segmentation mask
 
@@ -39,7 +40,7 @@ class ObjectExtractor:
         """
 
         show = self.config.show_vessel_contours_when_extracting
-        min_contour_area = self.config.minimum_contour_area_to_remove
+        min_contour_area = removed_contour_threshold
 
         if self.config.create_removed_vessels_mask:
             removed_vessels_img = np.zeros(self.config.segmentation_mask_size, np.uint8)

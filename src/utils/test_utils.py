@@ -13,7 +13,8 @@ from src.utils.utils_functions import mkdir_p
 
 def create_test_data(test_dir,
                      n_points=48,
-                     resolution=(2048, 2048)):
+                     resolution=(2048, 2048),
+                     n_pseudo_vessel_size=(10, 50)):
     config = Config()
 
     mask_dir = os.path.join(test_dir, "masks")
@@ -36,7 +37,7 @@ def create_test_data(test_dir,
                 data = generate_random_data(resolution)
                 write_tif_data(data, marker, point_data_dir)
 
-        mask = generate_random_mask(resolution)
+        mask = generate_random_mask(resolution, n_pseudo_vessel_size=n_pseudo_vessel_size)
         write_tif_data(mask, "allvessels", point_mask_dir)
 
 

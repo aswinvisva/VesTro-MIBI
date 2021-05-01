@@ -14,7 +14,7 @@ from config.config_settings import Config
 from src.data_preprocessing.markers_feature_gen import arcsinh
 
 
-class VesselAsymmetryAnalyzer(BaseAnalyzer, ABC):
+class ShapeQuantificationAnalyzer(BaseAnalyzer, ABC):
     """
     Class for the analysis of MIBI data
     """
@@ -35,12 +35,12 @@ class VesselAsymmetryAnalyzer(BaseAnalyzer, ABC):
         list of marker data for each point
         """
 
-        super(VesselAsymmetryAnalyzer, self).__init__(config,
-                                                      all_samples_features,
-                                                      markers_names,
-                                                      all_feeds_contour_data,
-                                                      all_feeds_metadata,
-                                                      all_points_marker_data)
+        super(ShapeQuantificationAnalyzer, self).__init__(config,
+                                                          all_samples_features,
+                                                          markers_names,
+                                                          all_feeds_contour_data,
+                                                          all_feeds_metadata,
+                                                          all_points_marker_data)
 
         self.config = config
         self.all_samples_features = all_samples_features

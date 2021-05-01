@@ -5,7 +5,6 @@ from multiprocessing import Pool
 from tqdm import tqdm
 
 from src.data_analysis.base_analyzer import BaseAnalyzer
-from src.data_analysis.vessel_asymmetry_analyzer import VesselAsymmetryAnalyzer
 from src.data_loading.mibi_data_feed import MIBIDataFeed
 from src.data_loading.mibi_loader import MIBILoader
 from src.data_loading.mibi_point_contours import MIBIPointContours
@@ -410,8 +409,8 @@ class MIBIPipeline:
         if self.config.create_embedded_vessel_id_masks:
             self.visualizer.obtain_embedded_vessel_masks(**kwargs)
 
-        if self.config.create_vessel_asymmetry_area_spread_plot:
-            self.visualizer.vessel_asymmetry_area_spread_plot(**kwargs)
+        if self.config.create_shape_area_spread_plot:
+            self.visualizer.vessel_shape_area_spread_plot(**kwargs)
 
         if self.config.create_categorical_violin_plot:
             self.visualizer.categorical_violin_plot(**kwargs)
@@ -490,11 +489,17 @@ class MIBIPipeline:
         for feed_idx in range(self.all_feeds_mask.shape[0]):
             all_points_contour_data = []
 
+            feed = self.all_feeds_metadata.loc[pd.IndexSlice[feed_idx, 0], "Feed"]
+
             for point_idx in range(self.all_feeds_mask.shape[1]):
+                removed_contour_threshold = self.config.minimum_contour_area_to_remove / float(
+                    (1.0 / feed.pixels_to_distance) ** 2)
+
                 mibi_contours = MIBIPointContours(self.all_feeds_mask[feed_idx, point_idx],
                                                   point_idx,
                                                   self.config,
-                                                  object_extractor)
+                                                  object_extractor,
+                                                  removed_contour_threshold=removed_contour_threshold)
 
                 contour_df = pd.DataFrame({
                     "Contours": mibi_contours
@@ -524,9 +529,10 @@ class MIBIPipeline:
 
             # Collect outward microenvironment expansion data, nonvessel space expansion data and vessel space expansion
             # data
-            all_expansions_features = self._get_outward_expansion_data(max_outward_expansions=self.max_outward_expansions,
-                                                                       n_workers=self.n_workers,
-                                                                       run_async=self.run_async)
+            all_expansions_features = self._get_outward_expansion_data(
+                max_outward_expansions=self.max_outward_expansions,
+                n_workers=self.n_workers,
+                run_async=self.run_async)
 
             if self.config.perform_inward_expansions:
                 all_expansions_features = all_expansions_features.append(all_inward_expansions_features)

@@ -61,25 +61,6 @@ class Config:
         'allvessels'
     ]
 
-    non_marker_vars = ["Contour Area",
-                       "Vessel Size",
-                       "SMA Presence",
-                       "Data Type",
-                       "Asymmetry",
-                       "Asymmetry Score",
-                       "Region"
-                       # "UMAP0",
-                       # "UMAP1",
-                       # "TSNE0",
-                       # "TSNE1",
-                       # "PCA0",
-                       # "PCA1",
-                       # "SVD0",
-                       # "SVD1",
-                       # "K-Means",
-                       # "Hierarchical"
-                       ]
-
     n_markers = 34
 
     if data_resolution == "hires":
@@ -128,7 +109,7 @@ class Config:
     # Settings for extracting vessels from segmentation mask
 
     show_vessel_contours_when_extracting = False
-    minimum_contour_area_to_remove = float(125) / float((1.0 / pixels_to_distance) ** 2)
+    minimum_contour_area_to_remove = float(125)
     use_guassian_blur_when_extracting_vessels = True
     create_removed_vessels_mask = False
     create_blurred_vessels_mask = False
@@ -166,9 +147,6 @@ class Config:
 
     # Split settings
 
-    primary_categorical_splitter = "Asymmetry"
-    secondary_categorical_splitter = "Vessel Size"
-
     SMA_positive_threshold = 0.1
     large_vessel_threshold = 500
     medium_vessel_threshold = 200  # 300
@@ -183,7 +161,7 @@ class Config:
     create_marker_expression_overlay_masks = False
     create_vessel_areas_histograms_and_boxplots = False
     create_brain_region_expansion_heatmaps = False  #
-    create_vessel_nonvessel_heatmaps = False  #
+    create_vessel_nonvessel_heatmaps = True  #
     create_categorical_split_expansion_heatmaps = False  #
     create_brain_region_expansion_line_plots = False  #
     create_point_expansion_line_plots = False  #
@@ -199,12 +177,12 @@ class Config:
     create_expansion_violin_plots = False  #
     create_categorical_violin_plot = False  #
     create_expansion_box_plots = False  #
-    create_vessel_asymmetry_area_spread_plot = False  #
+    create_shape_asymmetry_area_spread_plot = False  #
     create_continuous_scatter_plot = False  #
     create_umap_projection_scatter_plots = False  #
     create_vessel_images_by_categorical_variable = False  #
-    create_pseudo_time_heatmap = True  #
-    create_categorical_violin_plot_with_images = True  #
+    create_pseudo_time_heatmap = False  #
+    create_categorical_violin_plot_with_images = False  #
 
     if create_vessel_areas_histograms_and_boxplots:
         show_boxplot_outliers = False

@@ -490,133 +490,121 @@ class Visualizer:
         style = kwargs.get("style", None)
         size = kwargs.get("size", None)
 
-        marker_color_dict = {}
-        for marker_cluster in marker_clusters.keys():
-            for marker in marker_clusters[marker_cluster]:
-                marker_color_dict[marker] = colors[marker_cluster]
+        parent_dir = "%s/Line Plots Per Region" % self.results_dir
 
-        perbin_marker_color_dict = {}
-        for key in marker_clusters.keys():
-            colors_clusters = color_maps[key](np.linspace(0, 1, len(marker_clusters[key]) + 2))
-            color_idx = 2
+        mkdir_p(parent_dir)
 
-            for marker, marker_name in enumerate(marker_clusters[key]):
-                perbin_marker_color_dict[marker_name] = colors_clusters[color_idx]
-                color_idx += 1
-
-        idx = pd.IndexSlice
-        plot_features = self.all_samples_features.loc[idx[:,
-                                                      :,
-                                                      :n_expansions,
-                                                      "Data"], :]
-
-        plot_features = melt_markers(plot_features,
-                                     non_id_vars=self.markers_names,
-                                     reset_index=['Expansion'],
-                                     add_marker_group=True,
-                                     marker_groups=marker_clusters)
-
-        plot_features['Expansion'] = plot_features['Expansion'].apply(lambda x:
-                                                                      round_to_nearest_half(
-                                                                          x * self.config.pixel_interval
-                                                                          * self.config.pixels_to_distance))
-        plot_features = plot_features.rename(
-            columns={'Expansion': "Distance Expanded (%s)" % self.config.data_resolution_units})
-
-        plot_features['Region'] = pd.cut(plot_features['Point'],
-                                         bins=[self.config.brain_region_point_ranges[0][0] - 1,
-                                               self.config.brain_region_point_ranges[1][0] - 1,
-                                               self.config.brain_region_point_ranges[2][0] - 1,
-                                               float('Inf')],
-                                         labels=[self.config.brain_region_names[0],
-                                                 self.config.brain_region_names[1],
-                                                 self.config.brain_region_names[2]])
-
-        output_dir = "%s/Line Plots Per Region" % self.results_dir
-
-        mkdir_p(output_dir)
-
-        output_dir = "%s/%s%s Expansion" % (output_dir,
-                                            str(round_to_nearest_half((n_expansions) *
+        parent_dir = "%s/%s%s Expansion" % (parent_dir,
+                                            str(round_to_nearest_half(n_expansions *
                                                                       self.config.pixel_interval *
                                                                       self.config.pixels_to_distance)),
                                             self.config.data_resolution_units)
-        mkdir_p(output_dir)
+        mkdir_p(parent_dir)
 
-        for region in self.config.brain_region_names:
-            region_dir = "%s/%s" % (output_dir, region)
-            mkdir_p(region_dir)
+        for feed_idx, feed_contours, feed_features, feed_dir, brain_region_point_ranges, brain_region_names in feed_features_iterator(
+                self.all_samples_features,
+                self.all_feeds_data,
+                self.all_feeds_contour_data,
+                self.all_feeds_metadata,
+                save_to_dir=True,
+                parent_dir=parent_dir):
 
-            per_bin_dir = "%s/Per Bin" % region_dir
-            mkdir_p(per_bin_dir)
+            marker_color_dict = {}
+            for marker_cluster in marker_clusters.keys():
+                for marker in marker_clusters[marker_cluster]:
+                    marker_color_dict[marker] = colors[marker_cluster]
 
-            per_marker_dir = "%s/Per Marker" % region_dir
-            mkdir_p(per_marker_dir)
-
-            region_features = plot_features.loc[plot_features["Region"] == region]
-
-            plt.figure(figsize=(22, 10))
-
-            # Average Bins
-            g = sns.lineplot(data=region_features,
-                             x="Distance Expanded (%s)" % self.config.data_resolution_units,
-                             y="Expression",
-                             hue="Marker Group",
-                             style=style,
-                             palette=self.config.line_plots_bin_colors,
-                             ci=None)
-
-            box = g.get_position()
-            g.set_position([box.x0, box.y0, box.width * 0.85, box.height])  # resize position
-            g.legend(loc='center left', bbox_to_anchor=(1, 0.5), ncol=1)
-
-            plt.savefig(region_dir + '/Average_Bins.png', bbox_inches='tight')
-            plt.clf()
-
-            # All Bins
-            g = sns.lineplot(data=region_features,
-                             x="Distance Expanded (%s)" % self.config.data_resolution_units,
-                             y="Expression",
-                             hue="Marker",
-                             palette=marker_color_dict,
-                             ci=None,
-                             legend=False)
+            perbin_marker_color_dict = {}
             for key in marker_clusters.keys():
-                g.plot([], [], color=colors[key], label=key)
+                colors_clusters = color_maps[key](np.linspace(0, 1, len(marker_clusters[key]) + 2))
+                color_idx = 2
 
-            box = g.get_position()
-            g.set_position([box.x0, box.y0, box.width * 0.85, box.height])  # resize position
-            g.legend(loc='center left', bbox_to_anchor=(1, 0.5), ncol=1)
+                for marker, marker_name in enumerate(marker_clusters[key]):
+                    perbin_marker_color_dict[marker_name] = colors_clusters[color_idx]
+                    color_idx += 1
 
-            plt.savefig(region_dir + '/All_Bins.png', bbox_inches='tight')
-            plt.clf()
+            idx = pd.IndexSlice
+            plot_features = feed_features.loc[idx[:,
+                                              :,
+                                              :n_expansions,
+                                              "Data"], :]
 
-            for key in marker_clusters.keys():
-                bin_features = region_features.loc[region_features["Marker Group"] == key]
-                # Per Bin
-                g = sns.lineplot(data=bin_features,
+            plot_features = melt_markers(plot_features,
+                                         non_id_vars=self.markers_names,
+                                         reset_index=['Expansion'],
+                                         add_marker_group=True,
+                                         marker_groups=marker_clusters)
+
+            plot_features['Expansion'] = plot_features['Expansion'].apply(lambda x:
+                                                                          round_to_nearest_half(
+                                                                              x * self.config.pixel_interval
+                                                                              * self.config.pixels_to_distance))
+            plot_features = plot_features.rename(
+                columns={'Expansion': "Distance Expanded (%s)" % self.config.data_resolution_units})
+
+            bins = [brain_region_point_ranges[i][0] - 1 for i in range(len(brain_region_point_ranges))]
+            bins.append(float('Inf'))
+
+            plot_features['Region'] = pd.cut(plot_features['Point'],
+                                             bins=bins,
+                                             labels=brain_region_names)
+
+            for region in self.config.brain_region_names:
+                region_dir = "%s/%s" % (feed_dir, region)
+                mkdir_p(region_dir)
+
+                per_bin_dir = "%s/Per Bin" % region_dir
+                mkdir_p(per_bin_dir)
+
+                per_marker_dir = "%s/Per Marker" % region_dir
+                mkdir_p(per_marker_dir)
+
+                region_features = plot_features.loc[plot_features["Region"] == region]
+
+                plt.figure(figsize=(22, 10))
+
+                # Average Bins
+                g = sns.lineplot(data=region_features,
                                  x="Distance Expanded (%s)" % self.config.data_resolution_units,
                                  y="Expression",
-                                 hue="Marker",
+                                 hue="Marker Group",
                                  style=style,
-                                 palette=perbin_marker_color_dict,
+                                 palette=self.config.line_plots_bin_colors,
                                  ci=None)
 
                 box = g.get_position()
                 g.set_position([box.x0, box.y0, box.width * 0.85, box.height])  # resize position
                 g.legend(loc='center left', bbox_to_anchor=(1, 0.5), ncol=1)
 
-                plt.savefig(per_bin_dir + '/%s.png' % str(key), bbox_inches='tight')
+                plt.savefig(region_dir + '/Average_Bins.png', bbox_inches='tight')
                 plt.clf()
 
-                for marker in marker_clusters[key]:
-                    marker_features = plot_features.loc[plot_features["Marker"] == marker]
-                    g = sns.lineplot(data=marker_features,
+                # All Bins
+                g = sns.lineplot(data=region_features,
+                                 x="Distance Expanded (%s)" % self.config.data_resolution_units,
+                                 y="Expression",
+                                 hue="Marker",
+                                 palette=marker_color_dict,
+                                 ci=None,
+                                 legend=False)
+                for key in marker_clusters.keys():
+                    g.plot([], [], color=colors[key], label=key)
+
+                box = g.get_position()
+                g.set_position([box.x0, box.y0, box.width * 0.85, box.height])  # resize position
+                g.legend(loc='center left', bbox_to_anchor=(1, 0.5), ncol=1)
+
+                plt.savefig(region_dir + '/All_Bins.png', bbox_inches='tight')
+                plt.clf()
+
+                for key in marker_clusters.keys():
+                    bin_features = region_features.loc[region_features["Marker Group"] == key]
+                    # Per Bin
+                    g = sns.lineplot(data=bin_features,
                                      x="Distance Expanded (%s)" % self.config.data_resolution_units,
                                      y="Expression",
                                      hue="Marker",
                                      style=style,
-                                     size=size,
                                      palette=perbin_marker_color_dict,
                                      ci=None)
 
@@ -624,8 +612,26 @@ class Visualizer:
                     g.set_position([box.x0, box.y0, box.width * 0.85, box.height])  # resize position
                     g.legend(loc='center left', bbox_to_anchor=(1, 0.5), ncol=1)
 
-                    plt.savefig(per_marker_dir + '/%s.png' % str(marker), bbox_inches='tight')
+                    plt.savefig(per_bin_dir + '/%s.png' % str(key), bbox_inches='tight')
                     plt.clf()
+
+                    for marker in marker_clusters[key]:
+                        marker_features = plot_features.loc[plot_features["Marker"] == marker]
+                        g = sns.lineplot(data=marker_features,
+                                         x="Distance Expanded (%s)" % self.config.data_resolution_units,
+                                         y="Expression",
+                                         hue="Marker",
+                                         style=style,
+                                         size=size,
+                                         palette=perbin_marker_color_dict,
+                                         ci=None)
+
+                        box = g.get_position()
+                        g.set_position([box.x0, box.y0, box.width * 0.85, box.height])  # resize position
+                        g.legend(loc='center left', bbox_to_anchor=(1, 0.5), ncol=1)
+
+                        plt.savefig(per_marker_dir + '/%s.png' % str(marker), bbox_inches='tight')
+                        plt.clf()
 
     def obtain_expanded_vessel_masks(self, **kwargs):
         """
@@ -646,12 +652,13 @@ class Visualizer:
                                    self.config.data_resolution_units)
         mkdir_p(parent_dir)
 
-        for feed_idx, feed_contours, feed_features, feed_dir in feed_features_iterator(self.all_samples_features,
-                                                                                       self.all_feeds_data,
-                                                                                       self.all_feeds_contour_data,
-                                                                                       self.all_feeds_metadata,
-                                                                                       save_to_dir=True,
-                                                                                       parent_dir=parent_dir):
+        for feed_idx, feed_contours, feed_features, feed_dir, brain_region_point_ranges, brain_region_names in feed_features_iterator(
+                self.all_samples_features,
+                self.all_feeds_data,
+                self.all_feeds_contour_data,
+                self.all_feeds_metadata,
+                save_to_dir=True,
+                parent_dir=parent_dir):
 
             distinct_dir = "%s/Original Mask Excluded" % feed_dir
             mkdir_p(distinct_dir)
@@ -714,12 +721,13 @@ class Visualizer:
                                    self.config.data_resolution_units)
         mkdir_p(parent_dir)
 
-        for feed_idx, feed_contours, feed_features, feed_dir in feed_features_iterator(self.all_samples_features,
-                                                                                       self.all_feeds_data,
-                                                                                       self.all_feeds_contour_data,
-                                                                                       self.all_feeds_metadata,
-                                                                                       save_to_dir=True,
-                                                                                       parent_dir=parent_dir):
+        for feed_idx, feed_contours, feed_features, feed_dir, brain_region_point_ranges, brain_region_names in feed_features_iterator(
+                self.all_samples_features,
+                self.all_feeds_data,
+                self.all_feeds_contour_data,
+                self.all_feeds_metadata,
+                save_to_dir=True,
+                parent_dir=parent_dir):
 
             distinct_dir = "%s/Original Mask Excluded" % feed_dir
             mkdir_p(distinct_dir)
@@ -775,12 +783,13 @@ class Visualizer:
 
         mkdir_p(parent_dir)
 
-        for feed_idx, feed_contours, feed_features, feed_dir in feed_features_iterator(self.all_samples_features,
-                                                                                       self.all_feeds_data,
-                                                                                       self.all_feeds_contour_data,
-                                                                                       self.all_feeds_metadata,
-                                                                                       save_to_dir=True,
-                                                                                       parent_dir=parent_dir):
+        for feed_idx, feed_contours, feed_features, feed_dir, brain_region_point_ranges, brain_region_names in feed_features_iterator(
+                self.all_samples_features,
+                self.all_feeds_data,
+                self.all_feeds_contour_data,
+                self.all_feeds_metadata,
+                save_to_dir=True,
+                parent_dir=parent_dir):
 
             for point_num in range(n_points):
                 current_interval = interval
@@ -923,7 +932,7 @@ class Visualizer:
         Pseduotime Heatmap and Violin Plot subplot
         """
         mask_type = kwargs.get('mask_type', "expansion_only")
-        analysis_variable = kwargs.get('analysis_variable', "Asymmetry")
+        primary_categorical_analysis_variable = kwargs.get('primary_categorical_analysis_variable', "Solidity")
         order = kwargs.get("order", None)
         parent_dir = "%s/Average Quartile Violin Plots" % self.results_dir
         marker_clusters = self.config.marker_clusters
@@ -938,12 +947,13 @@ class Visualizer:
 
         cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", colors)
 
-        for feed_idx, feed_contours, feed_features, feed_dir in feed_features_iterator(self.all_samples_features,
-                                                                                       self.all_feeds_data,
-                                                                                       self.all_feeds_contour_data,
-                                                                                       self.all_feeds_metadata,
-                                                                                       save_to_dir=True,
-                                                                                       parent_dir=parent_dir):
+        for feed_idx, feed_contours, feed_features, feed_dir, brain_region_point_ranges, brain_region_names in feed_features_iterator(
+                self.all_samples_features,
+                self.all_feeds_data,
+                self.all_feeds_contour_data,
+                self.all_feeds_metadata,
+                save_to_dir=True,
+                parent_dir=parent_dir):
 
             feed_features = loc_by_expansion(feed_features,
                                              expansion_type=mask_type,
@@ -970,7 +980,7 @@ class Visualizer:
 
                     ax2 = fig.add_subplot(ax[row, column])
 
-                    sns.violinplot(x=analysis_variable,
+                    sns.violinplot(x=primary_categorical_analysis_variable,
                                    y="Expression",
                                    order=order,
                                    inner="quartile",
@@ -1003,7 +1013,8 @@ class Visualizer:
         inward_expansion = kwargs.get("inward_expansion", 0)
         mask_size = kwargs.get("mask_size", self.config.segmentation_mask_size)
 
-        analysis_variable = kwargs.get('analysis_variable', "Asymmetry Score")
+        primary_categorical_analysis_variable = kwargs.get('primary_categorical_analysis_variable',
+                                                           "Solidity")
         order = kwargs.get("order", ["25%", "50%", "75%", "100%"])
 
         # random.seed(10)  # 568, 570
@@ -1016,12 +1027,13 @@ class Visualizer:
 
         cmap = matplotlib.cm.get_cmap('viridis')
 
-        for feed_idx, feed_contours, feed_features, feed_dir in feed_features_iterator(self.all_samples_features,
-                                                                                       self.all_feeds_data,
-                                                                                       self.all_feeds_contour_data,
-                                                                                       self.all_feeds_metadata,
-                                                                                       save_to_dir=True,
-                                                                                       parent_dir=parent_dir):
+        for feed_idx, feed_contours, feed_features, feed_dir, brain_region_point_ranges, brain_region_names in feed_features_iterator(
+                self.all_samples_features,
+                self.all_feeds_data,
+                self.all_feeds_contour_data,
+                self.all_feeds_metadata,
+                save_to_dir=True,
+                parent_dir=parent_dir):
 
             feed_features = loc_by_expansion(feed_features,
                                              expansion_type=mask_type,
@@ -1046,7 +1058,7 @@ class Visualizer:
                                                    "75%",
                                                    "100%"])
 
-            split_dir = "%s/By %s" % (feed_dir, analysis_variable)
+            split_dir = "%s/By %s" % (feed_dir, primary_categorical_analysis_variable)
             mkdir_p(split_dir)
 
             vessel_images = {}
@@ -1054,9 +1066,9 @@ class Visualizer:
 
                 vessel_images[size] = {}
 
-                for val in feed_features[analysis_variable].unique():
+                for val in feed_features[primary_categorical_analysis_variable].unique():
 
-                    split_features = feed_features[(feed_features[analysis_variable] == val) &
+                    split_features = feed_features[(feed_features[primary_categorical_analysis_variable] == val) &
                                                    (feed_features['Size'] == size)]
 
                     vessel_images[size][val] = []
@@ -1106,8 +1118,8 @@ class Visualizer:
 
                         x, y, w, h = cv.boundingRect(cnt)
                         marker_dict[marker] = result[
-                                              max(0, y-outward_expansion):y + h + outward_expansion,
-                                              max(0, x-outward_expansion):x + w + outward_expansion]
+                                              max(0, y - outward_expansion):y + h + outward_expansion,
+                                              max(0, x - outward_expansion):x + w + outward_expansion]
 
                     vessel_images[size][val].append({
                         "Index": (point_idx, cnt_idx),
@@ -1152,7 +1164,7 @@ class Visualizer:
 
                     sns.violinplot(x="Size",
                                    y="Expression",
-                                   hue=analysis_variable,
+                                   hue=primary_categorical_analysis_variable,
                                    hue_order=order,
                                    inner="quartile",
                                    data=marker_features,
@@ -1162,7 +1174,7 @@ class Visualizer:
                     violin_ax.set_ylim(-0.15, 1.75)
 
                     violin_ax.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.,
-                                     title=analysis_variable)
+                                     title=primary_categorical_analysis_variable)
 
                     fig.savefig(marker_cluster_dir + '/%s.png' % str(marker_name),
                                 bbox_inches='tight')
@@ -1174,7 +1186,7 @@ class Visualizer:
         """
 
         mask_type = kwargs.get('mask_type', "expansion_only")
-        analysis_variable = kwargs.get('analysis_variable', "Asymmetry Score")
+        primary_categorical_analysis_variable = kwargs.get('primary_categorical_analysis_variable', "Solidity")
         order = kwargs.get("order", None)
 
         parent_dir = "%s/Categorical Violin Plots" % self.results_dir
@@ -1183,12 +1195,13 @@ class Visualizer:
 
         marker_clusters = self.config.marker_clusters
 
-        for feed_idx, feed_contours, feed_features, feed_dir in feed_features_iterator(self.all_samples_features,
-                                                                                       self.all_feeds_data,
-                                                                                       self.all_feeds_contour_data,
-                                                                                       self.all_feeds_metadata,
-                                                                                       save_to_dir=True,
-                                                                                       parent_dir=parent_dir):
+        for feed_idx, feed_contours, feed_features, feed_dir, brain_region_point_ranges, brain_region_names in feed_features_iterator(
+                self.all_samples_features,
+                self.all_feeds_data,
+                self.all_feeds_contour_data,
+                self.all_feeds_metadata,
+                save_to_dir=True,
+                parent_dir=parent_dir):
 
             feed_features = loc_by_expansion(feed_features,
                                              expansion_type=mask_type,
@@ -1207,7 +1220,7 @@ class Visualizer:
                                                    "Medium",
                                                    "Large"])
 
-            split_dir = "%s/By %s" % (feed_dir, analysis_variable)
+            split_dir = "%s/By %s" % (feed_dir, primary_categorical_analysis_variable)
             mkdir_p(split_dir)
 
             for key in marker_clusters.keys():
@@ -1221,7 +1234,7 @@ class Visualizer:
 
                     ax = sns.violinplot(x="Size",
                                         y="Expression",
-                                        hue=analysis_variable,
+                                        hue=primary_categorical_analysis_variable,
                                         hue_order=order,
                                         inner="box",
                                         data=marker_features,
@@ -1230,7 +1243,7 @@ class Visualizer:
                                         )
 
                     plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.,
-                               title=analysis_variable)
+                               title=primary_categorical_analysis_variable)
 
                     plt.savefig(marker_cluster_dir + '/%s.png' % str(marker_name),
                                 bbox_inches='tight')
@@ -1248,7 +1261,7 @@ class Visualizer:
 
                     plt.figure(figsize=(10, 10))
 
-                    ax = sns.violinplot(x=analysis_variable,
+                    ax = sns.violinplot(x=primary_categorical_analysis_variable,
                                         y="Expression",
                                         order=order,
                                         inner="box",
@@ -1269,6 +1282,8 @@ class Visualizer:
 
         :return:
         """
+
+        primary_categorical_analysis_variable = kwargs.get("primary_categorical_analysis_variable", "Vessel Size")
 
         dist_upper_end = 1.75
 
@@ -1333,15 +1348,6 @@ class Visualizer:
         plot_features = plot_features.rename(
             columns={'Expansion': "Distance Expanded (%s)" % self.config.data_resolution_units})
 
-        plot_features['Region'] = pd.cut(plot_features['Point'],
-                                         bins=[self.config.brain_region_point_ranges[0][0] - 1,
-                                               self.config.brain_region_point_ranges[1][0] - 1,
-                                               self.config.brain_region_point_ranges[2][0] - 1,
-                                               float('Inf')],
-                                         labels=[self.config.brain_region_names[0],
-                                                 self.config.brain_region_names[1],
-                                                 self.config.brain_region_names[2]])
-
         for key in marker_clusters.keys():
             colors_clusters = color_maps[key](np.linspace(0, 1, 6))[3:]
 
@@ -1359,19 +1365,11 @@ class Visualizer:
 
                 ax = sns.violinplot(x="Distance Expanded (%s)" % self.config.data_resolution_units,
                                     y="Expression",
-                                    hue=self.config.primary_categorical_splitter,
+                                    hue=primary_categorical_analysis_variable,
                                     palette=colors_clusters,
                                     inner=None,
                                     data=marker_features,
                                     bw=0.2)
-
-                if self.config.primary_categorical_splitter is None:
-                    sns.pointplot(x="Distance Expanded (%s)" % self.config.data_resolution_units,
-                                  y="Expression",
-                                  hue="Region", data=marker_features,
-                                  markers=["o", "x", "^"],
-                                  join=False
-                                  )
 
                 plt.savefig(per_marker_expansions_dir + '/%s.png' % str(marker_name),
                             bbox_inches='tight')
@@ -1391,19 +1389,11 @@ class Visualizer:
 
             ax = sns.violinplot(x="Distance Expanded (%s)" % self.config.data_resolution_units,
                                 y="Expression",
-                                hue=self.config.primary_categorical_splitter,
+                                hue=primary_categorical_analysis_variable,
                                 palette=colors_clusters,
                                 inner=None,
                                 data=marker_features,
                                 bw=0.2)
-            if self.config.primary_categorical_splitter is None:
-                sns.pointplot(x="Distance Expanded (%s)" % self.config.data_resolution_units,
-                              y="Expression",
-                              hue="Region",
-                              data=marker_features,
-                              markers=["o", "x", "^"],
-                              join=False
-                              )
 
             plt.savefig(per_bin_expansions_dir + '/%s.png' % str(key),
                         bbox_inches='tight')
@@ -1417,6 +1407,8 @@ class Visualizer:
 
         :return:
         """
+
+        primary_categorical_analysis_variable = kwargs.get("primary_categorical_analysis_variable", "Vessel Size")
 
         dist_upper_end = 1.75
 
@@ -1481,15 +1473,6 @@ class Visualizer:
         plot_features = plot_features.rename(
             columns={'Expansion': "Distance Expanded (%s)" % self.config.data_resolution_units})
 
-        plot_features['Region'] = pd.cut(plot_features['Point'],
-                                         bins=[self.config.brain_region_point_ranges[0][0] - 1,
-                                               self.config.brain_region_point_ranges[1][0] - 1,
-                                               self.config.brain_region_point_ranges[2][0] - 1,
-                                               float('Inf')],
-                                         labels=[self.config.brain_region_names[0],
-                                                 self.config.brain_region_names[1],
-                                                 self.config.brain_region_names[2]])
-
         for key in marker_clusters.keys():
             colors_clusters = color_maps[key](np.linspace(0, 1, 6))[3:]
 
@@ -1507,7 +1490,7 @@ class Visualizer:
 
                 ax = sns.boxplot(x="Distance Expanded (%s)" % self.config.data_resolution_units,
                                  y="Expression",
-                                 hue=self.config.primary_categorical_splitter,
+                                 hue=primary_categorical_analysis_variable,
                                  palette=colors_clusters,
                                  data=marker_features)
 
@@ -1529,7 +1512,7 @@ class Visualizer:
 
             ax = sns.boxplot(x="Distance Expanded (%s)" % self.config.data_resolution_units,
                              y="Expression",
-                             hue=self.config.primary_categorical_splitter,
+                             hue=primary_categorical_analysis_variable,
                              palette=colors_clusters,
                              data=marker_features)
 
@@ -1544,16 +1527,21 @@ class Visualizer:
         :return:
         """
 
+        mask_size = kwargs.get("mask_size", self.config.segmentation_mask_size)
+
         parent_dir = "%s/Pixel Expression Spatial Maps" % self.results_dir
 
         mkdir_p(parent_dir)
 
-        for feed_idx, feed_contours, feed_features, feed_dir in feed_features_iterator(self.all_samples_features,
-                                                                                       self.all_feeds_data,
-                                                                                       self.all_feeds_contour_data,
-                                                                                       self.all_feeds_metadata,
-                                                                                       save_to_dir=True,
-                                                                                       parent_dir=parent_dir):
+        for feed_idx, feed_contours, feed_features, feed_dir, brain_region_point_ranges, brain_region_names in feed_features_iterator(
+                self.all_samples_features,
+                self.all_feeds_data,
+                self.all_feeds_contour_data,
+                self.all_feeds_metadata,
+                save_to_dir=True,
+                parent_dir=parent_dir):
+
+            n_points = len(feed_features.index.get_level_values("Point").unique())
 
             vessels_dir = "%s/Vessels" % feed_dir
             mkdir_p(vessels_dir)
@@ -1564,7 +1552,7 @@ class Visualizer:
             all_markers_dir = "%s/All Markers" % feed_dir
             mkdir_p(all_markers_dir)
 
-            for point_idx in range(self.config.n_points):
+            for point_idx in range(n_points):
 
                 marker_data = self.all_feeds_data[feed_idx, point_idx]
 
@@ -1588,7 +1576,7 @@ class Visualizer:
                 mkdir_p(point_dir)
 
                 for contour_idx, c in enumerate(point_contours):
-                    mask = np.zeros(self.config.segmentation_mask_size, np.uint8)
+                    mask = np.zeros(mask_size, np.uint8)
                     cv.drawContours(mask, [c], -1, (1, 1, 1), cv.FILLED)
 
                     my_cm = matplotlib.cm.get_cmap('jet')
@@ -1610,7 +1598,7 @@ class Visualizer:
 
                     plt.clf()
 
-            for point_idx in range(self.config.n_points):
+            for point_idx in range(n_points):
 
                 marker_data = self.all_feeds_data[feed_idx, point_idx]
 
@@ -1635,7 +1623,7 @@ class Visualizer:
                 mkdir_p(point_dir)
 
                 for contour_idx, c in enumerate(point_contours):
-                    mask = np.zeros(self.config.segmentation_mask_size, np.uint8)
+                    mask = np.zeros(mask_size, np.uint8)
                     cv.drawContours(mask, [c], -1, (1, 1, 1), cv.FILLED)
 
                     my_cm = matplotlib.cm.get_cmap('jet')
@@ -1657,7 +1645,7 @@ class Visualizer:
 
                     plt.clf()
 
-            for point_idx in range(self.config.n_points):
+            for point_idx in range(n_points):
 
                 marker_data = self.all_feeds_data[feed_idx, point_idx]
 
@@ -1692,31 +1680,31 @@ class Visualizer:
         Vessel Images by Categorical Variable
         :return:
         """
-        analysis_variable = kwargs.get("analysis_variable", "Asymmetry")
+        primary_categorical_analysis_variable = kwargs.get("primary_categorical_analysis_variable", "Solidity")
         n_examples = kwargs.get("n_examples", 10)
         random.seed(42)
 
-        assert analysis_variable is not None, "There must be a primary categorical splitter"
+        assert primary_categorical_analysis_variable is not None, "There must be a primary categorical splitter"
 
-        parent_dir = "%s/%s Vessel Images" % (self.results_dir
-                                              ,
-                                              analysis_variable)
+        parent_dir = "%s/%s Vessel Images" % (self.results_dir,
+                                              primary_categorical_analysis_variable)
 
         img_shape = self.config.segmentation_mask_size
 
-        for feed_idx, feed_contours, feed_features, feed_dir in feed_features_iterator(self.all_samples_features,
-                                                                                       self.all_feeds_data,
-                                                                                       self.all_feeds_contour_data,
-                                                                                       self.all_feeds_metadata,
-                                                                                       save_to_dir=True,
-                                                                                       parent_dir=parent_dir):
+        for feed_idx, feed_contours, feed_features, feed_dir, brain_region_point_ranges, brain_region_names in feed_features_iterator(
+                self.all_samples_features,
+                self.all_feeds_data,
+                self.all_feeds_contour_data,
+                self.all_feeds_metadata,
+                save_to_dir=True,
+                parent_dir=parent_dir):
 
-            for val in feed_features[analysis_variable].unique():
+            for val in feed_features[primary_categorical_analysis_variable].unique():
 
                 output_dir = "%s/%s" % (feed_dir, val)
                 mkdir_p(output_dir)
 
-                split_features = feed_features[feed_features[analysis_variable] == val]
+                split_features = feed_features[feed_features[primary_categorical_analysis_variable] == val]
 
                 for i in random.sample(list(split_features.index), min(n_examples, len(list(split_features.index)))):
                     point_idx = i[0]
@@ -1785,76 +1773,82 @@ class Visualizer:
         """
 
         mask_type = kwargs.get('mask_type', "mask_only")
-        analysis_variable = kwargs.get('analysis_variable', "Asymmetry Score")
+        primary_continuous_analysis_variable = kwargs.get('primary_continuous_analysis_variable', "Solidity Score")
 
-        plot_features = loc_by_expansion(self.all_samples_features,
-                                         expansion_type=mask_type,
-                                         average=False)
+        parent_dir = self.results_dir + "/UMAP Scatter Plot Projection"
 
-        output_dir = self.results_dir + "/UMAP Scatter Plot Projection"
+        for feed_idx, feed_contours, feed_features, feed_dir, brain_region_point_ranges, brain_region_names in feed_features_iterator(
+                self.all_samples_features,
+                self.all_feeds_data,
+                self.all_feeds_contour_data,
+                self.all_feeds_metadata,
+                save_to_dir=True,
+                parent_dir=parent_dir):
 
-        for marker_cluster in self.config.marker_clusters.keys():
-            plot_features[marker_cluster] = \
-                plot_features.loc[pd.IndexSlice[:,
-                                  :,
-                                  :,
-                                  :], self.config.marker_clusters[marker_cluster]].mean(axis=1)
+            plot_features = loc_by_expansion(feed_features,
+                                             expansion_type=mask_type,
+                                             average=False)
 
-        for marker_cluster in self.config.marker_clusters.keys():
+            for marker_cluster in self.config.marker_clusters.keys():
+                plot_features[marker_cluster] = \
+                    plot_features.loc[pd.IndexSlice[:,
+                                      :,
+                                      :,
+                                      :], self.config.marker_clusters[marker_cluster]].mean(axis=1)
 
-            self._scatter_plot_color_bar(marker_cluster,
-                                         output_dir + "/Marker Clusters",
-                                         plot_features,
-                                         hue=marker_cluster,
-                                         min_val=0,
-                                         max_val=1)
+            for marker_cluster in self.config.marker_clusters.keys():
 
-            for marker in self.config.marker_clusters[marker_cluster]:
-                self._scatter_plot_color_bar(marker,
-                                             output_dir + "/Individual Markers",
+                self._scatter_plot_color_bar(marker_cluster,
+                                             feed_dir + "/Marker Clusters",
                                              plot_features,
-                                             hue=marker)
+                                             hue=marker_cluster,
+                                             min_val=0,
+                                             max_val=1)
 
-        self._scatter_plot_color_bar("umap_projection_by_size",
-                                     output_dir + "/Size",
-                                     plot_features,
-                                     hue="Contour Area",
-                                     min_val=self.config.small_vessel_threshold,
-                                     max_val=1000)
+                for marker in self.config.marker_clusters[marker_cluster]:
+                    self._scatter_plot_color_bar(marker,
+                                                 feed_dir + "/Individual Markers",
+                                                 plot_features,
+                                                 hue=marker)
 
-        self._scatter_plot_color_bar("umap_projection",
-                                     output_dir + "/%s" % analysis_variable,
-                                     plot_features,
-                                     hue=analysis_variable,
-                                     min_val=plot_features[analysis_variable].min(),
-                                     max_val=1.25)
+            self._scatter_plot_color_bar("umap_projection_by_size",
+                                         feed_dir + "/Size",
+                                         plot_features,
+                                         hue="Contour Area",
+                                         min_val=self.config.small_vessel_threshold,
+                                         max_val=1000)
 
-        plot_features.reset_index(level=['Point'], inplace=True)
+            self._scatter_plot_color_bar("umap_projection",
+                                         feed_dir + "/%s" % primary_continuous_analysis_variable,
+                                         plot_features,
+                                         hue=primary_continuous_analysis_variable,
+                                         min_val=plot_features[primary_continuous_analysis_variable].min(),
+                                         max_val=1.25)
 
-        plot_features['Region'] = pd.cut(plot_features['Point'],
-                                         bins=[self.config.brain_region_point_ranges[0][0] - 1,
-                                               self.config.brain_region_point_ranges[1][0] - 1,
-                                               self.config.brain_region_point_ranges[2][0] - 1,
-                                               float('Inf')],
-                                         labels=[self.config.brain_region_names[0],
-                                                 self.config.brain_region_names[1],
-                                                 self.config.brain_region_names[2]])
+            plot_features.reset_index(level=['Point'], inplace=True)
 
-        region_dir = output_dir + "/Region"
-        mkdir_p(region_dir)
+            bins = [brain_region_point_ranges[i][0] - 1 for i in range(len(brain_region_point_ranges))]
+            bins.append(float('Inf'))
 
-        g = sns.scatterplot(data=plot_features,
-                            x="UMAP0",
-                            y="UMAP1",
-                            hue="Region",
-                            ci=None,
-                            palette="tab20")
+            plot_features['Region'] = pd.cut(plot_features['Point'],
+                                             bins=bins,
+                                             labels=brain_region_names)
 
-        plt.legend(bbox_to_anchor=(1.05, 1), loc=2,
-                   borderaxespad=0.)
+            region_dir = feed_dir + "/Region"
+            mkdir_p(region_dir)
 
-        plt.savefig(region_dir + '/umap_projection_by_region.png', bbox_inches='tight')
-        plt.clf()
+            g = sns.scatterplot(data=plot_features,
+                                x="UMAP0",
+                                y="UMAP1",
+                                hue="Region",
+                                ci=None,
+                                palette="tab20")
+
+            plt.legend(bbox_to_anchor=(1.05, 1), loc=2,
+                       borderaxespad=0.)
+
+            plt.savefig(region_dir + '/umap_projection_by_region.png', bbox_inches='tight')
+            plt.clf()
 
     def _average_expression_across_expansions(self,
                                               n_expansions: int,
@@ -2103,36 +2097,37 @@ class Visualizer:
         :return:
         """
 
-        primary_categorical_splitter = kwargs.get('primary_categorical_splitter', "Asymmetry")
-        secondary_categorical_splitter = kwargs.get('secondary_categorical_splitter', "Vessel Size")
+        primary_categorical_analysis_variable = kwargs.get('primary_categorical_analysis_variable', "Solidity")
+        secondary_categorical_analysis_variable = kwargs.get('secondary_categorical_analysis_variable', "Vessel Size")
 
         mask_type = kwargs.get('mask_type', "expansion_only")
-        analysis_variable = kwargs.get('analysis_variable', "Asymmetry Score")
+        primary_continuous_analysis_variable = kwargs.get('primary_continuous_analysis_variable', "Solidity Score")
 
-        assert primary_categorical_splitter is not None, "Must have a primary categorical variable"
-        assert secondary_categorical_splitter is not None, "Must have a secondary categorical variable"
+        assert primary_categorical_analysis_variable is not None, "Must have a primary categorical variable"
+        assert secondary_categorical_analysis_variable is not None, "Must have a secondary categorical variable"
 
         parent_dir = "%s/%s Scatter Plots" % (self.results_dir
-                                              , analysis_variable)
+                                              , primary_continuous_analysis_variable)
         mkdir_p(parent_dir)
 
-        for feed_idx, feed_contours, feed_features, feed_dir in feed_features_iterator(self.all_samples_features,
-                                                                                       self.all_feeds_data,
-                                                                                       self.all_feeds_contour_data,
-                                                                                       self.all_feeds_metadata,
-                                                                                       save_to_dir=True,
-                                                                                       parent_dir=parent_dir):
+        for feed_idx, feed_contours, feed_features, feed_dir, brain_region_point_ranges, brain_region_names in feed_features_iterator(
+                self.all_samples_features,
+                self.all_feeds_data,
+                self.all_feeds_contour_data,
+                self.all_feeds_metadata,
+                save_to_dir=True,
+                parent_dir=parent_dir):
 
-            by_primary_analysis_variable_dir = "%s/By %s" % (feed_dir, primary_categorical_splitter)
+            by_primary_analysis_variable_dir = "%s/By %s" % (feed_dir, primary_categorical_analysis_variable)
             mkdir_p(by_primary_analysis_variable_dir)
 
-            by_secondary_analysis_variable_dir = "%s/By %s" % (feed_dir, secondary_categorical_splitter)
+            by_secondary_analysis_variable_dir = "%s/By %s" % (feed_dir, secondary_categorical_analysis_variable)
             mkdir_p(by_secondary_analysis_variable_dir)
 
             with_vessel_id_dir = "%s/%s" % (feed_dir, "With Vessel ID")
             mkdir_p(with_vessel_id_dir)
 
-            secondary_separate_dir = "%s/Separate By %s" % (feed_dir, secondary_categorical_splitter)
+            secondary_separate_dir = "%s/Separate By %s" % (feed_dir, secondary_categorical_analysis_variable)
             mkdir_p(secondary_separate_dir)
 
             feed_features = loc_by_expansion(feed_features,
@@ -2150,53 +2145,54 @@ class Visualizer:
 
             feed_features = feed_features[feed_features["Expansion"] == feed_features["Expansion"].max()]
 
-            if len(feed_features[primary_categorical_splitter].unique()) <= 2:
+            if len(feed_features[primary_categorical_analysis_variable].unique()) <= 2:
                 cmap = colors.ListedColormap(['blue', 'red'])(np.linspace(0, 1, 2))
             else:
                 cmap = matplotlib.cm.get_cmap('Set1')(np.linspace(0,
                                                                   1,
                                                                   len(feed_features[
-                                                                          primary_categorical_splitter].unique())))
+                                                                          primary_categorical_analysis_variable].unique())))
 
             for marker in feed_features["Marker"].unique():
                 marker_features = feed_features[feed_features["Marker"] == marker]
 
                 g = sns.scatterplot(data=marker_features,
-                                    x=analysis_variable,
+                                    x=primary_continuous_analysis_variable,
                                     y="Mean Expression",
-                                    hue=primary_categorical_splitter,
+                                    hue=primary_categorical_analysis_variable,
                                     ci=None,
                                     palette=cmap)
 
                 plt.legend(bbox_to_anchor=(1.05, 1), loc=2,
                            borderaxespad=0.,
-                           title=primary_categorical_splitter)
+                           title=primary_categorical_analysis_variable)
 
                 plt.savefig(by_primary_analysis_variable_dir + '/%s.png' % str(marker), bbox_inches='tight')
                 plt.clf()
 
-            if len(feed_features[primary_categorical_splitter].unique()) <= 3:
+            if len(feed_features[primary_categorical_analysis_variable].unique()) <= 3:
                 cmap = colors.ListedColormap(['cyan', 'pink', 'yellow'])(np.linspace(0, 1, 3))
             else:
-                cmap = matplotlib.cm.get_cmap('Set1')(np.linspace(0,
-                                                                  1,
-                                                                  len(feed_features[
-                                                                          primary_categorical_splitter].unique())))
+                cmap = matplotlib.cm.get_cmap('Set1')(
+                    np.linspace(0,
+                                1,
+                                len(feed_features[
+                                        primary_categorical_analysis_variable].unique())))
 
             for marker in feed_features["Marker"].unique():
                 marker_features = feed_features[feed_features["Marker"] == marker]
 
                 g = sns.scatterplot(data=marker_features,
-                                    x=analysis_variable,
+                                    x=primary_continuous_analysis_variable,
                                     y="Mean Expression",
-                                    hue=secondary_categorical_splitter,
+                                    hue=secondary_categorical_analysis_variable,
                                     ci=None,
                                     palette=cmap,
                                     edgecolor='k',
                                     linewidth=1)
 
                 plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.,
-                           title=secondary_categorical_splitter)
+                           title=secondary_categorical_analysis_variable)
 
                 plt.savefig(by_secondary_analysis_variable_dir + '/%s.png' % str(marker), bbox_inches='tight')
                 plt.clf()
@@ -2205,18 +2201,18 @@ class Visualizer:
                 marker_features = feed_features[feed_features["Marker"] == marker]
 
                 g = sns.scatterplot(data=marker_features,
-                                    x=analysis_variable,
+                                    x=primary_continuous_analysis_variable,
                                     y="Mean Expression",
                                     ci=None,
                                     palette="tab20")
 
-                for line in range(0, 50):
+                for line in range(0, min(50, len(marker_features["Point"].values))):
                     point_label = str(marker_features["Point"].values[line]) + ":" \
                                   + str(marker_features["Vessel"].values[line])
 
-                    if not math.isnan(marker_features[analysis_variable].values[line]) \
+                    if not math.isnan(marker_features[primary_continuous_analysis_variable].values[line]) \
                             and not math.isnan(marker_features["Mean Expression"].values[line]):
-                        g.text(marker_features[analysis_variable].values[line],
+                        g.text(marker_features[primary_continuous_analysis_variable].values[line],
                                marker_features["Mean Expression"].values[line],
                                point_label, horizontalalignment='left',
                                size='medium', color='black', weight='semibold')
@@ -2224,11 +2220,11 @@ class Visualizer:
                 plt.savefig(with_vessel_id_dir + '/%s.png' % str(marker), bbox_inches='tight')
                 plt.clf()
 
-            for split_val in feed_features[secondary_categorical_splitter].unique():
+            for split_val in feed_features[secondary_categorical_analysis_variable].unique():
                 out_dir = "%s/%s" % (secondary_separate_dir, split_val)
                 mkdir_p(out_dir)
 
-                split_features = feed_features[feed_features[secondary_categorical_splitter] == split_val]
+                split_features = feed_features[feed_features[secondary_categorical_analysis_variable] == split_val]
 
                 for marker in split_features["Marker"].unique():
                     marker_features = split_features[split_features["Marker"] == marker]
@@ -2236,14 +2232,14 @@ class Visualizer:
                     plt.xlim([-0.05, 1.05])
 
                     g = sns.scatterplot(data=marker_features,
-                                        x=analysis_variable,
+                                        x=primary_continuous_analysis_variable,
                                         y="Mean Expression",
-                                        hue=primary_categorical_splitter,
+                                        hue=primary_categorical_analysis_variable,
                                         ci=None,
                                         palette="tab20")
 
                     plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.,
-                               title=primary_categorical_splitter)
+                               title=primary_categorical_analysis_variable)
 
                     plt.savefig(out_dir + '/%s.png' % str(marker), bbox_inches='tight')
                     plt.clf()
@@ -2255,30 +2251,34 @@ class Visualizer:
         :param n_expansions: int, Number of expansions
         :return:
         """
-        brain_regions = self.config.brain_region_point_ranges
+        primary_categorical_analysis_variable = kwargs.get("primary_categorical_analysis_variable", "Vessel Size")
+
         marker_clusters = self.config.marker_clusters
 
         parent_dir = "%s/Heatmaps & Clustermaps" % self.results_dir
 
         mkdir_p(parent_dir)
 
-        for feed_idx, feed_contours, feed_features, feed_dir in feed_features_iterator(self.all_samples_features,
-                                                                                       self.all_feeds_data,
-                                                                                       self.all_feeds_contour_data,
-                                                                                       self.all_feeds_metadata,
-                                                                                       save_to_dir=True,
-                                                                                       parent_dir=parent_dir):
+        for feed_idx, feed_contours, feed_features, feed_dir, brain_region_point_ranges, brain_region_names in feed_features_iterator(
+                self.all_samples_features,
+                self.all_feeds_data,
+                self.all_feeds_contour_data,
+                self.all_feeds_metadata,
+                save_to_dir=True,
+                parent_dir=parent_dir):
 
-            if self.config.primary_categorical_splitter is None:
-                self._vessel_nonvessel_heatmap(n_expansions, feed_features, brain_regions, marker_clusters, feed_dir)
+            if primary_categorical_analysis_variable is None:
+                self._vessel_nonvessel_heatmap(n_expansions, feed_features, brain_region_point_ranges, marker_clusters,
+                                               feed_dir)
             else:
-                for i in feed_features[self.config.primary_categorical_splitter].unique():
-                    split_dir = "%s/%s: %s" % (feed_dir, self.config.primary_categorical_splitter, i)
+                for i in feed_features[primary_categorical_analysis_variable].unique():
+                    split_dir = "%s/%s: %s" % (feed_dir, primary_categorical_analysis_variable, i)
                     mkdir_p(split_dir)
 
-                    split_features = feed_features.loc[feed_features[self.config.primary_categorical_splitter] == i]
+                    split_features = feed_features.loc[feed_features[primary_categorical_analysis_variable] == i]
 
-                    self._vessel_nonvessel_heatmap(n_expansions, split_features, brain_regions, marker_clusters,
+                    self._vessel_nonvessel_heatmap(n_expansions, split_features, brain_region_point_ranges,
+                                                   marker_clusters,
                                                    split_dir)
 
     def _categorical_split_expansion_heatmap_helper(self,
@@ -2298,6 +2298,7 @@ class Visualizer:
         :param heatmaps_dir: str, Directory of heatmaps
         :return:
         """
+
         title = marker
 
         if cluster:
@@ -2309,7 +2310,7 @@ class Visualizer:
 
         classes_to_ignore = ["NA"]
 
-        for split_val in expansion_features[self.config.primary_categorical_splitter].unique():
+        for split_val in expansion_features[primary_splitter].unique():
 
             if split_val in classes_to_ignore:
                 continue
@@ -2318,7 +2319,7 @@ class Visualizer:
             y_tick_labels.append(y_lab_split)
 
             split_features = expansion_features.loc[expansion_features[
-                                                        self.config.primary_categorical_splitter]
+                                                        primary_splitter]
                                                     == split_val]
 
             curr_split_data = []
@@ -2344,12 +2345,12 @@ class Visualizer:
         if secondary_splitter is not None:
 
             for split_idx, secondary_split_val in \
-                    enumerate(expansion_features[self.config.secondary_categorical_splitter].unique()):
+                    enumerate(expansion_features[secondary_splitter].unique()):
                 secondary_split_features = expansion_features.loc[expansion_features[
-                                                                      self.config.secondary_categorical_splitter]
+                                                                      secondary_splitter]
                                                                   == secondary_split_val]
 
-                for split_val in expansion_features[self.config.primary_categorical_splitter].unique():
+                for split_val in expansion_features[primary_splitter].unique():
 
                     if split_val in classes_to_ignore:
                         continue
@@ -2357,7 +2358,7 @@ class Visualizer:
                     y_lab_split_first_level = "%s : %s" % (primary_splitter, split_val)
 
                     split_features = secondary_split_features.loc[expansion_features[
-                                                                      self.config.primary_categorical_splitter]
+                                                                      primary_splitter]
                                                                   == split_val]
 
                     curr_split_data = []
@@ -2432,19 +2433,22 @@ class Visualizer:
         :param n_expansions: int, Number of expansions to run
         :return:
         """
+        primary_categorical_analysis_variable = kwargs.get("primary_categorical_analysis_variable", "Vessel Size")
+        secondary_categorical_analysis_variable = kwargs.get("secondary_categorical_analysis_variable", None)
 
         parent_dir = "%s/Categorical Expansion Heatmaps & Clustermaps" % self.results_dir
 
         mkdir_p(parent_dir)
 
-        assert self.config.primary_categorical_splitter is not None, "No categorical splitter selected!"
+        assert primary_categorical_analysis_variable is not None, "No categorical splitter selected!"
 
-        for feed_idx, feed_contours, feed_features, feed_dir in feed_features_iterator(self.all_samples_features,
-                                                                                       self.all_feeds_data,
-                                                                                       self.all_feeds_contour_data,
-                                                                                       self.all_feeds_metadata,
-                                                                                       save_to_dir=True,
-                                                                                       parent_dir=parent_dir):
+        for feed_idx, feed_contours, feed_features, feed_dir, brain_region_point_ranges, brain_region_names in feed_features_iterator(
+                self.all_samples_features,
+                self.all_feeds_data,
+                self.all_feeds_contour_data,
+                self.all_feeds_metadata,
+                save_to_dir=True,
+                parent_dir=parent_dir):
 
             expansion_features = feed_features.loc[pd.IndexSlice[:, :, :n_expansions, :], :]
 
@@ -2461,8 +2465,8 @@ class Visualizer:
                 self._categorical_split_expansion_heatmap_helper(n_expansions,
                                                                  expansion_features,
                                                                  cluster_dir,
-                                                                 self.config.primary_categorical_splitter,
-                                                                 self.config.secondary_categorical_splitter,
+                                                                 primary_categorical_analysis_variable,
+                                                                 secondary_categorical_analysis_variable,
                                                                  marker=cluster,
                                                                  cluster=True)
 
@@ -2470,8 +2474,8 @@ class Visualizer:
                     self._categorical_split_expansion_heatmap_helper(n_expansions,
                                                                      expansion_features,
                                                                      markers_dir,
-                                                                     self.config.primary_categorical_splitter,
-                                                                     self.config.secondary_categorical_splitter,
+                                                                     primary_categorical_analysis_variable,
+                                                                     secondary_categorical_analysis_variable,
                                                                      marker=marker,
                                                                      cluster=False)
 
@@ -2512,7 +2516,6 @@ class Visualizer:
 
             if ax is None:
                 plt.figure(figsize=(22, 10))
-
 
                 ax = sns.heatmap(data,
                                  cmap=cmap,
@@ -2639,11 +2642,39 @@ class Visualizer:
             ax.savefig(output_dir + '/%s.png' % map_name)
             plt.clf()
 
+    def _marker_expression_at_expansion(self,
+                                        expansion: int,
+                                        mibi_features: pd.DataFrame,
+                                        marker_names: list,
+                                        region: list = None,
+                                        data_type: str = "Data"):
+        """
+        Helper Function to Calculate the Average Marker Expression at a Given Expansion
+        """
+
+        try:
+            if region is None:
+                marker_expression_matrix = mibi_features.loc[pd.IndexSlice[:, :,
+                                                             expansion,
+                                                             data_type], marker_names].to_numpy()
+            else:
+                marker_expression_matrix = mibi_features.loc[pd.IndexSlice[region[0]:region[1],
+                                                             :,
+                                                             expansion,
+                                                             data_type], marker_names].to_numpy()
+
+        except KeyError:
+            return np.zeros((len(marker_names),), np.uint8)
+
+        return np.mean(marker_expression_matrix, axis=0)
+
     def _brain_region_expansion_heatmap(self,
                                         n_expansions: int,
                                         mibi_features: pd.DataFrame,
                                         heatmaps_dir: str,
-                                        clustermaps_dir: str
+                                        clustermaps_dir: str,
+                                        brain_regions: list,
+                                        brain_region_names: list,
                                         ):
         """
         Brain region expansion heatmaps helper method
@@ -2653,11 +2684,9 @@ class Visualizer:
         """
         regions_mask_data = []
 
-        marker_names = self.config.marker_names
+        marker_names = self.markers_names
         pixel_interval = self.config.pixel_interval
         marker_clusters = self.config.marker_clusters
-        brain_region_names = self.config.brain_region_names
-        brain_regions = self.config.brain_region_point_ranges
 
         marker_mask_expression_map_fn_all_regions = partial(self._marker_expression_at_expansion,
                                                             mibi_features=mibi_features,
@@ -2702,7 +2731,7 @@ class Visualizer:
 
         x_tick_labels = np.array(sorted(mibi_features.index.unique("Expansion").tolist())) * pixel_interval
         x_tick_labels = x_tick_labels.tolist()
-        x_tick_labels = [str(x) for x in x_tick_labels]
+        x_tick_labels = [str(round_to_nearest_half(x)) for x in x_tick_labels]
         x_tick_labels.append("Nonvessel Space")
 
         norm = matplotlib.colors.Normalize(-1, 1)
@@ -2741,7 +2770,7 @@ class Visualizer:
                                                cmap=cmap,
                                                marker_clusters=marker_clusters,
                                                output_dir=output_dir,
-                                               map_name="%_Region" % region_name,
+                                               map_name="%s_Region" % region_name,
                                                cluster=False)
 
         # Clustermaps Outputs
@@ -2770,7 +2799,7 @@ class Visualizer:
                                                cmap=cmap,
                                                marker_clusters=marker_clusters,
                                                output_dir=output_dir,
-                                               map_name="%_Region" % region_name,
+                                               map_name="%s_Region" % region_name,
                                                cluster=True)
 
     def brain_region_expansion_heatmap(self, n_expansions: int, **kwargs):
@@ -2779,30 +2808,34 @@ class Visualizer:
 
         :param n_expansions: int, Number of expansions
         """
+        primary_categorical_analysis_variable = kwargs.get("primary_categorical_analysis_variable", "Vessel Size")
+
         parent_dir = "%s/Expansion Heatmaps & Clustermaps" % self.results_dir
 
         mkdir_p(parent_dir)
 
-        for feed_idx, feed_contours, feed_features, feed_dir in feed_features_iterator(self.all_samples_features,
-                                                                                       self.all_feeds_data,
-                                                                                       self.all_feeds_contour_data,
-                                                                                       self.all_feeds_metadata,
-                                                                                       save_to_dir=True,
-                                                                                       parent_dir=parent_dir):
+        for feed_idx, feed_contours, feed_features, feed_dir, brain_region_point_ranges, brain_region_names in feed_features_iterator(
+                self.all_samples_features,
+                self.all_feeds_data,
+                self.all_feeds_contour_data,
+                self.all_feeds_metadata,
+                save_to_dir=True,
+                parent_dir=parent_dir):
 
             expansion_features = feed_features.loc[pd.IndexSlice[:, :, :n_expansions, :], :]
 
-            if self.config.primary_categorical_splitter is None:
+            if primary_categorical_analysis_variable is None:
                 heatmaps_dir = "%s/Expansion Heatmaps" % feed_dir
                 clustermaps_dir = "%s/Expansion Clustermaps" % feed_dir
 
                 mkdir_p(heatmaps_dir)
                 mkdir_p(clustermaps_dir)
 
-                self._brain_region_expansion_heatmap(n_expansions, expansion_features, heatmaps_dir, clustermaps_dir)
+                self._brain_region_expansion_heatmap(n_expansions, expansion_features, heatmaps_dir, clustermaps_dir,
+                                                     brain_region_point_ranges, brain_region_names)
             else:
-                for i in feed_features[self.config.primary_categorical_splitter].unique():
-                    split_dir = "%s/%s: %s" % (feed_dir, self.config.primary_categorical_splitter, i)
+                for i in feed_features[primary_categorical_analysis_variable].unique():
+                    split_dir = "%s/%s: %s" % (feed_dir, primary_categorical_analysis_variable, i)
                     mkdir_p(split_dir)
 
                     heatmaps_dir = "%s/Expansion Heatmaps" % split_dir
@@ -2811,9 +2844,10 @@ class Visualizer:
                     mkdir_p(heatmaps_dir)
                     mkdir_p(clustermaps_dir)
 
-                    split_features = feed_features.loc[feed_features[self.config.primary_categorical_splitter] == i]
+                    split_features = feed_features.loc[feed_features[primary_categorical_analysis_variable] == i]
 
-                    self._brain_region_expansion_heatmap(n_expansions, split_features, heatmaps_dir, clustermaps_dir)
+                    self._brain_region_expansion_heatmap(n_expansions, split_features, heatmaps_dir, clustermaps_dir,
+                                                         brain_region_point_ranges, brain_region_names)
 
     def marker_expression_masks(self, **kwargs):
         """
@@ -2822,20 +2856,24 @@ class Visualizer:
         :return:
         """
 
+        n_points = len(self.all_samples_features.index.get_level_values("Point").unique())
+
         parent_dir = "%s/Expression Masks" % self.results_dir
 
         mkdir_p(parent_dir)
 
-        for feed_idx, feed_contours, feed_features, output_dir in feed_features_iterator(self.all_samples_features,
-                                                                                         self.all_feeds_data,
-                                                                                         self.all_feeds_contour_data,
-                                                                                         self.all_feeds_metadata,
-                                                                                         save_to_dir=True,
-                                                                                         parent_dir=parent_dir):
-            for i in range(len(self.config.n_points)):
+        for feed_idx, feed_contours, feed_features, feed_dir, brain_region_point_ranges, brain_region_names in feed_features_iterator(
+                self.all_samples_features,
+                self.all_feeds_data,
+                self.all_feeds_contour_data,
+                self.all_feeds_metadata,
+                save_to_dir=True,
+                parent_dir=parent_dir):
+
+            for i in range(n_points):
                 point_contours = feed_contours.loc[i, "Contours"]
 
-                point_dir = output_dir + "/Point %s" % str(i + 1)
+                point_dir = feed_dir + "/Point %s" % str(i + 1)
                 mkdir_p(point_dir)
 
                 contours = point_contours.contours
@@ -2863,12 +2901,362 @@ class Visualizer:
                     plt.savefig(os.path.join(point_dir, "%s.png" % marker_name))
                     plt.clf()
 
+    def _pseudo_time_heatmap(self,
+                             mibi_features,
+                             ax=None,
+                             save_dir=None,
+                             binned=False,
+                             cmap=None,
+                             map_name="Example",
+                             **kwargs):
+        """
+        Pseudo Time Heatmap
+        """
+
+        mask_type = kwargs.get("mask_type", "mask_only")
+        primary_continuous_analysis_variable = kwargs.get("primary_continuous_analysis_variable", "Eccentricity Score")
+
+        mibi_features = loc_by_expansion(mibi_features,
+                                         expansion_type=mask_type,
+                                         average=False)
+
+        mibi_features = melt_markers(mibi_features,
+                                     non_id_vars=self.markers_names,
+                                     add_marker_group=False)
+
+        mibi_features["Expression"] = pd.to_numeric(mibi_features["Expression"])
+
+        mibi_features['Mean Expression'] = \
+            mibi_features.groupby(['Vessel', 'Point', 'Marker'])['Expression'].transform('mean')
+
+        mibi_features.reset_index(level=['Vessel', 'Point', 'Expansion'], inplace=True)
+
+        mibi_features = mibi_features[mibi_features["Expansion"] == mibi_features["Expansion"].max()]
+
+        all_mask_data = []
+        x_tick_labels = []
+
+        for val in sorted(mibi_features[primary_continuous_analysis_variable].unique()):
+            y_tick_labels = \
+                mibi_features[mibi_features[primary_continuous_analysis_variable] == val].groupby(['Marker'],
+                                                                                                  sort=False)[
+                    'Mean Expression'].mean().reset_index()["Marker"].values
+
+        if binned:
+            for val in np.linspace(mibi_features[primary_continuous_analysis_variable].min(),
+                                   mibi_features[primary_continuous_analysis_variable].max(), 5):
+
+                current_expansion_all = mibi_features[(mibi_features[primary_continuous_analysis_variable] >= val) &
+                                                      (mibi_features[primary_continuous_analysis_variable] < val +
+                                                       mibi_features[
+                                                           primary_continuous_analysis_variable].max() / 5)].groupby(
+                    ['Marker'])[
+                    'Mean Expression'].mean().to_numpy()
+
+                x_tick_labels.append(round(val, 2))
+
+                if current_expansion_all.size > 0:
+                    all_mask_data.append(current_expansion_all)
+                else:
+                    all_mask_data.append(np.zeros((self.config.n_markers,), np.uint8))
+
+            all_mask_data = np.array(all_mask_data)
+
+            all_mask_data = all_mask_data.T
+
+            self._heatmap_clustermap_generator(data=all_mask_data,
+                                               x_tick_labels=x_tick_labels,
+                                               x_label=primary_continuous_analysis_variable,
+                                               x_tick_indices=np.linspace(0,
+                                                                          all_mask_data.shape[1] - 1,
+                                                                          5,
+                                                                          dtype=int),
+                                               cmap=cmap,
+                                               marker_clusters=self.config.marker_clusters,
+                                               output_dir=save_dir,
+                                               map_name="%s_pseudo_time_heatmap_binned_%s" % (
+                                                   primary_continuous_analysis_variable,
+                                                   map_name),
+                                               cluster=False,
+                                               y_tick_labels=y_tick_labels,
+                                               vmin=0,
+                                               vmax=1.25
+                                               )
+        else:
+
+            for val in sorted(mibi_features[primary_continuous_analysis_variable].unique()):
+
+                current_expansion_all = \
+                    mibi_features[mibi_features[primary_continuous_analysis_variable] == val].groupby(['Marker'],
+                                                                                                      sort=False)[
+                        'Mean Expression'].mean().to_numpy()
+
+                x_tick_labels.append(round(val, 2))
+
+                if current_expansion_all.size > 0:
+                    all_mask_data.append(current_expansion_all)
+                else:
+                    all_mask_data.append(np.zeros((self.config.n_markers,), np.uint8))
+
+            all_mask_data = np.array(all_mask_data)
+
+            all_mask_data = all_mask_data.T
+
+            self._heatmap_clustermap_generator(data=all_mask_data,
+                                               x_tick_labels=x_tick_labels,
+                                               x_label=primary_continuous_analysis_variable,
+                                               x_tick_indices=np.linspace(0,
+                                                                          all_mask_data.shape[1] - 1,
+                                                                          5,
+                                                                          dtype=int),
+                                               cmap=cmap,
+                                               marker_clusters=self.config.marker_clusters,
+                                               output_dir=save_dir,
+                                               map_name="%s_pseudo_time_heatmap_%s" % (
+                                                   primary_continuous_analysis_variable,
+                                                   map_name),
+                                               cluster=False,
+                                               y_tick_labels=y_tick_labels,
+                                               ax=ax,
+                                               vmin=0,
+                                               vmax=1.25
+                                               )
+
+        return ax
+
+    def pseudo_time_heatmap(self,
+                            cmap=None,
+                            **kwargs):
+        """
+        Pseudo-Time Heatmap
+
+        :param cmap: Matplotlib.Colormap, Colormap to be used for plot
+        :param kwargs: Keyword arguments
+        :return:
+        """
+
+        parent_dir = "%s/Pseudo-Time Heatmaps" % self.results_dir
+
+        mkdir_p(parent_dir)
+
+        if cmap is None:
+            norm = matplotlib.colors.Normalize(-1, 1)
+            colors = [[norm(-1.0), "black"],
+                      [norm(-0.5), "indigo"],
+                      [norm(0), "firebrick"],
+                      [norm(0.5), "orange"],
+                      [norm(1.0), "khaki"]]
+
+            cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", colors)
+
+        primary_continuous_analysis_variable = kwargs.get('primary_continuous_analysis_variable', "Solidity Score")
+        mask_type = kwargs.get('mask_type', "expansion_only")
+
+        for feed_idx, feed_contours, feed_features, feed_dir, brain_region_point_ranges, brain_region_names in feed_features_iterator(
+                self.all_samples_features,
+                self.all_feeds_data,
+                self.all_feeds_contour_data,
+                self.all_feeds_metadata,
+                save_to_dir=True,
+                parent_dir=parent_dir):
+
+            feed_features.reset_index(level=['Point', 'Vessel', 'Expansion', 'Expansion Type'], inplace=True)
+
+            bins = [brain_region_point_ranges[i][0] - 1 for i in range(len(brain_region_point_ranges))]
+            bins.append(float('Inf'))
+
+            feed_features['Region'] = pd.cut(feed_features['Point'],
+                                             bins=bins,
+                                             labels=brain_region_names)
+
+            feed_features.set_index(['Point', 'Vessel', 'Expansion', 'Expansion Type'], inplace=True)
+
+            for region in feed_features['Region'].unique():
+                region_dir = "%s/%s" % (feed_dir, region)
+                mkdir_p(region_dir)
+
+                region_features = feed_features[feed_features['Region'] == region]
+
+                self._pseudo_time_heatmap(region_features,
+                                          save_dir=region_dir,
+                                          primary_continuous_analysis_variable=primary_continuous_analysis_variable,
+                                          mask_type=mask_type,
+                                          map_name=region,
+                                          cmap=cmap)
+
+                self._pseudo_time_heatmap(region_features,
+                                          save_dir=region_dir,
+                                          binned=True,
+                                          primary_continuous_analysis_variable=primary_continuous_analysis_variable,
+                                          mask_type=mask_type,
+                                          map_name=region,
+                                          cmap=cmap)
+
+            self._pseudo_time_heatmap(feed_features,
+                                      save_dir=feed_dir,
+                                      binned=False,
+                                      primary_continuous_analysis_variable=primary_continuous_analysis_variable,
+                                      mask_type=mask_type,
+                                      map_name="all_points",
+                                      cmap=cmap)
+
+    def vessel_shape_area_spread_plot(self, **kwargs):
+        """
+        Vessel Shape Area Spread Plot
+        :return:
+        """
+
+        output_dir = "%s/Vessel Areas Spread Boxplot" % self.results_dir
+
+        mkdir_p(output_dir)
+        idx = pd.IndexSlice
+
+        primary_categorical_analysis_variable = kwargs.get("primary_categorical_analysis_variable", "Solidity")
+
+        plot_features = self.all_samples_features.loc[idx[:,
+                                                      :,
+                                                      0,
+                                                      "Data"], :]
+
+        shape_quantification_features = plot_features.loc[
+            self.all_samples_features[primary_categorical_analysis_variable] != "NA"]
+
+        plot_features['Size'] = pd.cut(plot_features['Contour Area'],
+                                       bins=[self.config.small_vessel_threshold,
+                                             self.config.medium_vessel_threshold,
+                                             self.config.large_vessel_threshold,
+                                             float('Inf')],
+                                       labels=["Small",
+                                               "Medium",
+                                               "Large"])
+
+        shape_quantification_features['Size'] = pd.cut(shape_quantification_features['Contour Area'],
+                                                       bins=[self.config.small_vessel_threshold,
+                                                             self.config.medium_vessel_threshold,
+                                                             self.config.large_vessel_threshold,
+                                                             float('Inf')],
+                                                       labels=["Small",
+                                                               "Medium",
+                                                               "Large"])
+
+        shape_quantification_features = shape_quantification_features.rename(columns={'Contour Area': 'Pixel Area'})
+        plot_features = plot_features.rename(columns={'Contour Area': 'Pixel Area'})
+
+        nobs_split = shape_quantification_features.groupby(['Size', primary_categorical_analysis_variable]).apply(
+            lambda x: 'n: {}'.format(len(x)))
+        nobs = plot_features.groupby(['Size']).apply(lambda x: 'n: {}'.format(len(x)))
+
+        ax = sns.boxplot(x="Size",
+                         y="Pixel Area",
+                         hue=primary_categorical_analysis_variable,
+                         data=shape_quantification_features,
+                         showfliers=False)
+
+        for tick, label in enumerate(ax.get_xticklabels()):
+            ax_size = label.get_text()
+
+            for j, ax_shape_quantification in enumerate(ax.get_legend_handles_labels()[1]):
+                x_offset = (j - 0.5) * 2 / 5
+                num = nobs_split[ax_size, ax_shape_quantification]
+
+                point_data_transform = (tick + x_offset, 0)
+
+                axis_to_data = ax.transAxes + ax.transData.inverted()
+                data_to_axis = axis_to_data.inverted()
+
+                point_axis_transform = data_to_axis.transform(point_data_transform)
+
+                ax.text(point_axis_transform[0], 0.005, str(num),
+                        horizontalalignment='center', size='x-small', color='k', weight='semibold',
+                        transform=ax.transAxes)
+
+        plt.savefig(output_dir + '/vessel_area_spread_%s_split.png' % primary_categorical_analysis_variable,
+                    bbox_inches='tight')
+        plt.clf()
+
+        ax = sns.boxplot(x="Size",
+                         y="Pixel Area",
+                         data=plot_features,
+                         showfliers=False)
+
+        for tick, label in enumerate(ax.get_xticklabels()):
+            ax_size = label.get_text()
+
+            num = nobs[ax_size]
+
+            point_data_transform = (tick, 0)
+
+            axis_to_data = ax.transAxes + ax.transData.inverted()
+            data_to_axis = axis_to_data.inverted()
+
+            point_axis_transform = data_to_axis.transform(point_data_transform)
+
+            ax.text(point_axis_transform[0], 0.005, str(num),
+                    horizontalalignment='center', size='x-small', color='k', weight='semibold',
+                    transform=ax.transAxes)
+
+        plt.savefig(output_dir + '/vessel_area_spread.png',
+                    bbox_inches='tight')
+        plt.clf()
+
+    def vessel_nonvessel_masks(self,
+                               n_expansions: int = 5,
+                               **kwargs
+                               ):
+        """
+        Get Vessel nonvessel masks
+
+        :param n_expansions: int, Number of expansions
+        """
+
+        mask_size = kwargs.get("mask_size", self.config.segmentation_mask_size)
+
+        example_img = np.zeros(mask_size, np.uint8)
+        example_img = cv.cvtColor(example_img, cv.COLOR_GRAY2BGR)
+
+        parent_dir = "%s/Associated Area Masks" % self.results_dir
+
+        for feed_idx, feed_contours, feed_features, feed_dir, brain_region_point_ranges, brain_region_names in feed_features_iterator(
+                self.all_samples_features,
+                self.all_feeds_data,
+                self.all_feeds_contour_data,
+                self.all_feeds_metadata,
+                save_to_dir=True,
+                parent_dir=parent_dir):
+
+            n_points = len(feed_features.index.get_level_values("Point").unique())
+
+            output_dir = "%s/%s%s Expansion" % (feed_dir,
+                                                str(round_to_nearest_half(n_expansions *
+                                                                          self.config.pixel_interval *
+                                                                          self.config.pixels_to_distance)),
+                                                self.config.data_resolution_units)
+            mkdir_p(output_dir)
+
+            for point_num in range(n_points):
+                per_point_vessel_contours = feed_contours.loc[point_num, "Contours"].contours
+
+                regions = get_assigned_regions(per_point_vessel_contours, mask_size)
+
+                for idx, cnt in enumerate(per_point_vessel_contours):
+                    mask_expanded = expand_vessel_region(cnt, mask_size,
+                                                         upper_bound=self.config.pixel_interval * n_expansions)
+                    mask_expanded = cv.bitwise_and(mask_expanded, regions[idx].astype(np.uint8))
+                    dark_space_mask = regions[idx].astype(np.uint8) - mask_expanded
+
+                    example_img[np.where(dark_space_mask == 1)] = (0, 0, 255)  # red
+                    example_img[np.where(mask_expanded == 1)] = (0, 255, 0)  # green
+                    cv.drawContours(example_img, [cnt], -1, (255, 0, 0), cv.FILLED)  # blue
+
+                    vesselnonvessel_label = "Point %s" % str(point_num + 1)
+
+                    cv.imwrite(os.path.join(output_dir, "%s.png" % vesselnonvessel_label),
+                               example_img)
+
     def removed_vessel_expression_boxplot(self, **kwargs):
         """
         Create kept vs. removed vessel expression comparison using Box Plots
         """
-        n_points = self.config.n_points
-
         all_points_vessels_expression = []
         all_points_removed_vessels_expression = []
 
@@ -2876,16 +3264,21 @@ class Visualizer:
 
         mkdir_p(parent_dir)
 
-        for feed_idx, feed_contours, feed_features, feed_dir in feed_features_iterator(self.all_samples_features,
-                                                                                       self.all_feeds_data,
-                                                                                       self.all_feeds_contour_data,
-                                                                                       self.all_feeds_metadata,
-                                                                                       save_to_dir=True,
-                                                                                       parent_dir=parent_dir):
+        for feed_idx, feed_contours, feed_features, feed_dir, brain_region_point_ranges, brain_region_names in feed_features_iterator(
+                self.all_samples_features,
+                self.all_feeds_data,
+                self.all_feeds_contour_data,
+                self.all_feeds_metadata,
+                save_to_dir=True,
+                parent_dir=parent_dir):
+
+            n_points = len(feed_features.index.get_level_values("Point").unique())
+
             # Iterate through each point
             for i in range(n_points):
                 contours = feed_contours.loc[i, "Contours"].contours
                 contour_areas = feed_contours.loc[i, "Contours"].areas
+
                 removed_contours = feed_contours.loc[i, "Contours"].removed_contours
                 removed_areas = feed_contours.loc[i, "Contours"].removed_areas
                 marker_data = self.all_feeds_data[feed_idx, i]
@@ -2898,6 +3291,10 @@ class Visualizer:
                                                                                  contour_areas,
                                                                                  self.markers_names,
                                                                                  point_num=i + 1)
+
+                if len(removed_contours) == 0:
+                    continue
+
                 removed_vessel_expression_data = calculate_composition_marker_expression(self.config,
                                                                                          marker_data,
                                                                                          removed_contours,
@@ -2913,6 +3310,9 @@ class Visualizer:
                 logging.debug(
                     "Finished calculating expression for Point %s in %s" % (
                         str(i + 1), end_expression - start_expression))
+
+            if len(all_points_removed_vessels_expression) == 0:
+                return
 
             kept_vessel_expression = pd.concat(all_points_vessels_expression).fillna(0)
             kept_vessel_expression.index = map(lambda a: (a[0], a[1], a[2], a[3], "Kept"), kept_vessel_expression.index)
@@ -2938,17 +3338,15 @@ class Visualizer:
                                                               scaling_factor=scaling_factor,
                                                               n_markers=n_markers)
 
-            brain_region_names = self.config.brain_region_names
-            brain_region_point_ranges = self.config.brain_region_point_ranges
             markers_to_show = self.config.marker_clusters["Vessels"]
 
-            all_points_per_brain_region_dir = "%s/All Points Per Region" % parent_dir
+            all_points_per_brain_region_dir = "%s/All Points Per Region" % feed_dir
             mkdir_p(all_points_per_brain_region_dir)
 
-            average_points_dir = "%s/Average Per Region" % parent_dir
+            average_points_dir = "%s/Average Per Region" % feed_dir
             mkdir_p(average_points_dir)
 
-            all_points = "%s/All Points" % parent_dir
+            all_points = "%s/All Points" % feed_dir
             mkdir_p(all_points)
 
             all_kept_removed_vessel_expression_data_collapsed = []
@@ -3005,415 +3403,6 @@ class Visualizer:
 
             plt.title("Kept vs Removed Vessel Marker Expression - All Points")
             ax = sns.boxplot(x="Vessel", y="Expression", hue="Vessel", data=df, palette="Set3", showfliers=False)
+
             plt.savefig(os.path.join(all_points, "All_Points.png"))
             plt.clf()
-
-    def vessel_areas_histogram(self, **kwargs):
-        """
-        Create visualizations of vessel areas
-        """
-        output_dir = "%s/Vessel Areas Histogram" % self.results_dir
-
-        mkdir_p(output_dir)
-
-        masks = self.config.all_masks
-        region_names = self.config.brain_region_names
-
-        show_outliers = self.config.show_boxplot_outliers
-
-        total_areas = [[], [], []]
-
-        brain_regions = self.config.brain_region_point_ranges
-
-        mibi_reader = MIBIReader(self.config)
-        object_extractor = ObjectExtractor(self.config)
-
-        for segmentation_type in masks:
-            current_point = 1
-            current_region = 0
-
-            marker_segmentation_masks, markers_data, self.markers_names = mibi_reader.get_all_point_data()
-
-            contour_images_multiple_points = []
-            contour_data_multiple_points = []
-
-            for segmentation_mask in marker_segmentation_masks:
-                contour_images, contours, removed_contours = object_extractor.extract(segmentation_mask)
-                contour_images_multiple_points.append(contour_images)
-                contour_data_multiple_points.append(contours)
-
-            vessel_areas = self.plot_vessel_areas(contour_data_multiple_points,
-                                                  segmentation_type=segmentation_type,
-                                                  show_outliers=show_outliers)
-
-            for point_vessel_areas in vessel_areas:
-                current_point += 1
-
-                if not (brain_regions[current_region][0] <= current_point <= brain_regions[current_region][1]):
-                    current_region += 1
-
-                if current_region < len(total_areas):
-                    total_areas[current_region].extend(sorted(point_vessel_areas))
-
-        colors = ['blue', 'green', 'purple', 'tan', 'pink', 'red']
-
-        fig = plt.figure(1, figsize=(9, 6))
-        plt.title("All Objects Across Brain Regions - All Vessels")
-
-        # Create an axes instance
-        ax = fig.add_subplot(111)
-
-        # Create the boxplot
-        bp = ax.boxplot(total_areas, showfliers=show_outliers, patch_artist=True, labels=region_names)
-
-        for w, region in enumerate(brain_regions):
-            patch = bp['boxes'][w]
-            patch.set(facecolor=colors[w])
-
-        plt.savefig(os.path.join(output_dir, "Vessel_Areas_Histogram.png"))
-        plt.clf()
-
-    def _pseudo_time_heatmap(self,
-                             mibi_features,
-                             ax=None,
-                             save_dir=None,
-                             binned=False,
-                             cmap=None,
-                             map_name="Example",
-                             **kwargs):
-        """
-        Pseudo Time Heatmap
-        """
-
-        mask_type = kwargs.get("mask_type", "mask_only")
-        analysis_variable = kwargs.get("analysis_variable", "Eccentricity")
-
-        mibi_features = loc_by_expansion(mibi_features,
-                                         expansion_type=mask_type,
-                                         average=False)
-
-        mibi_features = melt_markers(mibi_features,
-                                     non_id_vars=self.markers_names,
-                                     add_marker_group=False)
-
-        mibi_features["Expression"] = pd.to_numeric(mibi_features["Expression"])
-
-        mibi_features['Mean Expression'] = \
-            mibi_features.groupby(['Vessel', 'Point', 'Marker'])['Expression'].transform('mean')
-
-        mibi_features.reset_index(level=['Vessel', 'Point', 'Expansion'], inplace=True)
-
-        mibi_features = mibi_features[mibi_features["Expansion"] == mibi_features["Expansion"].max()]
-
-        all_mask_data = []
-        x_tick_labels = []
-
-        for val in sorted(mibi_features[analysis_variable].unique()):
-            y_tick_labels = mibi_features[mibi_features[analysis_variable] == val].groupby(['Marker'],
-                                                                                           sort=False)[
-                'Mean Expression'].mean().reset_index()["Marker"].values
-
-        if binned:
-            for val in np.linspace(mibi_features[analysis_variable].min(),
-                                   mibi_features[analysis_variable].max(), 5):
-
-                current_expansion_all = mibi_features[(mibi_features[analysis_variable] >= val) &
-                                                      (mibi_features[analysis_variable] < val + mibi_features[
-                                                          analysis_variable].max() / 5)].groupby(
-                    ['Marker'])[
-                    'Mean Expression'].mean().to_numpy()
-
-                x_tick_labels.append(round(val, 2))
-
-                if current_expansion_all.size > 0:
-                    all_mask_data.append(current_expansion_all)
-                else:
-                    all_mask_data.append(np.zeros((self.config.n_markers,), np.uint8))
-
-            all_mask_data = np.array(all_mask_data)
-
-            all_mask_data = all_mask_data.T
-
-            self._heatmap_clustermap_generator(data=all_mask_data,
-                                               x_tick_labels=x_tick_labels,
-                                               x_label=analysis_variable,
-                                               x_tick_indices=np.linspace(0,
-                                                                          all_mask_data.shape[1] - 1,
-                                                                          5,
-                                                                          dtype=int),
-                                               cmap=cmap,
-                                               marker_clusters=self.config.marker_clusters,
-                                               output_dir=save_dir,
-                                               map_name="%s_pseudo_time_heatmap_binned_%s" % (analysis_variable,
-                                                                                              map_name),
-                                               cluster=False,
-                                               y_tick_labels=y_tick_labels,
-                                               vmin=0,
-                                               vmax=1.25
-                                               )
-        else:
-
-            for val in sorted(mibi_features[analysis_variable].unique()):
-
-                current_expansion_all = \
-                    mibi_features[mibi_features[analysis_variable] == val].groupby(['Marker'],
-                                                                                   sort=False)[
-                        'Mean Expression'].mean().to_numpy()
-
-                x_tick_labels.append(round(val, 2))
-
-                if current_expansion_all.size > 0:
-                    all_mask_data.append(current_expansion_all)
-                else:
-                    all_mask_data.append(np.zeros((self.config.n_markers,), np.uint8))
-
-            all_mask_data = np.array(all_mask_data)
-
-            all_mask_data = all_mask_data.T
-
-            self._heatmap_clustermap_generator(data=all_mask_data,
-                                               x_tick_labels=x_tick_labels,
-                                               x_label=analysis_variable,
-                                               x_tick_indices=np.linspace(0,
-                                                                          all_mask_data.shape[1] - 1,
-                                                                          5,
-                                                                          dtype=int),
-                                               cmap=cmap,
-                                               marker_clusters=self.config.marker_clusters,
-                                               output_dir=save_dir,
-                                               map_name="%s_pseudo_time_heatmap_%s" % (analysis_variable,
-                                                                                       map_name),
-                                               cluster=False,
-                                               y_tick_labels=y_tick_labels,
-                                               ax=ax,
-                                               vmin=0,
-                                               vmax=1.25
-                                               )
-
-        return ax
-
-    def pseudo_time_heatmap(self,
-                            cmap=None,
-                            **kwargs):
-        """
-        Pseudo-Time Heatmap
-
-        :param cmap: Matplotlib.Colormap, Colormap to be used for plot
-        :param kwargs: Keyword arguments
-        :return:
-        """
-
-        parent_dir = "%s/Pseudo-Time Heatmaps" % self.results_dir
-
-        mkdir_p(parent_dir)
-
-        if cmap is None:
-            norm = matplotlib.colors.Normalize(-1, 1)
-            colors = [[norm(-1.0), "black"],
-                      [norm(-0.5), "indigo"],
-                      [norm(0), "firebrick"],
-                      [norm(0.5), "orange"],
-                      [norm(1.0), "khaki"]]
-
-            cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", colors)
-
-        analysis_variable = kwargs.get('analysis_variable', "Asymmetry Score")
-        mask_type = kwargs.get('mask_type', "expansion_only")
-
-        for feed_idx, feed_contours, feed_features, feed_dir in feed_features_iterator(self.all_samples_features,
-                                                                                       self.all_feeds_data,
-                                                                                       self.all_feeds_contour_data,
-                                                                                       self.all_feeds_metadata,
-                                                                                       save_to_dir=True,
-                                                                                       parent_dir=parent_dir):
-
-            feed_features.reset_index(level=['Point', 'Vessel', 'Expansion', 'Expansion Type'], inplace=True)
-
-            feed_features['Region'] = pd.cut(feed_features['Point'],
-                                             bins=[self.config.brain_region_point_ranges[0][0] - 1,
-                                                   self.config.brain_region_point_ranges[1][0] - 1,
-                                                   self.config.brain_region_point_ranges[2][0] - 1,
-                                                   float('Inf')],
-                                             labels=[self.config.brain_region_names[0],
-                                                     self.config.brain_region_names[1],
-                                                     self.config.brain_region_names[2]])
-
-            feed_features.set_index(['Point', 'Vessel', 'Expansion', 'Expansion Type'], inplace=True)
-
-            for region in feed_features['Region'].unique():
-                region_dir = "%s/%s" % (feed_dir, region)
-                mkdir_p(region_dir)
-
-                region_features = feed_features[feed_features['Region'] == region]
-
-                self._pseudo_time_heatmap(region_features,
-                                          save_dir=region_dir,
-                                          analysis_variable=analysis_variable,
-                                          mask_type=mask_type,
-                                          map_name=region,
-                                          cmap=cmap)
-
-                self._pseudo_time_heatmap(region_features,
-                                          save_dir=region_dir,
-                                          binned=True,
-                                          analysis_variable=analysis_variable,
-                                          mask_type=mask_type,
-                                          map_name=region,
-                                          cmap=cmap)
-
-            self._pseudo_time_heatmap(feed_features,
-                                      save_dir=feed_dir,
-                                      binned=False,
-                                      analysis_variable=analysis_variable,
-                                      mask_type=mask_type,
-                                      map_name="all_points",
-                                      cmap=cmap)
-
-    def vessel_asymmetry_area_spread_plot(self, **kwargs):
-        """
-        Vessel Asymmetry Area Spread Plot
-        :return:
-        """
-
-        assert "Asymmetry" in self.all_samples_features, "Asymmetry analysis has not been performed, please run " \
-                                                         "vessel_contiguity_analysis() first!"
-
-        output_dir = "%s/Vessel Areas Spread Boxplot" % self.results_dir
-
-        mkdir_p(output_dir)
-        idx = pd.IndexSlice
-
-        plot_features = self.all_samples_features.loc[idx[:,
-                                                      :,
-                                                      0,
-                                                      "Data"], :]
-
-        asymmetry_features = plot_features.loc[self.all_samples_features["Asymmetry"] != "NA"]
-
-        plot_features['Size'] = pd.cut(plot_features['Contour Area'],
-                                       bins=[self.config.small_vessel_threshold,
-                                             self.config.medium_vessel_threshold,
-                                             self.config.large_vessel_threshold,
-                                             float('Inf')],
-                                       labels=["Small",
-                                               "Medium",
-                                               "Large"])
-
-        asymmetry_features['Size'] = pd.cut(asymmetry_features['Contour Area'],
-                                            bins=[self.config.small_vessel_threshold,
-                                                  self.config.medium_vessel_threshold,
-                                                  self.config.large_vessel_threshold,
-                                                  float('Inf')],
-                                            labels=["Small",
-                                                    "Medium",
-                                                    "Large"])
-
-        asymmetry_features = asymmetry_features.rename(columns={'Contour Area': 'Pixel Area'})
-        plot_features = plot_features.rename(columns={'Contour Area': 'Pixel Area'})
-
-        nobs_split = asymmetry_features.groupby(['Size', 'Asymmetry']).apply(lambda x: 'n: {}'.format(len(x)))
-        nobs = plot_features.groupby(['Size']).apply(lambda x: 'n: {}'.format(len(x)))
-
-        ax = sns.boxplot(x="Size",
-                         y="Pixel Area",
-                         hue="Asymmetry",
-                         data=asymmetry_features,
-                         showfliers=False)
-
-        for tick, label in enumerate(ax.get_xticklabels()):
-            ax_size = label.get_text()
-
-            for j, ax_asymmetry in enumerate(ax.get_legend_handles_labels()[1]):
-                x_offset = (j - 0.5) * 2 / 5
-                num = nobs_split[ax_size, ax_asymmetry]
-
-                point_data_transform = (tick + x_offset, 0)
-
-                axis_to_data = ax.transAxes + ax.transData.inverted()
-                data_to_axis = axis_to_data.inverted()
-
-                point_axis_transform = data_to_axis.transform(point_data_transform)
-
-                ax.text(point_axis_transform[0], 0.005, str(num),
-                        horizontalalignment='center', size='x-small', color='k', weight='semibold',
-                        transform=ax.transAxes)
-
-        plt.savefig(output_dir + '/vessel_area_spread_asymmetry_split.png',
-                    bbox_inches='tight')
-        plt.clf()
-
-        ax = sns.boxplot(x="Size",
-                         y="Pixel Area",
-                         data=plot_features,
-                         showfliers=False)
-
-        for tick, label in enumerate(ax.get_xticklabels()):
-            ax_size = label.get_text()
-
-            num = nobs[ax_size]
-
-            point_data_transform = (tick, 0)
-
-            axis_to_data = ax.transAxes + ax.transData.inverted()
-            data_to_axis = axis_to_data.inverted()
-
-            point_axis_transform = data_to_axis.transform(point_data_transform)
-
-            ax.text(point_axis_transform[0], 0.005, str(num),
-                    horizontalalignment='center', size='x-small', color='k', weight='semibold',
-                    transform=ax.transAxes)
-
-        plt.savefig(output_dir + '/vessel_area_spread.png',
-                    bbox_inches='tight')
-        plt.clf()
-
-    def vessel_nonvessel_masks(self,
-                               n_expansions: int = 5,
-                               **kwargs
-                               ):
-        """
-        Get Vessel nonvessel masks
-
-        :param n_expansions: int, Number of expansions
-        """
-
-        img_shape = self.config.segmentation_mask_size
-
-        example_img = np.zeros(img_shape, np.uint8)
-        example_img = cv.cvtColor(example_img, cv.COLOR_GRAY2BGR)
-
-        parent_dir = "%s/Associated Area Masks" % self.results_dir
-
-        for feed_idx, feed_contours, feed_features, feed_dir in feed_features_iterator(self.all_samples_features,
-                                                                                       self.all_feeds_data,
-                                                                                       self.all_feeds_contour_data,
-                                                                                       self.all_feeds_metadata,
-                                                                                       save_to_dir=True,
-                                                                                       parent_dir=parent_dir):
-
-            output_dir = "%s/%s%s Expansion" % (feed_dir,
-                                                str(round_to_nearest_half((n_expansions) *
-                                                                          self.config.pixel_interval *
-                                                                          self.config.pixels_to_distance)),
-                                                self.config.data_resolution_units)
-            mkdir_p(output_dir)
-
-            for point_num in range(self.config.n_points):
-                per_point_vessel_contours = feed_contours.loc[point_num, "Contours"].contours
-
-                regions = get_assigned_regions(per_point_vessel_contours, img_shape)
-
-                for idx, cnt in enumerate(per_point_vessel_contours):
-                    mask_expanded = expand_vessel_region(cnt, img_shape,
-                                                         upper_bound=self.config.pixel_interval * n_expansions)
-                    mask_expanded = cv.bitwise_and(mask_expanded, regions[idx].astype(np.uint8))
-                    dark_space_mask = regions[idx].astype(np.uint8) - mask_expanded
-
-                    example_img[np.where(dark_space_mask == 1)] = self.config.nonvessel_mask_colour  # red
-                    example_img[np.where(mask_expanded == 1)] = self.config.vessel_space_colour  # green
-                    cv.drawContours(example_img, [cnt], -1, self.config.vessel_mask_colour, cv.FILLED)  # blue
-
-                    vesselnonvessel_label = "Point %s" % str(point_num + 1)
-
-                    cv.imwrite(os.path.join(output_dir, "%s.png" % vesselnonvessel_label),
-                               example_img)

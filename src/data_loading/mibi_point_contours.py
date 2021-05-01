@@ -11,7 +11,8 @@ class MIBIPointContours:
                  segmentation_mask: np.array,
                  point_idx: int,
                  config: Config,
-                 object_extractor: ObjectExtractor):
+                 object_extractor: ObjectExtractor,
+                 removed_contour_threshold: float = 125.0):
         """
         Data structure for storing MIBI contours
 
@@ -24,7 +25,8 @@ class MIBIPointContours:
         self._rois, self._contours, self._removed_contours = self.object_extractor.extract(
             segmentation_mask,
             point_name=str(
-                point_idx + 1))
+                point_idx + 1),
+            removed_contour_threshold=removed_contour_threshold)
 
     @property
     def contours(self):
