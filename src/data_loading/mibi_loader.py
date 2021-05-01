@@ -44,7 +44,8 @@ class MIBILoader:
         metadata_dict = {
             "Feed Name": [feed_name],
             "Segmentation Mask Size": [segmentation_mask.shape],
-            "Number of Markers": [len(marker_names)]
+            "Number of Markers": [len(marker_names)],
+            "Feed": self.feeds[feed_name]
         }
 
         return metadata_dict, markers_img, segmentation_mask, marker_names

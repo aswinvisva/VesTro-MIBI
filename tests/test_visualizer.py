@@ -3,7 +3,8 @@ import unittest
 from os import path
 
 from config.config_settings import Config
-from src.data_analysis.vessel_asymmetry_analyzer import VesselAsymmetryAnalyzer
+from src.data_analysis.shape_quantification_analyzer import ShapeQuantificationAnalyzer
+from src.data_analysis.dimensionality_reduction_clustering import DimensionalityReductionClusteringAnalyzer
 from src.data_loading.mibi_data_feed import MIBIDataFeed
 from src.mibi_pipeline import MIBIPipeline
 from src.utils.test_utils import create_test_data
@@ -207,7 +208,7 @@ class TestVisualizer(unittest.TestCase):
             pipe.add_feed(example_feed)
             pipe.load_preprocess_data()
 
-            pipe.visualizer.categorical_violin_plot(analysis_variable="Vessel Size",
+            pipe.visualizer.categorical_violin_plot(primary_categorical_analysis_variable="Vessel Size",
                                                     mask_type="mask_and_expansion")
 
             test_path = "%s/Categorical Violin Plots/Test/By Vessel Size/Vessels/SMA.png" % temp_dir
@@ -237,7 +238,7 @@ class TestVisualizer(unittest.TestCase):
             pipe.add_feed(example_feed)
             pipe.load_preprocess_data()
 
-            analyzer = VesselAsymmetryAnalyzer(
+            analyzer = ShapeQuantificationAnalyzer(
                 pipe.config,
                 pipe.all_expansions_features,
                 pipe.marker_names,
@@ -255,7 +256,7 @@ class TestVisualizer(unittest.TestCase):
                              },
                              img_shape=(2048, 2048))
 
-            pipe.visualizer.categorical_violin_plot_with_images(analysis_variable="Solidity",
+            pipe.visualizer.categorical_violin_plot_with_images(primary_categorical_analysis_variable="Solidity",
                                                                 mask_size=(2048, 2048),
                                                                 order=["25%", "50%", "75%", "100%"])
 
@@ -286,7 +287,7 @@ class TestVisualizer(unittest.TestCase):
             pipe.add_feed(example_feed)
             pipe.load_preprocess_data()
 
-            analyzer = VesselAsymmetryAnalyzer(
+            analyzer = ShapeQuantificationAnalyzer(
                 pipe.config,
                 pipe.all_expansions_features,
                 pipe.marker_names,
@@ -304,9 +305,265 @@ class TestVisualizer(unittest.TestCase):
                              },
                              img_shape=(2048, 2048))
 
-            pipe.visualizer.average_quartile_violin_plot_subplots(analysis_variable="Solidity",
+            pipe.visualizer.average_quartile_violin_plot_subplots(primary_categorical_analysis_variable="Solidity",
                                                                   order=["25%", "50%", "75%", "100%"])
 
             test_path = "%s/Average Quartile Violin Plots/Test/average_quartile_violins.png" % temp_dir
 
             assert path.exists(test_path)
+
+    def test_violin_plot_brain_expansion(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            create_test_data(temp_dir, n_points=2, resolution=(2048, 2048))
+
+            config = Config()
+            example_feed = MIBIDataFeed(
+                feed_data_loc="%s/data" % temp_dir,
+                feed_mask_loc="%s/masks" % temp_dir,
+                feed_name="Test",
+                n_points=2
+            )
+
+            pipe = MIBIPipeline(config, temp_dir,
+                                csv_loc="data/dummy_test_data.csv",
+                                max_inward_expansions=1,
+                                max_outward_expansions=1,
+                                expansions=[1],
+                                n_workers=1,
+                                run_async=False
+                                )
+            pipe.add_feed(example_feed)
+            pipe.load_preprocess_data()
+
+            pipe.visualizer.violin_plot_brain_expansion(n_expansions=1)
+
+            test_path = "%s/Expansion Violin Plots/Per Marker/0.5μm Expansion/SMA.png" % temp_dir
+
+            assert path.exists(test_path)
+
+    def test_box_plot_brain_expansions(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            create_test_data(temp_dir, n_points=2, resolution=(2048, 2048))
+
+            config = Config()
+            example_feed = MIBIDataFeed(
+                feed_data_loc="%s/data" % temp_dir,
+                feed_mask_loc="%s/masks" % temp_dir,
+                feed_name="Test",
+                n_points=2
+            )
+
+            pipe = MIBIPipeline(config, temp_dir,
+                                csv_loc="data/dummy_test_data.csv",
+                                max_inward_expansions=1,
+                                max_outward_expansions=1,
+                                expansions=[1],
+                                n_workers=1,
+                                run_async=False
+                                )
+            pipe.add_feed(example_feed)
+            pipe.load_preprocess_data()
+
+            pipe.visualizer.box_plot_brain_expansions(n_expansions=1)
+
+            test_path = "%s/Expansion Box Plots/Per Marker/0.5μm Expansion/SMA.png" % temp_dir
+
+            assert path.exists(test_path)
+
+    def test_spatial_probability_maps(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            create_test_data(temp_dir, n_points=2, resolution=(2048, 2048))
+
+            config = Config()
+            example_feed = MIBIDataFeed(
+                feed_data_loc="%s/data" % temp_dir,
+                feed_mask_loc="%s/masks" % temp_dir,
+                feed_name="Test",
+                n_points=2
+            )
+
+            pipe = MIBIPipeline(config, temp_dir,
+                                csv_loc="data/dummy_test_data.csv",
+                                max_inward_expansions=1,
+                                max_outward_expansions=1,
+                                expansions=[1],
+                                n_workers=1,
+                                run_async=False
+                                )
+            pipe.add_feed(example_feed)
+            pipe.load_preprocess_data()
+
+            pipe.visualizer.spatial_probability_maps(mask_size=(2048, 2048))
+
+            test_path = "%s/Pixel Expression Spatial Maps/Test/Vessels/Point1.png" % temp_dir
+
+            assert path.exists(test_path)
+
+    def test_vessel_images_by_categorical_variable(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            create_test_data(temp_dir, n_points=2, resolution=(2048, 2048))
+
+            config = Config()
+            example_feed = MIBIDataFeed(
+                feed_data_loc="%s/data" % temp_dir,
+                feed_mask_loc="%s/masks" % temp_dir,
+                feed_name="Test",
+                n_points=2
+            )
+
+            pipe = MIBIPipeline(config, temp_dir,
+                                csv_loc="data/dummy_test_data.csv",
+                                max_inward_expansions=1,
+                                max_outward_expansions=1,
+                                expansions=[1],
+                                n_workers=1,
+                                run_async=False
+                                )
+            pipe.add_feed(example_feed)
+            pipe.load_preprocess_data()
+
+            pipe.visualizer.vessel_images_by_categorical_variable(primary_categorical_analysis_variable="Vessel Size")
+
+            test_path = "%s/Vessel Size Vessel Images/Test/Large/Point_Num_1_Vessel_ID_5.png" % temp_dir
+
+            assert path.exists(test_path)
+
+    def test_scatter_plot_umap_marker_projection(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            create_test_data(temp_dir, n_points=2, resolution=(2048, 2048))
+
+            config = Config()
+            example_feed = MIBIDataFeed(
+                feed_data_loc="%s/data" % temp_dir,
+                feed_mask_loc="%s/masks" % temp_dir,
+                feed_name="Test",
+                n_points=2
+            )
+
+            pipe = MIBIPipeline(config, temp_dir,
+                                csv_loc="data/dummy_test_data.csv",
+                                max_inward_expansions=1,
+                                max_outward_expansions=1,
+                                expansions=[1],
+                                n_workers=1,
+                                run_async=False
+                                )
+            pipe.add_feed(example_feed)
+            pipe.load_preprocess_data()
+
+            umap_analyzer = DimensionalityReductionClusteringAnalyzer(
+                pipe.config,
+                pipe.all_expansions_features,
+                pipe.marker_names,
+                pipe.all_feeds_contour_data,
+                pipe.all_feeds_metadata,
+                pipe.all_feeds_data
+            )
+
+            umap_analyzer.analyze(temp_dir)
+
+            shape_quant_analyzer = ShapeQuantificationAnalyzer(
+                pipe.config,
+                pipe.all_expansions_features,
+                pipe.marker_names,
+                pipe.all_feeds_contour_data,
+                pipe.all_feeds_metadata,
+                pipe.all_feeds_data
+            )
+
+            shape_quant_analyzer.analyze(temp_dir,
+                                         mask_type="expansion_only",
+                                         marker_settings="all_markers",
+                                         shape_quantification_method={
+                                             "Name": "Solidity",
+                                             "Metric": solidity
+                                         },
+                                         img_shape=(2048, 2048))
+
+            pipe.visualizer.scatter_plot_umap_marker_projection(mask_type="mask_only",
+                                                                primary_continuous_analysis_variable="Solidity Score")
+
+            test_path = "%s/UMAP Scatter Plot Projection/Test/Marker Clusters/Vessels.png" % temp_dir
+
+            assert path.exists(test_path)
+
+    def test_continuous_scatter_plot(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            create_test_data(temp_dir, n_points=2, resolution=(2048, 2048))
+
+            config = Config()
+            example_feed = MIBIDataFeed(
+                feed_data_loc="%s/data" % temp_dir,
+                feed_mask_loc="%s/masks" % temp_dir,
+                feed_name="Test",
+                n_points=2
+            )
+
+            pipe = MIBIPipeline(config, temp_dir,
+                                csv_loc="data/dummy_test_data.csv",
+                                max_inward_expansions=1,
+                                max_outward_expansions=1,
+                                expansions=[1],
+                                n_workers=1,
+                                run_async=False
+                                )
+            pipe.add_feed(example_feed)
+            pipe.load_preprocess_data()
+
+            analyzer = ShapeQuantificationAnalyzer(
+                pipe.config,
+                pipe.all_expansions_features,
+                pipe.marker_names,
+                pipe.all_feeds_contour_data,
+                pipe.all_feeds_metadata,
+                pipe.all_feeds_data
+            )
+
+            analyzer.analyze(temp_dir,
+                             mask_type="expansion_only",
+                             marker_settings="all_markers",
+                             shape_quantification_method={
+                                 "Name": "Solidity",
+                                 "Metric": solidity
+                             },
+                             img_shape=(2048, 2048))
+
+            pipe.visualizer.continuous_scatter_plot()
+
+            test_path = "%s/Solidity Score Scatter Plots/Test/By Solidity/SMA.png" % temp_dir
+
+            assert path.exists(test_path)
+
+    def test_vessel_nonvessel_heatmap(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            create_test_data(temp_dir, n_points=2, resolution=(2048, 2048))
+
+            config = Config()
+            example_feed = MIBIDataFeed(
+                feed_data_loc="%s/data" % temp_dir,
+                feed_mask_loc="%s/masks" % temp_dir,
+                feed_name="Test",
+                n_points=2,
+                brain_region_point_ranges=[(1, 2)],
+                brain_region_names=["Test Region"]
+            )
+
+            pipe = MIBIPipeline(config, temp_dir,
+                                csv_loc="data/dummy_test_data.csv",
+                                max_inward_expansions=1,
+                                max_outward_expansions=1,
+                                expansions=[1],
+                                n_workers=1,
+                                run_async=False
+                                )
+            pipe.add_feed(example_feed)
+            pipe.load_preprocess_data()
+
+            pipe.visualizer.vessel_nonvessel_heatmap(n_expansions=1,
+                                                     primary_categorical_analysis_variable=None)
+
+            test_path = "%s/Heatmaps & Clustermaps/Test/Heatmaps/Expansion_1.png" % temp_dir
+
+            assert path.exists(test_path)
+
+

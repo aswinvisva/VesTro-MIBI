@@ -4,7 +4,7 @@ from config.config_settings import Config
 from src.data_analysis._shape_quantification_metrics import *
 from src.data_analysis.dimensionality_reduction_clustering import DimensionalityReductionClusteringAnalyzer
 from src.data_analysis.positive_vessel_summary_analyzer import PositiveVesselSummaryAnalyzer
-from src.data_analysis.vessel_asymmetry_analyzer import VesselAsymmetryAnalyzer
+from src.data_analysis.shape_quantification_analyzer import ShapeQuantificationAnalyzer
 from src.data_loading.mibi_data_feed import MIBIDataFeed
 from src.data_loading.mibi_loader import MIBILoader
 from src.mibi_pipeline import MIBIPipeline
@@ -19,7 +19,8 @@ def medres_example():
         feed_mask_loc="/media/large_storage/oliveria_data/masks/medres",
         feed_name="Medres",
         n_points=300,
-        points_per_dir=100
+        points_per_dir=100,
+        brain_region_point_ranges=[(1, 100), (101, 200), (201, 300)]
     )
 
     loader = MIBILoader(conf)
@@ -37,7 +38,9 @@ def hires_example():
         feed_data_loc="/media/aswin/large_storage/oliveria_data/data/hires",
         feed_mask_loc="/media/aswin/large_storage/oliveria_data/masks/hires",
         feed_name="Hires",
-        n_points=48
+        n_points=48,
+        brain_region_point_ranges=[(1, 16), (17, 32), (33, 48)],
+        brain_region_names=["MFG", "HIP", "CAUD"]
     )
 
     pipe = MIBIPipeline(conf, results_dir,
@@ -46,7 +49,7 @@ def hires_example():
     pipe.add_feed(hires_feed)
     pipe.load_preprocess_data()
 
-    pipe.add_analyzer(VesselAsymmetryAnalyzer)
+    pipe.add_analyzer(ShapeQuantificationAnalyzer)
     # pipe.add_analyzer(PositiveVesselSummaryAnalyzer)
     # pipe.add_analyzer(DimensionalityReductionClusteringAnalyzer)
 
@@ -58,10 +61,10 @@ def hires_example():
     pipe.analyze_data(marker_settings="all_markers",
                       shape_quantification_method=shape_quantification_method)
 
-    pipe.save_to_csv()
+    # pipe.save_to_csv()
 
     pipe.generate_visualizations(mask_type="mask_only",
-                                 analysis_variable="Eccentricity",
+                                 primary_categorical_analysis_variable=None,
                                  order=["25%", "50%", "75%", "100%"])
 
 

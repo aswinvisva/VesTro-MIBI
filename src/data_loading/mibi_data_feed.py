@@ -12,6 +12,8 @@ class MIBIDataFeed:
                  feed_name: str,
                  n_points: int,
                  points_per_dir: int = 48,
+                 brain_region_point_ranges: list = [(1, 16), (17, 32), (33, 48)],
+                 brain_region_names: list = ["MFG", "HIP", "CAUD"],
                  point_dir_name: str = "Point",
                  tif_dir_name: str = "TIFs",
                  segmentation_mask_type: str = "allvessels"):
@@ -32,6 +34,8 @@ class MIBIDataFeed:
         self.data_loc = feed_data_loc
         self.mask_loc = feed_mask_loc
         self.total_points = n_points
+        self.brain_region_point_ranges = brain_region_point_ranges
+        self.brain_region_names = brain_region_names
         self.points_per_dir = points_per_dir
         self.points_dir_name = point_dir_name
         self.tifs_dir_name = tif_dir_name

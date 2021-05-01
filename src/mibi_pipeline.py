@@ -5,7 +5,6 @@ from multiprocessing import Pool
 from tqdm import tqdm
 
 from src.data_analysis.base_analyzer import BaseAnalyzer
-from src.data_analysis.vessel_asymmetry_analyzer import VesselAsymmetryAnalyzer
 from src.data_loading.mibi_data_feed import MIBIDataFeed
 from src.data_loading.mibi_loader import MIBILoader
 from src.data_loading.mibi_point_contours import MIBIPointContours
@@ -410,8 +409,8 @@ class MIBIPipeline:
         if self.config.create_embedded_vessel_id_masks:
             self.visualizer.obtain_embedded_vessel_masks(**kwargs)
 
-        if self.config.create_vessel_asymmetry_area_spread_plot:
-            self.visualizer.vessel_asymmetry_area_spread_plot(**kwargs)
+        if self.config.create_shape_asymmetry_area_spread_plot:
+            self.visualizer.vessel_shape_area_spread_plot(**kwargs)
 
         if self.config.create_categorical_violin_plot:
             self.visualizer.categorical_violin_plot(**kwargs)

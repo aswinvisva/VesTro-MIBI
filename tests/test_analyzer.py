@@ -9,7 +9,7 @@ import pandas as pd
 from config.config_settings import Config
 from src.data_analysis.dimensionality_reduction_clustering import DimensionalityReductionClusteringAnalyzer
 from src.data_analysis.positive_vessel_summary_analyzer import PositiveVesselSummaryAnalyzer
-from src.data_analysis.vessel_asymmetry_analyzer import VesselAsymmetryAnalyzer
+from src.data_analysis.shape_quantification_analyzer import ShapeQuantificationAnalyzer
 from src.data_loading.mibi_data_feed import MIBIDataFeed
 from src.data_loading.mibi_loader import MIBILoader
 from src.mibi_pipeline import MIBIPipeline
@@ -42,7 +42,7 @@ class TestAnalyzer(unittest.TestCase):
             pipe.add_feed(example_feed)
             pipe.load_preprocess_data()
 
-            analyzer = VesselAsymmetryAnalyzer(
+            analyzer = ShapeQuantificationAnalyzer(
                 pipe.config,
                 pipe.all_expansions_features,
                 pipe.marker_names,
