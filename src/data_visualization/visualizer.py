@@ -3252,3 +3252,157 @@ class Visualizer:
 
                     cv.imwrite(os.path.join(output_dir, "%s.png" % vesselnonvessel_label),
                                example_img)
+
+    def removed_vessel_expression_boxplot(self, **kwargs):
+        """
+        Create kept vs. removed vessel expression comparison using Box Plots
+        """
+        all_points_vessels_expression = []
+        all_points_removed_vessels_expression = []
+
+        parent_dir = "%s/Kept Vs. Removed Vessel Boxplots" % self.results_dir
+
+        mkdir_p(parent_dir)
+
+        for feed_idx, feed_contours, feed_features, feed_dir, brain_region_point_ranges, brain_region_names in feed_features_iterator(
+                self.all_samples_features,
+                self.all_feeds_data,
+                self.all_feeds_contour_data,
+                self.all_feeds_metadata,
+                save_to_dir=True,
+                parent_dir=parent_dir):
+
+            n_points = len(feed_features.index.get_level_values("Point").unique())
+
+            # Iterate through each point
+            for i in range(n_points):
+                contours = feed_contours.loc[i, "Contours"].contours
+                contour_areas = feed_contours.loc[i, "Contours"].areas
+
+                removed_contours = feed_contours.loc[i, "Contours"].removed_contours
+                removed_areas = feed_contours.loc[i, "Contours"].removed_areas
+                marker_data = self.all_feeds_data[feed_idx, i]
+
+                start_expression = datetime.datetime.now()
+
+                vessel_expression_data = calculate_composition_marker_expression(self.config,
+                                                                                 marker_data,
+                                                                                 contours,
+                                                                                 contour_areas,
+                                                                                 self.markers_names,
+                                                                                 point_num=i + 1)
+
+                if len(removed_contours) == 0:
+                    continue
+
+                removed_vessel_expression_data = calculate_composition_marker_expression(self.config,
+                                                                                         marker_data,
+                                                                                         removed_contours,
+                                                                                         removed_areas,
+                                                                                         self.markers_names,
+                                                                                         point_num=i + 1)
+
+                all_points_vessels_expression.append(vessel_expression_data)
+                all_points_removed_vessels_expression.append(removed_vessel_expression_data)
+
+                end_expression = datetime.datetime.now()
+
+                logging.debug(
+                    "Finished calculating expression for Point %s in %s" % (
+                        str(i + 1), end_expression - start_expression))
+
+            if len(all_points_removed_vessels_expression) == 0:
+                return
+
+            kept_vessel_expression = pd.concat(all_points_vessels_expression).fillna(0)
+            kept_vessel_expression.index = map(lambda a: (a[0], a[1], a[2], a[3], "Kept"), kept_vessel_expression.index)
+            removed_vessel_expression = pd.concat(all_points_removed_vessels_expression).fillna(0)
+            removed_vessel_expression.index = map(lambda a: (a[0], a[1], a[2], a[3], "Removed"),
+                                                  removed_vessel_expression.index)
+
+            kept_removed_features = [kept_vessel_expression, removed_vessel_expression]
+            kept_removed_features = pd.concat(kept_removed_features).fillna(0)
+            kept_removed_features.index = pd.MultiIndex.from_tuples(kept_removed_features.index)
+            kept_removed_features = kept_removed_features.sort_index()
+
+            scaling_factor = self.config.scaling_factor
+            transformation = self.config.transformation_type
+            normalization = self.config.normalization_type
+            n_markers = self.config.n_markers
+
+            kept_removed_features = normalize_expression_data(self.config,
+                                                              kept_removed_features,
+                                                              self.markers_names,
+                                                              transformation=transformation,
+                                                              normalization=normalization,
+                                                              scaling_factor=scaling_factor,
+                                                              n_markers=n_markers)
+
+            markers_to_show = self.config.marker_clusters["Vessels"]
+
+            all_points_per_brain_region_dir = "%s/All Points Per Region" % feed_dir
+            mkdir_p(all_points_per_brain_region_dir)
+
+            average_points_dir = "%s/Average Per Region" % feed_dir
+            mkdir_p(average_points_dir)
+
+            all_points = "%s/All Points" % feed_dir
+            mkdir_p(all_points)
+
+            all_kept_removed_vessel_expression_data_collapsed = []
+
+            for idx, brain_region in enumerate(brain_region_names):
+                brain_region_range = brain_region_point_ranges[idx]
+
+                vessel_removed_vessel_expression_data_collapsed = []
+
+                idx = pd.IndexSlice
+                per_point__vessel_data = kept_removed_features.loc[idx[brain_region_range[0]:brain_region_range[1], :,
+                                                                   :,
+                                                                   "Data",
+                                                                   "Kept"],
+                                                                   markers_to_show]
+
+                per_point__removed_data = kept_removed_features.loc[idx[brain_region_range[0]:brain_region_range[1], :,
+                                                                    :,
+                                                                    "Data",
+                                                                    "Removed"],
+                                                                    markers_to_show]
+
+                for index, vessel_data in per_point__vessel_data.iterrows():
+                    data = np.mean(vessel_data)
+                    vessel_removed_vessel_expression_data_collapsed.append(
+                        [data, "Kept", index[0]])
+
+                    all_kept_removed_vessel_expression_data_collapsed.append(
+                        [data, "Kept", index[0]])
+
+                for index, vessel_data in per_point__removed_data.iterrows():
+                    data = np.mean(vessel_data)
+                    vessel_removed_vessel_expression_data_collapsed.append([data, "Removed",
+                                                                            index[0]])
+
+                    all_kept_removed_vessel_expression_data_collapsed.append([data, "Removed",
+                                                                              index[0]])
+
+                df = pd.DataFrame(vessel_removed_vessel_expression_data_collapsed,
+                                  columns=["Expression", "Vessel", "Point"])
+
+                plt.title("Kept vs Removed Vessel Marker Expression - %s" % brain_region)
+                ax = sns.boxplot(x="Point", y="Expression", hue="Vessel", data=df, palette="Set3", showfliers=False)
+                plt.savefig(os.path.join(all_points_per_brain_region_dir, "%s.png" % brain_region))
+                plt.clf()
+
+                plt.title("Kept vs Removed Vessel Marker Expression - %s: Average Points" % brain_region)
+                ax = sns.boxplot(x="Vessel", y="Expression", hue="Vessel", data=df, palette="Set3", showfliers=False)
+                plt.savefig(os.path.join(average_points_dir, "%s.png" % brain_region))
+                plt.clf()
+
+            df = pd.DataFrame(all_kept_removed_vessel_expression_data_collapsed,
+                              columns=["Expression", "Vessel", "Point"])
+
+            plt.title("Kept vs Removed Vessel Marker Expression - All Points")
+            ax = sns.boxplot(x="Vessel", y="Expression", hue="Vessel", data=df, palette="Set3", showfliers=False)
+
+            plt.savefig(os.path.join(all_points, "All_Points.png"))
+            plt.clf()

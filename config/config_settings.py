@@ -109,7 +109,7 @@ class Config:
     # Settings for extracting vessels from segmentation mask
 
     show_vessel_contours_when_extracting = False
-    minimum_contour_area_to_remove = float(125) / float((1.0 / pixels_to_distance) ** 2)
+    minimum_contour_area_to_remove = float(125)
     use_guassian_blur_when_extracting_vessels = True
     create_removed_vessels_mask = False
     create_blurred_vessels_mask = False

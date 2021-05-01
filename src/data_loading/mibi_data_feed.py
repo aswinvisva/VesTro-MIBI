@@ -16,7 +16,10 @@ class MIBIDataFeed:
                  brain_region_names: list = ["MFG", "HIP", "CAUD"],
                  point_dir_name: str = "Point",
                  tif_dir_name: str = "TIFs",
-                 segmentation_mask_type: str = "allvessels"):
+                 segmentation_mask_type: str = "allvessels",
+                 segmentation_mask_size: tuple = (1024, 1024),
+                 data_resolution_size: tuple = (500, 500),
+                 data_resolution_units: str = "μm"):
         """
         MIBI Data Feed
 
@@ -39,6 +42,10 @@ class MIBIDataFeed:
         self.points_per_dir = points_per_dir
         self.points_dir_name = point_dir_name
         self.tifs_dir_name = tif_dir_name
+        self.segmentation_mask_size = segmentation_mask_size
+        self.data_resolution_size = data_resolution_size
+        self.data_resolution_units = data_resolution_units
+        self.pixels_to_distance = float(self.data_resolution_size[0]) / float(self.segmentation_mask_size[0])
 
     def get_locs(self, point_num: int):
         """
