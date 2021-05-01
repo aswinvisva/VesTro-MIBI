@@ -566,4 +566,183 @@ class TestVisualizer(unittest.TestCase):
 
             assert path.exists(test_path)
 
+    def test_categorical_split_expansion_heatmap_clustermap(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            create_test_data(temp_dir, n_points=2, resolution=(2048, 2048))
 
+            config = Config()
+            example_feed = MIBIDataFeed(
+                feed_data_loc="%s/data" % temp_dir,
+                feed_mask_loc="%s/masks" % temp_dir,
+                feed_name="Test",
+                n_points=2,
+                brain_region_point_ranges=[(1, 2)],
+                brain_region_names=["Test Region"]
+            )
+
+            pipe = MIBIPipeline(config, temp_dir,
+                                csv_loc="data/dummy_test_data.csv",
+                                max_inward_expansions=1,
+                                max_outward_expansions=1,
+                                expansions=[1],
+                                n_workers=1,
+                                run_async=False
+                                )
+            pipe.add_feed(example_feed)
+            pipe.load_preprocess_data()
+
+            pipe.visualizer.categorical_split_expansion_heatmap_clustermap(n_expansions=1)
+
+            test_path = "%s/Categorical Expansion Heatmaps & Clustermaps/Test/" \
+                        "Categorical Split Expansion Heatmaps/Marker Clusters/0.5μm Expansion/Vessels.png" % temp_dir
+
+            assert path.exists(test_path)
+
+    def test_brain_region_expansion_heatmap(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            create_test_data(temp_dir, n_points=2, resolution=(2048, 2048))
+
+            config = Config()
+            example_feed = MIBIDataFeed(
+                feed_data_loc="%s/data" % temp_dir,
+                feed_mask_loc="%s/masks" % temp_dir,
+                feed_name="Test",
+                n_points=2,
+                brain_region_point_ranges=[(1, 2)],
+                brain_region_names=["Test Region"]
+            )
+
+            pipe = MIBIPipeline(config, temp_dir,
+                                csv_loc="data/dummy_test_data.csv",
+                                max_inward_expansions=1,
+                                max_outward_expansions=1,
+                                expansions=[1],
+                                n_workers=1,
+                                run_async=False
+                                )
+            pipe.add_feed(example_feed)
+            pipe.load_preprocess_data()
+
+            pipe.visualizer.brain_region_expansion_heatmap(n_expansions=1,
+                                                           primary_categorical_analysis_variable=None)
+
+            test_path = "%s/Expansion Heatmaps & Clustermaps/Test/Expansion Clustermaps/0.5μm Expansion/All_Points.png" % temp_dir
+
+            assert path.exists(test_path)
+
+    def test_marker_expression_masks(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            create_test_data(temp_dir, n_points=2, resolution=(2048, 2048))
+
+            config = Config()
+            example_feed = MIBIDataFeed(
+                feed_data_loc="%s/data" % temp_dir,
+                feed_mask_loc="%s/masks" % temp_dir,
+                feed_name="Test",
+                n_points=2,
+                brain_region_point_ranges=[(1, 2)],
+                brain_region_names=["Test Region"]
+            )
+
+            pipe = MIBIPipeline(config, temp_dir,
+                                csv_loc="data/dummy_test_data.csv",
+                                max_inward_expansions=1,
+                                max_outward_expansions=1,
+                                expansions=[1],
+                                n_workers=1,
+                                run_async=False
+                                )
+            pipe.add_feed(example_feed)
+            pipe.load_preprocess_data()
+
+            pipe.visualizer.marker_expression_masks()
+
+            test_path = "%s/Expression Masks/Test/Point 1/SMA.png" % temp_dir
+
+            assert path.exists(test_path)
+
+    def test_pseudo_time_heatmap(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            create_test_data(temp_dir, n_points=2, resolution=(2048, 2048))
+
+            config = Config()
+            example_feed = MIBIDataFeed(
+                feed_data_loc="%s/data" % temp_dir,
+                feed_mask_loc="%s/masks" % temp_dir,
+                feed_name="Test",
+                n_points=2,
+                brain_region_point_ranges=[(1, 2)],
+                brain_region_names=["Test Region"]
+            )
+
+            pipe = MIBIPipeline(config, temp_dir,
+                                csv_loc="data/dummy_test_data.csv",
+                                max_inward_expansions=1,
+                                max_outward_expansions=1,
+                                expansions=[1],
+                                n_workers=1,
+                                run_async=False
+                                )
+            pipe.add_feed(example_feed)
+            pipe.load_preprocess_data()
+
+            analyzer = ShapeQuantificationAnalyzer(
+                pipe.config,
+                pipe.all_expansions_features,
+                pipe.marker_names,
+                pipe.all_feeds_contour_data,
+                pipe.all_feeds_metadata,
+                pipe.all_feeds_data
+            )
+
+            analyzer.analyze(temp_dir,
+                             mask_type="expansion_only",
+                             marker_settings="all_markers",
+                             shape_quantification_method={
+                                 "Name": "Solidity",
+                                 "Metric": solidity
+                             },
+                             img_shape=(2048, 2048))
+
+            pipe.visualizer.pseudo_time_heatmap()
+
+            test_path1 = "%s/Pseudo-Time Heatmaps/Test/Test Region/" \
+                         "Solidity Score_pseudo_time_heatmap_Test Region.png" % temp_dir
+            test_path2 = "%s/Pseudo-Time Heatmaps/Test/Test Region/" \
+                         "Solidity Score_pseudo_time_heatmap_binned_Test Region.png" % temp_dir
+            test_path3 = "%s/Pseudo-Time Heatmaps/Test/Solidity Score_pseudo_time_heatmap_all_points.png" % temp_dir
+
+            assert path.exists(test_path1)
+            assert path.exists(test_path2)
+            assert path.exists(test_path3)
+
+    def test_vessel_nonvessel_masks(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            create_test_data(temp_dir, n_points=2, resolution=(2048, 2048))
+
+            config = Config()
+            example_feed = MIBIDataFeed(
+                feed_data_loc="%s/data" % temp_dir,
+                feed_mask_loc="%s/masks" % temp_dir,
+                feed_name="Test",
+                n_points=2,
+                brain_region_point_ranges=[(1, 2)],
+                brain_region_names=["Test Region"]
+            )
+
+            pipe = MIBIPipeline(config, temp_dir,
+                                csv_loc="data/dummy_test_data.csv",
+                                max_inward_expansions=1,
+                                max_outward_expansions=1,
+                                expansions=[1],
+                                n_workers=1,
+                                run_async=False
+                                )
+            pipe.add_feed(example_feed)
+            pipe.load_preprocess_data()
+
+            pipe.visualizer.vessel_nonvessel_masks()
+
+            test_path = "%s/Associated Area Masks/Test/2.5μm Expansion/Point 1.png" % temp_dir
+
+            assert path.exists(test_path)

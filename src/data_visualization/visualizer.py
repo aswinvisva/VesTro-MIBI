@@ -2672,7 +2672,9 @@ class Visualizer:
                                         n_expansions: int,
                                         mibi_features: pd.DataFrame,
                                         heatmaps_dir: str,
-                                        clustermaps_dir: str
+                                        clustermaps_dir: str,
+                                        brain_regions: list,
+                                        brain_region_names: list,
                                         ):
         """
         Brain region expansion heatmaps helper method
@@ -2685,8 +2687,6 @@ class Visualizer:
         marker_names = self.markers_names
         pixel_interval = self.config.pixel_interval
         marker_clusters = self.config.marker_clusters
-        brain_region_names = self.config.brain_region_names
-        brain_regions = self.config.brain_region_point_ranges
 
         marker_mask_expression_map_fn_all_regions = partial(self._marker_expression_at_expansion,
                                                             mibi_features=mibi_features,
@@ -2831,7 +2831,8 @@ class Visualizer:
                 mkdir_p(heatmaps_dir)
                 mkdir_p(clustermaps_dir)
 
-                self._brain_region_expansion_heatmap(n_expansions, expansion_features, heatmaps_dir, clustermaps_dir)
+                self._brain_region_expansion_heatmap(n_expansions, expansion_features, heatmaps_dir, clustermaps_dir,
+                                                     brain_region_point_ranges, brain_region_names)
             else:
                 for i in feed_features[primary_categorical_analysis_variable].unique():
                     split_dir = "%s/%s: %s" % (feed_dir, primary_categorical_analysis_variable, i)
@@ -2845,7 +2846,8 @@ class Visualizer:
 
                     split_features = feed_features.loc[feed_features[primary_categorical_analysis_variable] == i]
 
-                    self._brain_region_expansion_heatmap(n_expansions, split_features, heatmaps_dir, clustermaps_dir)
+                    self._brain_region_expansion_heatmap(n_expansions, split_features, heatmaps_dir, clustermaps_dir,
+                                                         brain_region_point_ranges, brain_region_names)
 
     def marker_expression_masks(self, **kwargs):
         """
@@ -2854,20 +2856,24 @@ class Visualizer:
         :return:
         """
 
+        n_points = len(self.all_samples_features.index.get_level_values("Point").unique())
+
         parent_dir = "%s/Expression Masks" % self.results_dir
 
         mkdir_p(parent_dir)
 
-        for feed_idx, feed_contours, feed_features, output_dir in feed_features_iterator(self.all_samples_features,
-                                                                                         self.all_feeds_data,
-                                                                                         self.all_feeds_contour_data,
-                                                                                         self.all_feeds_metadata,
-                                                                                         save_to_dir=True,
-                                                                                         parent_dir=parent_dir):
-            for i in range(len(self.config.n_points)):
+        for feed_idx, feed_contours, feed_features, feed_dir, brain_region_point_ranges, brain_region_names in feed_features_iterator(
+                self.all_samples_features,
+                self.all_feeds_data,
+                self.all_feeds_contour_data,
+                self.all_feeds_metadata,
+                save_to_dir=True,
+                parent_dir=parent_dir):
+
+            for i in range(n_points):
                 point_contours = feed_contours.loc[i, "Contours"]
 
-                point_dir = output_dir + "/Point %s" % str(i + 1)
+                point_dir = feed_dir + "/Point %s" % str(i + 1)
                 mkdir_p(point_dir)
 
                 contours = point_contours.contours
@@ -2894,217 +2900,6 @@ class Visualizer:
                     plt.colorbar(sm)
                     plt.savefig(os.path.join(point_dir, "%s.png" % marker_name))
                     plt.clf()
-
-    def removed_vessel_expression_boxplot(self, **kwargs):
-        """
-        Create kept vs. removed vessel expression comparison using Box Plots
-        """
-        n_points = len(self.all_samples_features.index.get_level_values("Point").unique())
-
-        all_points_vessels_expression = []
-        all_points_removed_vessels_expression = []
-
-        parent_dir = "%s/Kept Vs. Removed Vessel Boxplots" % self.results_dir
-
-        mkdir_p(parent_dir)
-
-        for feed_idx, feed_contours, feed_features, feed_dir, brain_region_point_ranges, brain_region_names in feed_features_iterator(
-                self.all_samples_features,
-                self.all_feeds_data,
-                self.all_feeds_contour_data,
-                self.all_feeds_metadata,
-                save_to_dir=True,
-                parent_dir=parent_dir):
-            # Iterate through each point
-            for i in range(n_points):
-                contours = feed_contours.loc[i, "Contours"].contours
-                contour_areas = feed_contours.loc[i, "Contours"].areas
-                removed_contours = feed_contours.loc[i, "Contours"].removed_contours
-                removed_areas = feed_contours.loc[i, "Contours"].removed_areas
-                marker_data = self.all_feeds_data[feed_idx, i]
-
-                start_expression = datetime.datetime.now()
-
-                vessel_expression_data = calculate_composition_marker_expression(self.config,
-                                                                                 marker_data,
-                                                                                 contours,
-                                                                                 contour_areas,
-                                                                                 self.markers_names,
-                                                                                 point_num=i + 1)
-                removed_vessel_expression_data = calculate_composition_marker_expression(self.config,
-                                                                                         marker_data,
-                                                                                         removed_contours,
-                                                                                         removed_areas,
-                                                                                         self.markers_names,
-                                                                                         point_num=i + 1)
-
-                all_points_vessels_expression.append(vessel_expression_data)
-                all_points_removed_vessels_expression.append(removed_vessel_expression_data)
-
-                end_expression = datetime.datetime.now()
-
-                logging.debug(
-                    "Finished calculating expression for Point %s in %s" % (
-                        str(i + 1), end_expression - start_expression))
-
-            kept_vessel_expression = pd.concat(all_points_vessels_expression).fillna(0)
-            kept_vessel_expression.index = map(lambda a: (a[0], a[1], a[2], a[3], "Kept"), kept_vessel_expression.index)
-            removed_vessel_expression = pd.concat(all_points_removed_vessels_expression).fillna(0)
-            removed_vessel_expression.index = map(lambda a: (a[0], a[1], a[2], a[3], "Removed"),
-                                                  removed_vessel_expression.index)
-
-            kept_removed_features = [kept_vessel_expression, removed_vessel_expression]
-            kept_removed_features = pd.concat(kept_removed_features).fillna(0)
-            kept_removed_features.index = pd.MultiIndex.from_tuples(kept_removed_features.index)
-            kept_removed_features = kept_removed_features.sort_index()
-
-            scaling_factor = self.config.scaling_factor
-            transformation = self.config.transformation_type
-            normalization = self.config.normalization_type
-            n_markers = self.config.n_markers
-
-            kept_removed_features = normalize_expression_data(self.config,
-                                                              kept_removed_features,
-                                                              self.markers_names,
-                                                              transformation=transformation,
-                                                              normalization=normalization,
-                                                              scaling_factor=scaling_factor,
-                                                              n_markers=n_markers)
-
-            brain_region_names = self.config.brain_region_names
-            brain_region_point_ranges = self.config.brain_region_point_ranges
-            markers_to_show = self.config.marker_clusters["Vessels"]
-
-            all_points_per_brain_region_dir = "%s/All Points Per Region" % parent_dir
-            mkdir_p(all_points_per_brain_region_dir)
-
-            average_points_dir = "%s/Average Per Region" % parent_dir
-            mkdir_p(average_points_dir)
-
-            all_points = "%s/All Points" % parent_dir
-            mkdir_p(all_points)
-
-            all_kept_removed_vessel_expression_data_collapsed = []
-
-            for idx, brain_region in enumerate(brain_region_names):
-                brain_region_range = brain_region_point_ranges[idx]
-
-                vessel_removed_vessel_expression_data_collapsed = []
-
-                idx = pd.IndexSlice
-                per_point__vessel_data = kept_removed_features.loc[idx[brain_region_range[0]:brain_region_range[1], :,
-                                                                   :,
-                                                                   "Data",
-                                                                   "Kept"],
-                                                                   markers_to_show]
-
-                per_point__removed_data = kept_removed_features.loc[idx[brain_region_range[0]:brain_region_range[1], :,
-                                                                    :,
-                                                                    "Data",
-                                                                    "Removed"],
-                                                                    markers_to_show]
-
-                for index, vessel_data in per_point__vessel_data.iterrows():
-                    data = np.mean(vessel_data)
-                    vessel_removed_vessel_expression_data_collapsed.append(
-                        [data, "Kept", index[0]])
-
-                    all_kept_removed_vessel_expression_data_collapsed.append(
-                        [data, "Kept", index[0]])
-
-                for index, vessel_data in per_point__removed_data.iterrows():
-                    data = np.mean(vessel_data)
-                    vessel_removed_vessel_expression_data_collapsed.append([data, "Removed",
-                                                                            index[0]])
-
-                    all_kept_removed_vessel_expression_data_collapsed.append([data, "Removed",
-                                                                              index[0]])
-
-                df = pd.DataFrame(vessel_removed_vessel_expression_data_collapsed,
-                                  columns=["Expression", "Vessel", "Point"])
-
-                plt.title("Kept vs Removed Vessel Marker Expression - %s" % brain_region)
-                ax = sns.boxplot(x="Point", y="Expression", hue="Vessel", data=df, palette="Set3", showfliers=False)
-                plt.savefig(os.path.join(all_points_per_brain_region_dir, "%s.png" % brain_region))
-                plt.clf()
-
-                plt.title("Kept vs Removed Vessel Marker Expression - %s: Average Points" % brain_region)
-                ax = sns.boxplot(x="Vessel", y="Expression", hue="Vessel", data=df, palette="Set3", showfliers=False)
-                plt.savefig(os.path.join(average_points_dir, "%s.png" % brain_region))
-                plt.clf()
-
-            df = pd.DataFrame(all_kept_removed_vessel_expression_data_collapsed,
-                              columns=["Expression", "Vessel", "Point"])
-
-            plt.title("Kept vs Removed Vessel Marker Expression - All Points")
-            ax = sns.boxplot(x="Vessel", y="Expression", hue="Vessel", data=df, palette="Set3", showfliers=False)
-            plt.savefig(os.path.join(all_points, "All_Points.png"))
-            plt.clf()
-
-    def vessel_areas_histogram(self, **kwargs):
-        """
-        Create visualizations of vessel areas
-        """
-        output_dir = "%s/Vessel Areas Histogram" % self.results_dir
-
-        mkdir_p(output_dir)
-
-        masks = self.config.all_masks
-        region_names = self.config.brain_region_names
-
-        show_outliers = self.config.show_boxplot_outliers
-
-        total_areas = [[], [], []]
-
-        brain_regions = self.config.brain_region_point_ranges
-
-        mibi_reader = MIBIReader(self.config)
-        object_extractor = ObjectExtractor(self.config)
-
-        for segmentation_type in masks:
-            current_point = 1
-            current_region = 0
-
-            marker_segmentation_masks, markers_data, self.markers_names = mibi_reader.get_all_point_data()
-
-            contour_images_multiple_points = []
-            contour_data_multiple_points = []
-
-            for segmentation_mask in marker_segmentation_masks:
-                contour_images, contours, removed_contours = object_extractor.extract(segmentation_mask)
-                contour_images_multiple_points.append(contour_images)
-                contour_data_multiple_points.append(contours)
-
-            vessel_areas = self.plot_vessel_areas(contour_data_multiple_points,
-                                                  segmentation_type=segmentation_type,
-                                                  show_outliers=show_outliers)
-
-            for point_vessel_areas in vessel_areas:
-                current_point += 1
-
-                if not (brain_regions[current_region][0] <= current_point <= brain_regions[current_region][1]):
-                    current_region += 1
-
-                if current_region < len(total_areas):
-                    total_areas[current_region].extend(sorted(point_vessel_areas))
-
-        colors = ['blue', 'green', 'purple', 'tan', 'pink', 'red']
-
-        fig = plt.figure(1, figsize=(9, 6))
-        plt.title("All Objects Across Brain Regions - All Vessels")
-
-        # Create an axes instance
-        ax = fig.add_subplot(111)
-
-        # Create the boxplot
-        bp = ax.boxplot(total_areas, showfliers=show_outliers, patch_artist=True, labels=region_names)
-
-        for w, region in enumerate(brain_regions):
-            patch = bp['boxes'][w]
-            patch.set(facecolor=colors[w])
-
-        plt.savefig(os.path.join(output_dir, "Vessel_Areas_Histogram.png"))
-        plt.clf()
 
     def _pseudo_time_heatmap(self,
                              mibi_features,
@@ -3414,9 +3209,9 @@ class Visualizer:
         :param n_expansions: int, Number of expansions
         """
 
-        img_shape = self.config.segmentation_mask_size
+        mask_size = kwargs.get("mask_size", self.config.segmentation_mask_size)
 
-        example_img = np.zeros(img_shape, np.uint8)
+        example_img = np.zeros(mask_size, np.uint8)
         example_img = cv.cvtColor(example_img, cv.COLOR_GRAY2BGR)
 
         parent_dir = "%s/Associated Area Masks" % self.results_dir
@@ -3429,27 +3224,29 @@ class Visualizer:
                 save_to_dir=True,
                 parent_dir=parent_dir):
 
+            n_points = len(feed_features.index.get_level_values("Point").unique())
+
             output_dir = "%s/%s%s Expansion" % (feed_dir,
-                                                str(round_to_nearest_half((n_expansions) *
+                                                str(round_to_nearest_half(n_expansions *
                                                                           self.config.pixel_interval *
                                                                           self.config.pixels_to_distance)),
                                                 self.config.data_resolution_units)
             mkdir_p(output_dir)
 
-            for point_num in range(self.config.n_points):
+            for point_num in range(n_points):
                 per_point_vessel_contours = feed_contours.loc[point_num, "Contours"].contours
 
-                regions = get_assigned_regions(per_point_vessel_contours, img_shape)
+                regions = get_assigned_regions(per_point_vessel_contours, mask_size)
 
                 for idx, cnt in enumerate(per_point_vessel_contours):
-                    mask_expanded = expand_vessel_region(cnt, img_shape,
+                    mask_expanded = expand_vessel_region(cnt, mask_size,
                                                          upper_bound=self.config.pixel_interval * n_expansions)
                     mask_expanded = cv.bitwise_and(mask_expanded, regions[idx].astype(np.uint8))
                     dark_space_mask = regions[idx].astype(np.uint8) - mask_expanded
 
-                    example_img[np.where(dark_space_mask == 1)] = self.config.nonvessel_mask_colour  # red
-                    example_img[np.where(mask_expanded == 1)] = self.config.vessel_space_colour  # green
-                    cv.drawContours(example_img, [cnt], -1, self.config.vessel_mask_colour, cv.FILLED)  # blue
+                    example_img[np.where(dark_space_mask == 1)] = (0, 0, 255)  # red
+                    example_img[np.where(mask_expanded == 1)] = (0, 255, 0)  # green
+                    cv.drawContours(example_img, [cnt], -1, (255, 0, 0), cv.FILLED)  # blue
 
                     vesselnonvessel_label = "Point %s" % str(point_num + 1)
 
