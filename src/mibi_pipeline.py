@@ -409,7 +409,7 @@ class MIBIPipeline:
         if self.config.create_embedded_vessel_id_masks:
             self.visualizer.obtain_embedded_vessel_masks(**kwargs)
 
-        if self.config.create_shape_asymmetry_area_spread_plot:
+        if self.config.create_shape_area_spread_plot:
             self.visualizer.vessel_shape_area_spread_plot(**kwargs)
 
         if self.config.create_categorical_violin_plot:
