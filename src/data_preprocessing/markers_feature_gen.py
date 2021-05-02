@@ -179,6 +179,7 @@ def normalize_expression_data(config: Config,
             expression_data = expression_data / np.percentile(expression_data,
                                                               config.percentile_to_normalize,
                                                               axis=0)
+
             expression_data = np.nan_to_num(expression_data)
 
         except IndexError:
@@ -266,57 +267,6 @@ def expansion_ring_plots(per_point_contours: list,
 
         cv.drawContours(expansion_image, temp_contours, 0, (255, 255, 255), 1)
         expansion_image[np.where(result_mask != 0)] = color[0]
-
-
-def get_microenvironment_masks(per_point_marker_data: np.ndarray,
-                               per_point_vessel_contours: list,
-                               pixel_expansion_upper_bound: int = 5,
-                               pixel_expansion_lower_bound: int = 0):
-    """
-    TODO: Unravel microenvironment masks to eliminate vessel geometries
-    Get microenvironment masks for CNN analysis
-
-    :param pixel_expansion_lower_bound: int, Lower bound to expand
-    :param pixel_expansion_upper_bound: int, Upper bound to expand
-    :param per_point_marker_data: array_like, [n_markers, point_size[0], point_size[1]] -> Pixel data for each marker
-    :param per_point_vessel_contours: list, [n_vessels] -> Contours of cells in image
-    """
-    microenvironment_masks = []
-
-    img_shape = per_point_marker_data[0].shape
-    regions = get_assigned_regions(per_point_vessel_contours, img_shape)
-
-    for idx, cnt in enumerate(per_point_vessel_contours):
-        microenvironment_mask = []
-
-        if pixel_expansion_upper_bound < 0:
-            mask_expanded = contract_vessel_region(cnt, img_shape, upper_bound=pixel_expansion_upper_bound)
-        else:
-            mask_expanded = expand_vessel_region(cnt, img_shape, upper_bound=pixel_expansion_upper_bound)
-
-        if pixel_expansion_lower_bound != 0:
-            if pixel_expansion_lower_bound < 0:
-                mask = contract_vessel_region(cnt, img_shape, upper_bound=pixel_expansion_lower_bound)
-            else:
-                mask = expand_vessel_region(cnt, img_shape, upper_bound=pixel_expansion_lower_bound)
-        else:
-            mask = cv.drawContours(np.zeros(img_shape, np.uint8), [cnt], -1, (1, 1, 1), cv.FILLED)
-
-        result_mask = mask_expanded - mask
-        result_mask = cv.bitwise_and(result_mask, regions[idx].astype(np.uint8))
-
-        for marker in per_point_marker_data:
-            x, y, w, h = cv.boundingRect(cnt)
-
-            result = cv.bitwise_and(marker, marker, mask=result_mask)
-
-            cv.imshow("ASD", result * 255)
-            cv.waitKey(0)
-
-            microenvironment_mask.append(result)
-
-        microenvironment_mask = np.array(microenvironment_mask)
-        microenvironment_masks.append(microenvironment_mask)
 
 
 def calculate_inward_microenvironment_marker_expression(config: Config,

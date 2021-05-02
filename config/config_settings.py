@@ -177,7 +177,7 @@ class Config:
     create_expansion_violin_plots = False  #
     create_categorical_violin_plot = False  #
     create_expansion_box_plots = False  #
-    create_shape_asymmetry_area_spread_plot = False  #
+    create_shape_area_spread_plot = False  #
     create_continuous_scatter_plot = False  #
     create_umap_projection_scatter_plots = False  #
     create_vessel_images_by_categorical_variable = False  #

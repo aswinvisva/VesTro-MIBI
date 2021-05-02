@@ -537,9 +537,10 @@ class MIBIPipeline:
             if self.config.perform_inward_expansions:
                 all_expansions_features = all_expansions_features.append(all_inward_expansions_features)
 
-                # Normalize all features
+            # Normalize all features
             self.all_expansions_features = self.normalize_data(all_expansions_features,
                                                                self.marker_names)
+
         else:
             self._load_csv(self.csv_loc)
 
