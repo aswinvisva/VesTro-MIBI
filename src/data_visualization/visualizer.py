@@ -2086,7 +2086,7 @@ class Visualizer:
         mkdir_p(output_dir)
 
         save_fig_or_show(save_fig=save_fig,
-                         figure_path=output_dir + '/Expansion_%s.png')
+                         figure_path=output_dir + '/Expansion_%s.png' % str(n_expansions))
 
         ax = sns.clustermap(heatmap_data,
                             cmap=cmap,
