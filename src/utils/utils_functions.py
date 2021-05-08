@@ -6,6 +6,7 @@ import logging
 
 import cv2 as cv
 import numpy as np
+import matplotlib.pyplot as plt
 
 
 def round_to_nearest_half(number):
@@ -44,3 +45,22 @@ def get_contour_areas_list(contours: list) -> list:
     """
 
     return [cv.contourArea(cnt) for cnt in contours]
+
+
+def save_fig_or_show(save_fig: bool = True,
+                     figure_path: str = None,
+                     fig: plt.Figure = None):
+    """
+    Save figure or show figure
+    """
+
+    if save_fig:
+        if fig is None:
+            plt.savefig(figure_path, bbox_inches='tight')
+            plt.clf()
+        else:
+            fig.savefig(figure_path,
+                        bbox_inches='tight')
+            fig.clf()
+    else:
+        plt.show()

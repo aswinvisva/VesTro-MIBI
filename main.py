@@ -61,12 +61,6 @@ def hires_example():
     pipe.analyze_data(marker_settings="all_markers",
                       shape_quantification_method=shape_quantification_method)
 
-    # pipe.save_to_csv()
-
-    pipe.generate_visualizations(mask_type="mask_only",
-                                 primary_categorical_analysis_variable=None,
-                                 order=["25%", "50%", "75%", "100%"])
-
 
 if __name__ == '__main__':
     hires_example()
