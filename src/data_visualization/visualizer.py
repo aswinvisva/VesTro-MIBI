@@ -20,7 +20,7 @@ from src.data_preprocessing.object_extractor import ObjectExtractor
 from src.data_preprocessing.markers_feature_gen import *
 from src.data_preprocessing.transforms import melt_markers, loc_by_expansion
 from src.utils.iterators import feed_features_iterator
-from src.utils.utils_functions import mkdir_p, round_to_nearest_half
+from src.utils.utils_functions import mkdir_p, round_to_nearest_half, save_fig_or_show
 
 '''
 Authors: Aswin Visva, John-Paul Oliveria, Ph.D
@@ -69,6 +69,7 @@ class Visualizer:
         style = kwargs.get("style", None)
         size = kwargs.get("size", None)
         vessel_line_plots_points = kwargs.get("vessel_line_plots_points", self.config.vessel_line_plots_points)
+        save_fig = kwargs.get("save_fig", True)
 
         output_dir = "%s/Line Plots Per Vessel" % self.results_dir
 
@@ -150,8 +151,8 @@ class Visualizer:
                 g.set_position([box.x0, box.y0, box.width * 0.85, box.height])  # resize position
                 g.legend(loc='center left', bbox_to_anchor=(1, 0.5), ncol=1)
 
-                plt.savefig(average_bins_dir + '/Vessel_ID_%s.png' % str(vessel), bbox_inches='tight')
-                plt.clf()
+                save_fig_or_show(save_fig=save_fig,
+                                 figure_path=average_bins_dir + '/Vessel_ID_%s.png' % str(vessel))
 
                 # All Bins
                 g = sns.lineplot(data=vessel_features,
@@ -168,8 +169,8 @@ class Visualizer:
                 g.set_position([box.x0, box.y0, box.width * 0.85, box.height])  # resize position
                 g.legend(loc='center left', bbox_to_anchor=(1, 0.5), ncol=1)
 
-                plt.savefig(all_bins_dir + '/Vessel_ID_%s.png' % str(vessel), bbox_inches='tight')
-                plt.clf()
+                save_fig_or_show(save_fig=save_fig,
+                                 figure_path=all_bins_dir + '/Vessel_ID_%s.png' % str(vessel))
 
                 for key in marker_clusters.keys():
                     bin_dir = "%s/%s" % (per_bin_dir, key)
@@ -190,8 +191,8 @@ class Visualizer:
                     g.set_position([box.x0, box.y0, box.width * 0.85, box.height])  # resize position
                     g.legend(loc='center left', bbox_to_anchor=(1, 0.5), ncol=1)
 
-                    plt.savefig(bin_dir + '/Vessel_ID_%s.png' % str(vessel), bbox_inches='tight')
-                    plt.clf()
+                    save_fig_or_show(save_fig=save_fig,
+                                     figure_path=bin_dir + '/Vessel_ID_%s.png' % str(vessel))
 
     def expansion_line_plots_per_point(self, n_expansions: int, **kwargs):
         """
@@ -207,6 +208,8 @@ class Visualizer:
 
         style = kwargs.get("style", None)
         size = kwargs.get("size", None)
+        save_fig = kwargs.get("save_fig", True)
+
         n_points = len(self.all_samples_features.index.get_level_values("Point").unique())
 
         output_dir = "%s/Line Plots Per Point" % self.results_dir
@@ -214,7 +217,7 @@ class Visualizer:
         mkdir_p(output_dir)
 
         output_dir = "%s/%s%s Expansion" % (output_dir,
-                                            str(round_to_nearest_half((n_expansions) *
+                                            str(round_to_nearest_half(n_expansions *
                                                                       self.config.pixel_interval *
                                                                       self.config.pixels_to_distance)),
                                             self.config.data_resolution_units)
@@ -280,8 +283,8 @@ class Visualizer:
             g.set_position([box.x0, box.y0, box.width * 0.85, box.height])  # resize position
             g.legend(loc='center left', bbox_to_anchor=(1, 0.5), ncol=1)
 
-            plt.savefig(point_dir + '/Average_Bins.png', bbox_inches='tight')
-            plt.clf()
+            save_fig_or_show(save_fig=save_fig,
+                             figure_path=point_dir + '/Average_Bins.png')
 
             # All Bins
             g = sns.lineplot(data=point_features,
@@ -298,8 +301,8 @@ class Visualizer:
             g.set_position([box.x0, box.y0, box.width * 0.85, box.height])  # resize position
             g.legend(loc='center left', bbox_to_anchor=(1, 0.5), ncol=1)
 
-            plt.savefig(point_dir + '/All_Bins.png', bbox_inches='tight')
-            plt.clf()
+            save_fig_or_show(save_fig=save_fig,
+                             figure_path=point_dir + '/All_Bins.png')
 
             for key in marker_clusters.keys():
                 bin_features = point_features.loc[point_features["Marker Group"] == key]
@@ -316,8 +319,8 @@ class Visualizer:
                 g.set_position([box.x0, box.y0, box.width * 0.85, box.height])  # resize position
                 g.legend(loc='center left', bbox_to_anchor=(1, 0.5), ncol=1)
 
-                plt.savefig(point_dir + '/%s.png' % str(key), bbox_inches='tight')
-                plt.clf()
+                save_fig_or_show(save_fig=save_fig,
+                                 figure_path=point_dir + '/%s.png' % str(key))
 
                 for marker in marker_clusters[key]:
                     marker_features = plot_features.loc[plot_features["Marker"] == marker]
@@ -334,8 +337,8 @@ class Visualizer:
                     g.set_position([box.x0, box.y0, box.width * 0.85, box.height])  # resize position
                     g.legend(loc='center left', bbox_to_anchor=(1, 0.5), ncol=1)
 
-                    plt.savefig(per_marker_dir + '/%s.png' % str(marker), bbox_inches='tight')
-                    plt.clf()
+                    save_fig_or_show(save_fig=save_fig,
+                                     figure_path=per_marker_dir + '/%s.png' % str(marker))
 
     def expansion_line_plots_all_points(self, n_expansions: int, **kwargs):
         """
@@ -351,6 +354,7 @@ class Visualizer:
 
         style = kwargs.get("style", None)
         size = kwargs.get("size", None)
+        save_fig = kwargs.get("save_fig", True)
 
         marker_color_dict = {}
         for marker_cluster in marker_clusters.keys():
@@ -417,8 +421,8 @@ class Visualizer:
         g.set_position([box.x0, box.y0, box.width * 0.85, box.height])  # resize position
         g.legend(loc='center left', bbox_to_anchor=(1, 0.5), ncol=1)
 
-        plt.savefig(output_dir + '/Average_Bins.png', bbox_inches='tight')
-        plt.clf()
+        save_fig_or_show(save_fig=save_fig,
+                         figure_path=output_dir + '/Average_Bins.png')
 
         # All Bins
         g = sns.lineplot(data=plot_features,
@@ -435,8 +439,8 @@ class Visualizer:
         g.set_position([box.x0, box.y0, box.width * 0.85, box.height])  # resize position
         g.legend(loc='center left', bbox_to_anchor=(1, 0.5), ncol=1)
 
-        plt.savefig(output_dir + '/All_Bins.png', bbox_inches='tight')
-        plt.clf()
+        save_fig_or_show(save_fig=save_fig,
+                         figure_path=output_dir + '/All_Bins.png')
 
         for key in marker_clusters.keys():
             bin_features = plot_features.loc[plot_features["Marker Group"] == key]
@@ -453,8 +457,8 @@ class Visualizer:
             g.set_position([box.x0, box.y0, box.width * 0.85, box.height])  # resize position
             g.legend(loc='center left', bbox_to_anchor=(1, 0.5), ncol=1)
 
-            plt.savefig(per_bin_dir + '/%s.png' % str(key), bbox_inches='tight')
-            plt.clf()
+            save_fig_or_show(save_fig=save_fig,
+                             figure_path=per_bin_dir + '/%s.png' % str(key))
 
             for marker in marker_clusters[key]:
                 marker_features = plot_features.loc[plot_features["Marker"] == marker]
@@ -471,8 +475,8 @@ class Visualizer:
                 g.set_position([box.x0, box.y0, box.width * 0.85, box.height])  # resize position
                 g.legend(loc='center left', bbox_to_anchor=(1, 0.5), ncol=1)
 
-                plt.savefig(per_marker_dir + '/%s.png' % str(marker), bbox_inches='tight')
-                plt.clf()
+                save_fig_or_show(save_fig=save_fig,
+                                 figure_path=per_marker_dir + '/%s.png' % str(marker))
 
     def expansion_line_plots_per_region(self, n_expansions: int,
                                         **kwargs):
@@ -489,6 +493,7 @@ class Visualizer:
 
         style = kwargs.get("style", None)
         size = kwargs.get("size", None)
+        save_fig = kwargs.get("save_fig", True)
 
         parent_dir = "%s/Line Plots Per Region" % self.results_dir
 
@@ -542,6 +547,8 @@ class Visualizer:
             plot_features = plot_features.rename(
                 columns={'Expansion': "Distance Expanded (%s)" % self.config.data_resolution_units})
 
+            plot_features.reset_index(level=['Point'], inplace=True)
+
             bins = [brain_region_point_ranges[i][0] - 1 for i in range(len(brain_region_point_ranges))]
             bins.append(float('Inf'))
 
@@ -576,8 +583,8 @@ class Visualizer:
                 g.set_position([box.x0, box.y0, box.width * 0.85, box.height])  # resize position
                 g.legend(loc='center left', bbox_to_anchor=(1, 0.5), ncol=1)
 
-                plt.savefig(region_dir + '/Average_Bins.png', bbox_inches='tight')
-                plt.clf()
+                save_fig_or_show(save_fig=save_fig,
+                                 figure_path=region_dir + '/Average_Bins.png')
 
                 # All Bins
                 g = sns.lineplot(data=region_features,
@@ -594,8 +601,8 @@ class Visualizer:
                 g.set_position([box.x0, box.y0, box.width * 0.85, box.height])  # resize position
                 g.legend(loc='center left', bbox_to_anchor=(1, 0.5), ncol=1)
 
-                plt.savefig(region_dir + '/All_Bins.png', bbox_inches='tight')
-                plt.clf()
+                save_fig_or_show(save_fig=save_fig,
+                                 figure_path=region_dir + '/All_Bins.png')
 
                 for key in marker_clusters.keys():
                     bin_features = region_features.loc[region_features["Marker Group"] == key]
@@ -612,8 +619,8 @@ class Visualizer:
                     g.set_position([box.x0, box.y0, box.width * 0.85, box.height])  # resize position
                     g.legend(loc='center left', bbox_to_anchor=(1, 0.5), ncol=1)
 
-                    plt.savefig(per_bin_dir + '/%s.png' % str(key), bbox_inches='tight')
-                    plt.clf()
+                    save_fig_or_show(save_fig=save_fig,
+                                     figure_path=per_bin_dir + '/%s.png' % str(key))
 
                     for marker in marker_clusters[key]:
                         marker_features = plot_features.loc[plot_features["Marker"] == marker]
@@ -630,8 +637,8 @@ class Visualizer:
                         g.set_position([box.x0, box.y0, box.width * 0.85, box.height])  # resize position
                         g.legend(loc='center left', bbox_to_anchor=(1, 0.5), ncol=1)
 
-                        plt.savefig(per_marker_dir + '/%s.png' % str(marker), bbox_inches='tight')
-                        plt.clf()
+                        save_fig_or_show(save_fig=save_fig,
+                                         figure_path=per_marker_dir + '/%s.png' % str(marker))
 
     def obtain_expanded_vessel_masks(self, **kwargs):
         """
@@ -641,6 +648,7 @@ class Visualizer:
         """
 
         expansion_upper_bound = kwargs.get('expansion_upper_bound', 60)
+
         n_points = len(self.all_samples_features.index.get_level_values("Point").unique())
 
         parent_dir = "%s/Expanded Vessel Masks" % self.results_dir
@@ -823,6 +831,7 @@ class Visualizer:
 
         :return:
         """
+        save_fig = kwargs.get("save_fig", True)
 
         output_dir = "%s/Expression Histograms" % self.results_dir
 
@@ -843,7 +852,8 @@ class Visualizer:
         plt.ylabel('Probability')
         plt.xlabel('Data')
         plt.title("Histogram")
-        plt.savefig(output_dir + "/%s" % x)
+        save_fig_or_show(save_fig=save_fig,
+                         figure_path=output_dir + '/SMA.png')
 
     def biaxial_scatter_plot(self, **kwargs):
         """
@@ -851,6 +861,8 @@ class Visualizer:
 
         :return:
         """
+        save_fig = kwargs.get("save_fig", True)
+
         output_dir = "%s/Biaxial Scatter Plots" % self.results_dir
 
         mkdir_p(output_dir)
@@ -878,8 +890,8 @@ class Visualizer:
         plt.ylabel(y)
         plt.title("%s vs %s" % (x, y))
 
-        plt.savefig(output_dir + '/%s_%s.png' % (x, y), bbox_inches='tight')
-        plt.clf()
+        save_fig_or_show(save_fig=save_fig,
+                         figure_path=output_dir + '/%s_%s.png' % (x, y))
 
         x = "SMA"
         y = "CD31"
@@ -901,8 +913,8 @@ class Visualizer:
         plt.ylabel(y)
         plt.title("%s vs %s" % (x, y))
 
-        plt.savefig(output_dir + '/%s_%s.png' % (x, y), bbox_inches='tight')
-        plt.clf()
+        save_fig_or_show(save_fig=save_fig,
+                         figure_path=output_dir + '/%s_%s.png' % (x, y))
 
         x = "SMA"
         y = "vWF"
@@ -924,13 +936,14 @@ class Visualizer:
         plt.ylabel(y)
         plt.title("%s vs %s" % (x, y))
 
-        plt.savefig(output_dir + '/%s_%s.png' % (x, y), bbox_inches='tight')
-        plt.clf()
+        save_fig_or_show(save_fig=save_fig,
+                         figure_path=output_dir + '/%s_%s.png' % (x, y), )
 
     def average_quartile_violin_plot_subplots(self, **kwargs):
         """
         Pseduotime Heatmap and Violin Plot subplot
         """
+        save_fig = kwargs.get("save_fig", True)
         mask_type = kwargs.get('mask_type', "expansion_only")
         primary_categorical_analysis_variable = kwargs.get('primary_categorical_analysis_variable', "Solidity")
         order = kwargs.get("order", None)
@@ -999,15 +1012,15 @@ class Visualizer:
                         row += 1
                         column = 0
 
-            fig.savefig(feed_dir + '/average_quartile_violins.png',
-                        bbox_inches='tight')
-            fig.clf()
+            save_fig_or_show(save_fig=save_fig,
+                             figure_path=feed_dir + '/average_quartile_violins.png',
+                             fig=fig)
 
     def categorical_violin_plot_with_images(self, **kwargs):
         """
         Categorical Violin Plot with Images
         """
-
+        save_fig = kwargs.get("save_fig", True)
         mask_type = kwargs.get('mask_type', "expansion_only")
         outward_expansion = kwargs.get("outward_expansion", 0)
         inward_expansion = kwargs.get("inward_expansion", 0)
@@ -1176,9 +1189,9 @@ class Visualizer:
                     violin_ax.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.,
                                      title=primary_categorical_analysis_variable)
 
-                    fig.savefig(marker_cluster_dir + '/%s.png' % str(marker_name),
-                                bbox_inches='tight')
-                    fig.clf()
+                    save_fig_or_show(save_fig=save_fig,
+                                     figure_path=marker_cluster_dir + '/%s.png' % str(marker_name),
+                                     fig=fig)
 
     def categorical_violin_plot(self, **kwargs):
         """
@@ -1188,6 +1201,7 @@ class Visualizer:
         mask_type = kwargs.get('mask_type', "expansion_only")
         primary_categorical_analysis_variable = kwargs.get('primary_categorical_analysis_variable', "Solidity")
         order = kwargs.get("order", None)
+        save_fig = kwargs.get("save_fig", True)
 
         parent_dir = "%s/Categorical Violin Plots" % self.results_dir
 
@@ -1245,9 +1259,8 @@ class Visualizer:
                     plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.,
                                title=primary_categorical_analysis_variable)
 
-                    plt.savefig(marker_cluster_dir + '/%s.png' % str(marker_name),
-                                bbox_inches='tight')
-                    plt.clf()
+                    save_fig_or_show(save_fig=save_fig,
+                                     figure_path=marker_cluster_dir + '/%s.png' % str(marker_name))
 
             non_split_dir = "%s/Without Split" % feed_dir
             mkdir_p(non_split_dir)
@@ -1270,9 +1283,8 @@ class Visualizer:
                                         # palette=cmap
                                         )
 
-                    plt.savefig(marker_cluster_dir + '/%s.png' % str(marker_name),
-                                bbox_inches='tight')
-                    plt.clf()
+                    save_fig_or_show(save_fig=save_fig,
+                                     figure_path=marker_cluster_dir + '/%s.png' % str(marker_name))
 
     def violin_plot_brain_expansion(self, n_expansions: int, **kwargs):
         """
@@ -1284,6 +1296,7 @@ class Visualizer:
         """
 
         primary_categorical_analysis_variable = kwargs.get("primary_categorical_analysis_variable", "Vessel Size")
+        save_fig = kwargs.get("save_fig", True)
 
         dist_upper_end = 1.75
 
@@ -1371,9 +1384,8 @@ class Visualizer:
                                     data=marker_features,
                                     bw=0.2)
 
-                plt.savefig(per_marker_expansions_dir + '/%s.png' % str(marker_name),
-                            bbox_inches='tight')
-                plt.clf()
+                save_fig_or_show(save_fig=save_fig,
+                                 figure_path=per_marker_expansions_dir + '/%s.png' % str(marker_name))
 
         for key in marker_clusters.keys():
             marker_features = plot_features.loc[plot_features["Marker Group"] == key]
@@ -1395,9 +1407,8 @@ class Visualizer:
                                 data=marker_features,
                                 bw=0.2)
 
-            plt.savefig(per_bin_expansions_dir + '/%s.png' % str(key),
-                        bbox_inches='tight')
-            plt.clf()
+            save_fig_or_show(save_fig=save_fig,
+                             figure_path=per_bin_expansions_dir + '/%s.png' % str(key))
 
     def box_plot_brain_expansions(self, n_expansions: int, **kwargs):
         """
@@ -1409,6 +1420,7 @@ class Visualizer:
         """
 
         primary_categorical_analysis_variable = kwargs.get("primary_categorical_analysis_variable", "Vessel Size")
+        save_fig = kwargs.get("save_fig", True)
 
         dist_upper_end = 1.75
 
@@ -1494,9 +1506,8 @@ class Visualizer:
                                  palette=colors_clusters,
                                  data=marker_features)
 
-                plt.savefig(per_marker_expansions_dir + '/%s.png' % str(marker_name),
-                            bbox_inches='tight')
-                plt.clf()
+                save_fig_or_show(save_fig=save_fig,
+                                 figure_path=per_marker_expansions_dir + '/%s.png' % str(marker_name))
 
         for key in marker_clusters.keys():
             marker_features = plot_features.loc[plot_features["Marker Group"] == key]
@@ -1516,9 +1527,8 @@ class Visualizer:
                              palette=colors_clusters,
                              data=marker_features)
 
-            plt.savefig(per_bin_expansions_dir + '/%s.png' % str(key),
-                        bbox_inches='tight')
-            plt.clf()
+            save_fig_or_show(save_fig=save_fig,
+                             figure_path=per_bin_expansions_dir + '/%s.png' % str(key))
 
     def spatial_probability_maps(self, **kwargs):
         """
@@ -1528,6 +1538,7 @@ class Visualizer:
         """
 
         mask_size = kwargs.get("mask_size", self.config.segmentation_mask_size)
+        save_fig = kwargs.get("save_fig", True)
 
         parent_dir = "%s/Pixel Expression Spatial Maps" % self.results_dir
 
@@ -1567,8 +1578,8 @@ class Visualizer:
                 color_map = plt.imshow(blurred_data)
                 color_map.set_cmap("jet")
                 plt.colorbar()
-                plt.savefig("%s/Point%s" % (vessels_dir, str(point_idx + 1)))
-                plt.clf()
+                save_fig_or_show(save_fig=save_fig,
+                                 figure_path="%s/Point%s" % (vessels_dir, str(point_idx + 1)))
 
                 point_contours = feed_contours.loc[point_idx, "Contours"].contours
 
@@ -1594,9 +1605,9 @@ class Visualizer:
                     ax_cb = divider.new_horizontal(size="5%", pad=0.05)
                     cb1 = matplotlib.colorbar.ColorbarBase(ax_cb, cmap=matplotlib.cm.jet, orientation='vertical')
                     plt.gcf().add_axes(ax_cb)
-                    plt.savefig(os.path.join(point_dir, "Vessel_ID_%s.png" % str(contour_idx + 1)))
 
-                    plt.clf()
+                    save_fig_or_show(save_fig=save_fig,
+                                     figure_path=os.path.join(point_dir, "Vessel_ID_%s.png" % str(contour_idx + 1)))
 
             for point_idx in range(n_points):
 
@@ -1616,8 +1627,8 @@ class Visualizer:
 
                 point_contours = feed_contours.loc[point_idx, "Contours"].contours
 
-                plt.savefig("%s/Point%s" % (astrocytes_dir, str(point_idx + 1)))
-                plt.clf()
+                save_fig_or_show(save_fig=save_fig,
+                                 figure_path="%s/Point%s" % (astrocytes_dir, str(point_idx + 1)))
 
                 point_dir = "%s/Point %s" % (astrocytes_dir, str(point_idx + 1))
                 mkdir_p(point_dir)
@@ -1641,9 +1652,9 @@ class Visualizer:
                     ax_cb = divider.new_horizontal(size="5%", pad=0.05)
                     cb1 = matplotlib.colorbar.ColorbarBase(ax_cb, cmap=matplotlib.cm.jet, orientation='vertical')
                     plt.gcf().add_axes(ax_cb)
-                    plt.savefig(os.path.join(point_dir, "Vessel_ID_%s.png" % str(contour_idx + 1)))
 
-                    plt.clf()
+                    save_fig_or_show(save_fig=save_fig,
+                                     figure_path=os.path.join(point_dir, "Vessel_ID_%s.png" % str(contour_idx + 1)))
 
             for point_idx in range(n_points):
 
@@ -1672,8 +1683,8 @@ class Visualizer:
 
                         plt.text(cX, cY, "ID: %s" % str(contour_idx + 1), fontsize='xx-small', color="w")
 
-                    plt.savefig("%s/%s" % (point_dir, marker_name))
-                    plt.clf()
+                    save_fig_or_show(save_fig=save_fig,
+                                     figure_path="%s/%s" % (point_dir, marker_name))
 
     def vessel_images_by_categorical_variable(self, **kwargs):
         """
@@ -1729,7 +1740,8 @@ class Visualizer:
                                 hue="SMA",
                                 cmap="coolwarm",
                                 min_val=None,
-                                max_val=None):
+                                max_val=None,
+                                save_fig=True):
         """
         Scatter Plot with Colorbar Mapped to Continuous Third Variable
 
@@ -1762,8 +1774,8 @@ class Visualizer:
                                vmin=min_val,
                                vmax=max_val)
 
-        plt.savefig(output_dir + '/%s.png' % figure_name)
-        plt.clf()
+        save_fig_or_show(save_fig=save_fig,
+                         figure_path=output_dir + '/%s.png' % figure_name)
 
     def scatter_plot_umap_marker_projection(self, **kwargs):
         """
@@ -1774,6 +1786,7 @@ class Visualizer:
 
         mask_type = kwargs.get('mask_type', "mask_only")
         primary_continuous_analysis_variable = kwargs.get('primary_continuous_analysis_variable', "Solidity Score")
+        save_fig = kwargs.get("save_fig", True)
 
         parent_dir = self.results_dir + "/UMAP Scatter Plot Projection"
 
@@ -1803,27 +1816,31 @@ class Visualizer:
                                              plot_features,
                                              hue=marker_cluster,
                                              min_val=0,
-                                             max_val=1)
+                                             max_val=1,
+                                             save_fig=save_fig)
 
                 for marker in self.config.marker_clusters[marker_cluster]:
                     self._scatter_plot_color_bar(marker,
                                                  feed_dir + "/Individual Markers",
                                                  plot_features,
-                                                 hue=marker)
+                                                 hue=marker,
+                                                 save_fig=save_fig)
 
             self._scatter_plot_color_bar("umap_projection_by_size",
                                          feed_dir + "/Size",
                                          plot_features,
                                          hue="Contour Area",
                                          min_val=self.config.small_vessel_threshold,
-                                         max_val=1000)
+                                         max_val=1000,
+                                         save_fig=save_fig)
 
             self._scatter_plot_color_bar("umap_projection",
                                          feed_dir + "/%s" % primary_continuous_analysis_variable,
                                          plot_features,
                                          hue=primary_continuous_analysis_variable,
                                          min_val=plot_features[primary_continuous_analysis_variable].min(),
-                                         max_val=1.25)
+                                         max_val=1.25,
+                                         save_fig=save_fig)
 
             plot_features.reset_index(level=['Point'], inplace=True)
 
@@ -1847,8 +1864,8 @@ class Visualizer:
             plt.legend(bbox_to_anchor=(1.05, 1), loc=2,
                        borderaxespad=0.)
 
-            plt.savefig(region_dir + '/umap_projection_by_region.png', bbox_inches='tight')
-            plt.clf()
+            save_fig_or_show(save_fig=save_fig,
+                             figure_path=region_dir + '/umap_projection_by_region.png')
 
     def _average_expression_across_expansions(self,
                                               n_expansions: int,
@@ -1938,7 +1955,8 @@ class Visualizer:
                                   mibi_features: pd.DataFrame,
                                   brain_regions: list,
                                   marker_clusters: list,
-                                  feed_dir: str):
+                                  feed_dir: str,
+                                  save_fig: bool = True):
         """
         Vessel/Non-vessel heatmaps helper method
 
@@ -2067,8 +2085,8 @@ class Visualizer:
         output_dir = "%s/Heatmaps" % feed_dir
         mkdir_p(output_dir)
 
-        plt.savefig(output_dir + '/Expansion_%s.png' % str(n_expansions), bbox_inches='tight')
-        plt.clf()
+        save_fig_or_show(save_fig=save_fig,
+                         figure_path=output_dir + '/Expansion_%s.png' % str(n_expansions))
 
         ax = sns.clustermap(heatmap_data,
                             cmap=cmap,
@@ -2087,8 +2105,8 @@ class Visualizer:
         ax.ax_heatmap.yaxis.tick_left()
         ax.ax_heatmap.yaxis.set_label_position("left")
 
-        ax.savefig(output_dir + '/Expansion_%s.png' % str(n_expansions))
-        plt.clf()
+        save_fig_or_show(save_fig=save_fig,
+                         figure_path=output_dir + '/Expansion_%s.png' % str(n_expansions))
 
     def continuous_scatter_plot(self, **kwargs):
         """
@@ -2099,6 +2117,7 @@ class Visualizer:
 
         primary_categorical_analysis_variable = kwargs.get('primary_categorical_analysis_variable', "Solidity")
         secondary_categorical_analysis_variable = kwargs.get('secondary_categorical_analysis_variable', "Vessel Size")
+        save_fig = kwargs.get("save_fig", True)
 
         mask_type = kwargs.get('mask_type', "expansion_only")
         primary_continuous_analysis_variable = kwargs.get('primary_continuous_analysis_variable', "Solidity Score")
@@ -2167,8 +2186,8 @@ class Visualizer:
                            borderaxespad=0.,
                            title=primary_categorical_analysis_variable)
 
-                plt.savefig(by_primary_analysis_variable_dir + '/%s.png' % str(marker), bbox_inches='tight')
-                plt.clf()
+                save_fig_or_show(save_fig=save_fig,
+                                 figure_path=by_primary_analysis_variable_dir + '/%s.png' % str(marker))
 
             if len(feed_features[primary_categorical_analysis_variable].unique()) <= 3:
                 cmap = colors.ListedColormap(['cyan', 'pink', 'yellow'])(np.linspace(0, 1, 3))
@@ -2194,8 +2213,8 @@ class Visualizer:
                 plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.,
                            title=secondary_categorical_analysis_variable)
 
-                plt.savefig(by_secondary_analysis_variable_dir + '/%s.png' % str(marker), bbox_inches='tight')
-                plt.clf()
+                save_fig_or_show(save_fig=save_fig,
+                                 figure_path=by_secondary_analysis_variable_dir + '/%s.png' % str(marker))
 
             for marker in feed_features["Marker"].unique():
                 marker_features = feed_features[feed_features["Marker"] == marker]
@@ -2217,8 +2236,8 @@ class Visualizer:
                                point_label, horizontalalignment='left',
                                size='medium', color='black', weight='semibold')
 
-                plt.savefig(with_vessel_id_dir + '/%s.png' % str(marker), bbox_inches='tight')
-                plt.clf()
+                save_fig_or_show(save_fig=save_fig,
+                                 figure_path=with_vessel_id_dir + '/%s.png' % str(marker))
 
             for split_val in feed_features[secondary_categorical_analysis_variable].unique():
                 out_dir = "%s/%s" % (secondary_separate_dir, split_val)
@@ -2241,8 +2260,8 @@ class Visualizer:
                     plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.,
                                title=primary_categorical_analysis_variable)
 
-                    plt.savefig(out_dir + '/%s.png' % str(marker), bbox_inches='tight')
-                    plt.clf()
+                    save_fig_or_show(save_fig=save_fig,
+                                     figure_path=out_dir + '/%s.png' % str(marker))
 
     def vessel_nonvessel_heatmap(self, n_expansions: int, **kwargs):
         """
@@ -2252,6 +2271,7 @@ class Visualizer:
         :return:
         """
         primary_categorical_analysis_variable = kwargs.get("primary_categorical_analysis_variable", "Vessel Size")
+        save_fig = kwargs.get("save_fig", True)
 
         marker_clusters = self.config.marker_clusters
 
@@ -2269,7 +2289,8 @@ class Visualizer:
 
             if primary_categorical_analysis_variable is None:
                 self._vessel_nonvessel_heatmap(n_expansions, feed_features, brain_region_point_ranges, marker_clusters,
-                                               feed_dir)
+                                               feed_dir,
+                                               save_fig=save_fig)
             else:
                 for i in feed_features[primary_categorical_analysis_variable].unique():
                     split_dir = "%s/%s: %s" % (feed_dir, primary_categorical_analysis_variable, i)
@@ -2279,7 +2300,8 @@ class Visualizer:
 
                     self._vessel_nonvessel_heatmap(n_expansions, split_features, brain_region_point_ranges,
                                                    marker_clusters,
-                                                   split_dir)
+                                                   split_dir,
+                                                   save_fig=save_fig)
 
     def _categorical_split_expansion_heatmap_helper(self,
                                                     n_expansions: int,
@@ -2288,7 +2310,8 @@ class Visualizer:
                                                     primary_splitter: str,
                                                     secondary_splitter: str = None,
                                                     marker: str = "Astrocytes",
-                                                    cluster=True
+                                                    cluster=True,
+                                                    save_fig=True
                                                     ):
         """
         Helper method to generate categorical split expansion heatmap
@@ -2421,8 +2444,8 @@ class Visualizer:
                                             self.config.data_resolution_units)
         mkdir_p(output_dir)
 
-        plt.savefig(output_dir + '/%s.png' % title, bbox_inches='tight')
-        plt.clf()
+        save_fig_or_show(save_fig=save_fig,
+                         figure_path=output_dir + '/%s.png' % title)
 
     def categorical_split_expansion_heatmap_clustermap(self,
                                                        n_expansions: int,
@@ -2435,6 +2458,7 @@ class Visualizer:
         """
         primary_categorical_analysis_variable = kwargs.get("primary_categorical_analysis_variable", "Vessel Size")
         secondary_categorical_analysis_variable = kwargs.get("secondary_categorical_analysis_variable", None)
+        save_fig = kwargs.get("save_fig", True)
 
         parent_dir = "%s/Categorical Expansion Heatmaps & Clustermaps" % self.results_dir
 
@@ -2468,7 +2492,8 @@ class Visualizer:
                                                                  primary_categorical_analysis_variable,
                                                                  secondary_categorical_analysis_variable,
                                                                  marker=cluster,
-                                                                 cluster=True)
+                                                                 cluster=True,
+                                                                 save_fig=save_fig)
 
                 for marker in self.config.marker_clusters[cluster]:
                     self._categorical_split_expansion_heatmap_helper(n_expansions,
@@ -2477,7 +2502,8 @@ class Visualizer:
                                                                      primary_categorical_analysis_variable,
                                                                      secondary_categorical_analysis_variable,
                                                                      marker=marker,
-                                                                     cluster=False)
+                                                                     cluster=False,
+                                                                     save_fig=save_fig)
 
     def _heatmap_clustermap_generator(self,
                                       data,
@@ -2493,7 +2519,8 @@ class Visualizer:
                                       x_tick_indices=None,
                                       vmin=None,
                                       vmax=None,
-                                      ax=None):
+                                      ax=None,
+                                      save_fig=True):
 
         """
         Helper method to save heatmap and clustermap output
@@ -2558,8 +2585,8 @@ class Visualizer:
                     for _ in marker_clusters[key]:
                         h_line_idx += 1
 
-                plt.savefig(output_dir + '/%s.png' % map_name, bbox_inches='tight')
-                plt.clf()
+                save_fig_or_show(save_fig=save_fig,
+                                 figure_path=output_dir + '/%s.png' % map_name)
             else:
                 ax = sns.heatmap(data,
                                  cmap=cmap,
@@ -2639,8 +2666,8 @@ class Visualizer:
                     for i in x_tick_indices:
                         xticks[i].set_visible(True)
 
-            ax.savefig(output_dir + '/%s.png' % map_name)
-            plt.clf()
+            save_fig_or_show(save_fig=save_fig,
+                             figure_path=output_dir + '/%s.png' % map_name)
 
     def _marker_expression_at_expansion(self,
                                         expansion: int,
@@ -2675,6 +2702,7 @@ class Visualizer:
                                         clustermaps_dir: str,
                                         brain_regions: list,
                                         brain_region_names: list,
+                                        save_fig: bool = True
                                         ):
         """
         Brain region expansion heatmaps helper method
@@ -2759,7 +2787,8 @@ class Visualizer:
                                            marker_clusters=marker_clusters,
                                            output_dir=output_dir,
                                            map_name="All_Points",
-                                           cluster=False)
+                                           cluster=False,
+                                           save_fig=save_fig)
 
         for idx, region_data in enumerate(regions_mask_data):
             region_name = brain_region_names[idx]
@@ -2771,7 +2800,8 @@ class Visualizer:
                                                marker_clusters=marker_clusters,
                                                output_dir=output_dir,
                                                map_name="%s_Region" % region_name,
-                                               cluster=False)
+                                               cluster=False,
+                                               save_fig=save_fig)
 
         # Clustermaps Outputs
 
@@ -2788,7 +2818,8 @@ class Visualizer:
                                            marker_clusters=marker_clusters,
                                            output_dir=output_dir,
                                            map_name="All_Points",
-                                           cluster=True)
+                                           cluster=True,
+                                           save_fig=save_fig)
 
         for idx, region_data in enumerate(regions_mask_data):
             region_name = brain_region_names[idx]
@@ -2800,7 +2831,8 @@ class Visualizer:
                                                marker_clusters=marker_clusters,
                                                output_dir=output_dir,
                                                map_name="%s_Region" % region_name,
-                                               cluster=True)
+                                               cluster=True,
+                                               save_fig=save_fig)
 
     def brain_region_expansion_heatmap(self, n_expansions: int, **kwargs):
         """
@@ -2809,6 +2841,7 @@ class Visualizer:
         :param n_expansions: int, Number of expansions
         """
         primary_categorical_analysis_variable = kwargs.get("primary_categorical_analysis_variable", "Vessel Size")
+        save_fig = kwargs.get("save_fig", True)
 
         parent_dir = "%s/Expansion Heatmaps & Clustermaps" % self.results_dir
 
@@ -2832,7 +2865,7 @@ class Visualizer:
                 mkdir_p(clustermaps_dir)
 
                 self._brain_region_expansion_heatmap(n_expansions, expansion_features, heatmaps_dir, clustermaps_dir,
-                                                     brain_region_point_ranges, brain_region_names)
+                                                     brain_region_point_ranges, brain_region_names, save_fig=save_fig)
             else:
                 for i in feed_features[primary_categorical_analysis_variable].unique():
                     split_dir = "%s/%s: %s" % (feed_dir, primary_categorical_analysis_variable, i)
@@ -2847,7 +2880,8 @@ class Visualizer:
                     split_features = feed_features.loc[feed_features[primary_categorical_analysis_variable] == i]
 
                     self._brain_region_expansion_heatmap(n_expansions, split_features, heatmaps_dir, clustermaps_dir,
-                                                         brain_region_point_ranges, brain_region_names)
+                                                         brain_region_point_ranges, brain_region_names,
+                                                         save_fig=save_fig)
 
     def marker_expression_masks(self, **kwargs):
         """
@@ -2855,6 +2889,7 @@ class Visualizer:
 
         :return:
         """
+        save_fig = kwargs.get("save_fig", True)
 
         n_points = len(self.all_samples_features.index.get_level_values("Point").unique())
 
@@ -2898,8 +2933,8 @@ class Visualizer:
                     plt.imshow(expression_img)
                     sm = plt.cm.ScalarMappable(cmap=plt.get_cmap('hot'))
                     plt.colorbar(sm)
-                    plt.savefig(os.path.join(point_dir, "%s.png" % marker_name))
-                    plt.clf()
+                    save_fig_or_show(save_fig=save_fig,
+                                     figure_path=os.path.join(point_dir, "%s.png" % marker_name))
 
     def _pseudo_time_heatmap(self,
                              mibi_features,
@@ -2915,6 +2950,7 @@ class Visualizer:
 
         mask_type = kwargs.get("mask_type", "mask_only")
         primary_continuous_analysis_variable = kwargs.get("primary_continuous_analysis_variable", "Eccentricity Score")
+        save_fig = kwargs.get("save_fig", True)
 
         mibi_features = loc_by_expansion(mibi_features,
                                          expansion_type=mask_type,
@@ -2980,7 +3016,8 @@ class Visualizer:
                                                cluster=False,
                                                y_tick_labels=y_tick_labels,
                                                vmin=0,
-                                               vmax=1.25
+                                               vmax=1.25,
+                                               save_fig=save_fig
                                                )
         else:
 
@@ -3019,7 +3056,8 @@ class Visualizer:
                                                y_tick_labels=y_tick_labels,
                                                ax=ax,
                                                vmin=0,
-                                               vmax=1.25
+                                               vmax=1.25,
+                                               save_fig=save_fig
                                                )
 
         return ax
@@ -3036,6 +3074,7 @@ class Visualizer:
         """
 
         parent_dir = "%s/Pseudo-Time Heatmaps" % self.results_dir
+        save_fig = kwargs.get("save_fig", True)
 
         mkdir_p(parent_dir)
 
@@ -3082,7 +3121,8 @@ class Visualizer:
                                           primary_continuous_analysis_variable=primary_continuous_analysis_variable,
                                           mask_type=mask_type,
                                           map_name=region,
-                                          cmap=cmap)
+                                          cmap=cmap,
+                                          save_fig=save_fig)
 
                 self._pseudo_time_heatmap(region_features,
                                           save_dir=region_dir,
@@ -3090,7 +3130,8 @@ class Visualizer:
                                           primary_continuous_analysis_variable=primary_continuous_analysis_variable,
                                           mask_type=mask_type,
                                           map_name=region,
-                                          cmap=cmap)
+                                          cmap=cmap,
+                                          save_fig=save_fig)
 
             self._pseudo_time_heatmap(feed_features,
                                       save_dir=feed_dir,
@@ -3098,7 +3139,8 @@ class Visualizer:
                                       primary_continuous_analysis_variable=primary_continuous_analysis_variable,
                                       mask_type=mask_type,
                                       map_name="all_points",
-                                      cmap=cmap)
+                                      cmap=cmap,
+                                      save_fig=save_fig)
 
     def vessel_shape_area_spread_plot(self, **kwargs):
         """
@@ -3112,6 +3154,7 @@ class Visualizer:
         idx = pd.IndexSlice
 
         primary_categorical_analysis_variable = kwargs.get("primary_categorical_analysis_variable", "Solidity")
+        save_fig = kwargs.get("save_fig", True)
 
         plot_features = self.all_samples_features.loc[idx[:,
                                                       :,
@@ -3170,9 +3213,9 @@ class Visualizer:
                         horizontalalignment='center', size='x-small', color='k', weight='semibold',
                         transform=ax.transAxes)
 
-        plt.savefig(output_dir + '/vessel_area_spread_%s_split.png' % primary_categorical_analysis_variable,
-                    bbox_inches='tight')
-        plt.clf()
+        save_fig_or_show(save_fig=save_fig,
+                         figure_path=output_dir + '/vessel_area_spread_%s_split.png'
+                                     % primary_categorical_analysis_variable)
 
         ax = sns.boxplot(x="Size",
                          y="Pixel Area",
@@ -3195,9 +3238,8 @@ class Visualizer:
                     horizontalalignment='center', size='x-small', color='k', weight='semibold',
                     transform=ax.transAxes)
 
-        plt.savefig(output_dir + '/vessel_area_spread.png',
-                    bbox_inches='tight')
-        plt.clf()
+        save_fig_or_show(save_fig=save_fig,
+                         figure_path=output_dir + '/vessel_area_spread.png')
 
     def vessel_nonvessel_masks(self,
                                n_expansions: int = 5,
@@ -3257,6 +3299,8 @@ class Visualizer:
         """
         Create kept vs. removed vessel expression comparison using Box Plots
         """
+        save_fig = kwargs.get("save_fig", True)
+
         all_points_vessels_expression = []
         all_points_removed_vessels_expression = []
 
@@ -3390,13 +3434,13 @@ class Visualizer:
 
                 plt.title("Kept vs Removed Vessel Marker Expression - %s" % brain_region)
                 ax = sns.boxplot(x="Point", y="Expression", hue="Vessel", data=df, palette="Set3", showfliers=False)
-                plt.savefig(os.path.join(all_points_per_brain_region_dir, "%s.png" % brain_region))
-                plt.clf()
+                save_fig_or_show(save_fig=save_fig,
+                                 figure_path=os.path.join(all_points_per_brain_region_dir, "%s.png" % brain_region))
 
                 plt.title("Kept vs Removed Vessel Marker Expression - %s: Average Points" % brain_region)
                 ax = sns.boxplot(x="Vessel", y="Expression", hue="Vessel", data=df, palette="Set3", showfliers=False)
-                plt.savefig(os.path.join(average_points_dir, "%s.png" % brain_region))
-                plt.clf()
+                save_fig_or_show(save_fig=save_fig,
+                                 figure_path=os.path.join(average_points_dir, "%s.png" % brain_region))
 
             df = pd.DataFrame(all_kept_removed_vessel_expression_data_collapsed,
                               columns=["Expression", "Vessel", "Point"])
@@ -3404,5 +3448,5 @@ class Visualizer:
             plt.title("Kept vs Removed Vessel Marker Expression - All Points")
             ax = sns.boxplot(x="Vessel", y="Expression", hue="Vessel", data=df, palette="Set3", showfliers=False)
 
-            plt.savefig(os.path.join(all_points, "All_Points.png"))
-            plt.clf()
+            save_fig_or_show(save_fig=save_fig,
+                             figure_path=os.path.join(all_points, "All_Points.png"))

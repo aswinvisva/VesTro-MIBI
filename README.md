@@ -19,14 +19,11 @@ cd oliveria-lab-ml/
 
 2. Install Docker [here](https://docs.docker.com/get-docker/)
 
-3. Build the Docker Image
-```console
-sudo docker build -t vestro-mibi .
-```
+3. Run the application
 
-4. Run the Container with Bind Mount to Data Directory Saved in Local File System
 ```console
-sudo docker run -v /path/to/data/ -p 8888:8888 vestro-mibi
+chmod +x run.sh
+sudo ./run.sh
 ```
 
 5. Navigate to Jupyter Notebook URL
