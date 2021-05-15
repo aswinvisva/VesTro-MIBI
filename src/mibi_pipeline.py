@@ -352,9 +352,7 @@ class MIBIPipeline:
         stopped_vessel_df = pd.DataFrame.from_dict(stopped_vessel_dict)
         logging.info("\n" + stopped_vessel_df.to_markdown())
 
-        if self.config.save_to_csv:
-            stopped_vessel_df.to_csv(
-                os.path.join(self.results_dir, "inward_vessel_expansion_summary.csv"))
+        stopped_vessel_df.to_csv(os.path.join(self.results_dir, "inward_vessel_expansion_summary.csv"))
 
         return all_expansions_features, current_expansion_no
 

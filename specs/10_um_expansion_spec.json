@@ -1,0 +1,19 @@
+{
+  "expansion_to_run": [10],
+  "perform_inward_expansions": true,
+  "max_inward_expansions": 10,
+  "max_expansions": 10,
+  "pixel_interval": 2.0,
+  "minimum_contour_area_to_remove": 125.0,
+  "use_guassian_blur_when_extracting_vessels": true,
+  "guassian_blur": [2, 2],
+  "scaling_factor": 100,
+  "expression_type": "area_normalized_counts",
+  "transformation_type": "arcsinh",
+  "normalization_type": "percentile",
+  "percentile_to_normalize": 99,
+  "SMA_positive_threshold": 0.1,
+  "large_vessel_threshold": 500,
+  "medium_vessel_threshold": 200,
+  "small_vessel_threshold": 0
+}

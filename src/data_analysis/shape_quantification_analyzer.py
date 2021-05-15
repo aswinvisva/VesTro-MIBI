@@ -62,7 +62,7 @@ class ShapeQuantificationAnalyzer(BaseAnalyzer, ABC):
             "Metric": circularity
         })
 
-        img_shape = kwargs.get("img_shape", self.config.segmentation_mask_size)
+        img_shape = kwargs.get("img_shape", (1024, 1024))
 
         shape_quantification_name = shape_quantification_method["Name"]
         shape_quantification_metric = shape_quantification_method["Metric"]

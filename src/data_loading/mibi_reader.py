@@ -23,7 +23,7 @@ class MIBIReader:
         """
         self.config = config
 
-    def read(self, data_loc: str, mask_loc: str) -> (np.ndarray, np.ndarray, list):
+    def read(self, data_loc: str, mask_loc: str, markers_to_ignore: list = []) -> (np.ndarray, np.ndarray, list):
         """
         Read the MIBI data from a single point
 
@@ -34,7 +34,6 @@ class MIBIReader:
         """
 
         # Get marker clusters, markers to ignore etc.
-        markers_to_ignore = self.config.markers_to_ignore
         marker_clusters = self.config.marker_clusters
         plot = self.config.show_segmentation_masks_when_reading
         plot_markers = self.config.describe_markers_when_reading

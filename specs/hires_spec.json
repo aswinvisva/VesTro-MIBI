@@ -1,0 +1,45 @@
+{
+  "feed_data_loc": "/media/aswin/large_storage/oliveria_data/data/hires",
+  "feed_mask_loc": "/media/aswin/large_storage/oliveria_data/masks/hires",
+  "feed_name": "Hires",
+  "n_points": 48,
+  "points_per_dir": 48,
+  "brain_region_point_ranges": [{
+    "1":[1, 16],
+    "2":[17, 32],
+    "3":[33, 48]}],
+  "brain_region_names": ["MFG", "HIP", "CAUD"],
+  "point_dir_name": "Point",
+  "tif_dir_name": "TIFs",
+  "segmentation_mask_type": "allvessels",
+  "segmentation_mask_size": [1024, 1024],
+  "data_resolution_size": [500, 500],
+  "data_resolution_units": "μm",
+  "markers_to_ignore": [
+    "GAD",
+    "Neurogranin",
+    "ABeta40",
+    "pTDP43",
+    "polyubik63",
+    "Background",
+    "Au197",
+    "Ca40",
+    "Fe56",
+    "Na23",
+    "Si28",
+    "La139",
+    "Ta181",
+    "C12"
+  ],
+  "all_masks": [
+    "astrocytes",
+    "BBB",
+    "largevessels",
+    "microglia",
+    "myelin",
+    "plaques",
+    "tangles",
+    "allvessels"
+  ],
+  "n_markers": 34
+}

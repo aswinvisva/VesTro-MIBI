@@ -85,7 +85,7 @@ class TestMarkersFeatureGen(unittest.TestCase):
         scaling_factor = config.scaling_factor
         transformation = config.transformation_type
         normalization = config.normalization_type
-        n_markers = config.n_markers
+        n_markers = len(marker_names)
 
         hh3_data = test_raw_data["HH3"].to_numpy()
         hh3_data = hh3_data * scaling_factor

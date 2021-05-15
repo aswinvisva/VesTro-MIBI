@@ -28,7 +28,9 @@ class ObjectExtractor:
     def extract(self,
                 img: np.ndarray,
                 point_name: str = "Point1",
-                removed_contour_threshold: float = 125.0) -> (list, list, list):
+                removed_contour_threshold: float = 125.0,
+                create_removed_vessels_mask: bool = False,
+                create_blurred_vessels_mask: bool = False) -> (list, list, list):
         """
         Extract vessel contours and vessel ROI's from a segmentation mask
 
@@ -42,7 +44,7 @@ class ObjectExtractor:
         show = self.config.show_vessel_contours_when_extracting
         min_contour_area = removed_contour_threshold
 
-        if self.config.create_removed_vessels_mask:
+        if create_removed_vessels_mask:
             removed_vessels_img = np.zeros(self.config.segmentation_mask_size, np.uint8)
 
         # If the segmentation mask is a 3-channel image, convert it to grayscale
@@ -55,7 +57,7 @@ class ObjectExtractor:
         if self.config.use_guassian_blur_when_extracting_vessels:
             imgray = cv.blur(imgray, self.config.guassian_blur)
 
-            if self.config.create_blurred_vessels_mask:
+            if create_blurred_vessels_mask:
                 output_dir = os.path.join(self.results_dir,
                                           "guassian_blur_%s" % str(self.config.guassian_blur))
                 mkdir_p(output_dir)
@@ -85,7 +87,7 @@ class ObjectExtractor:
             if contour_area < min_contour_area:
                 removed_contours.append(cnt)
 
-                if self.config.create_removed_vessels_mask:
+                if create_removed_vessels_mask:
                     cv.drawContours(removed_vessels_img, contours, i, (255, 255, 255), cv.FILLED)
 
                 if show:
@@ -109,7 +111,7 @@ class ObjectExtractor:
             images.append(roi)
             usable_contours.append(cnt)
 
-        if self.config.create_removed_vessels_mask:
+        if create_removed_vessels_mask:
             output_dir = os.path.join(self.results_dir,
                                       "removed_vessels")
             mkdir_p(output_dir)

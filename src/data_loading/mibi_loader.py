@@ -37,9 +37,11 @@ class MIBILoader:
         :param feed_name: str, Feed to get data from
         :param point_num: int, Point number
         """
-
-        data_loc, mask_loc = self.feeds[feed_name].get_locs(point_num)
-        segmentation_mask, markers_img, marker_names = self.mibi_reader.read(data_loc, mask_loc)
+        feed = self.feeds[feed_name]
+        data_loc, mask_loc = feed.get_locs(point_num)
+        segmentation_mask, markers_img, marker_names = self.mibi_reader.read(data_loc,
+                                                                             mask_loc,
+                                                                             markers_to_ignore=feed.markers_to_ignore)
 
         metadata_dict = {
             "Feed Name": [feed_name],

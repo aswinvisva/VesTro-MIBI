@@ -54,6 +54,8 @@ class DimensionalityReductionClusteringAnalyzer(BaseAnalyzer, ABC):
 
         mask_type = kwargs.get("mask_type", "mask_only")
         marker_settings = kwargs.get("marker_settings", "vessel_mask_markers_removed")
+        vessel_markers = kwargs.get("vessel_markers", None)
+        astrocyte_markers = kwargs.get("astrocyte_markers", None)
 
         assert mask_type in ["mask_only",
                              "mask_and_expansion",
@@ -72,21 +74,19 @@ class DimensionalityReductionClusteringAnalyzer(BaseAnalyzer, ABC):
 
             visualization_features = loc_by_expansion(self.all_samples_features.copy(),
                                                       columns_to_keep=np.setdiff1d(self.markers_names,
-                                                                                   self.config.mask_marker_clusters[
-                                                                                       "Vessels"]),
+                                                                                   vessel_markers),
                                                       expansion_type=mask_type,
                                                       average=True)
 
         elif marker_settings == "vessel_markers_only":
             visualization_features = loc_by_expansion(self.all_samples_features.copy(),
-                                                      columns_to_keep=self.config.marker_clusters["Vessels"],
+                                                      columns_to_keep=vessel_markers,
                                                       expansion_type=mask_type,
                                                       average=True)
 
         elif marker_settings == "vessel_and_astrocyte_markers":
             visualization_features = loc_by_expansion(self.all_samples_features.copy(),
-                                                      columns_to_keep=self.config.marker_clusters["Vessels"] +
-                                                                      self.config.marker_clusters["Astrocytes"],
+                                                      columns_to_keep=vessel_markers + astrocyte_markers,
                                                       expansion_type=mask_type,
                                                       average=True)
         elif marker_settings == "all_markers":

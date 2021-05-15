@@ -19,6 +19,8 @@ from src.data_loading.mibi_reader import MIBIReader
 from src.data_preprocessing.object_extractor import ObjectExtractor
 from src.data_preprocessing.markers_feature_gen import *
 from src.data_preprocessing.transforms import melt_markers, loc_by_expansion
+from src.data_visualization import DEFAULT_LINE_PLOTS_COLOR_MAPS, DEFAULT_LINE_PLOT_BIN_COLORS, \
+    DEFAULT_HEATMAP_COLORMAP, DEFAULT_BINARY_COLORMAP, DEFAULT_MULTICLASS_COLORMAP, DEFAULT_VESSEL_LINE_PLOTS_POINTS
 from src.utils.iterators import feed_features_iterator
 from src.utils.utils_functions import mkdir_p, round_to_nearest_half, save_fig_or_show
 
@@ -63,12 +65,12 @@ class Visualizer:
         :return:
         """
         marker_clusters = self.config.marker_clusters
-        color_maps = self.config.line_plots_color_maps
-        colors = self.config.line_plots_bin_colors
+        color_maps = DEFAULT_LINE_PLOTS_COLOR_MAPS
+        colors = DEFAULT_LINE_PLOT_BIN_COLORS
 
         style = kwargs.get("style", None)
         size = kwargs.get("size", None)
-        vessel_line_plots_points = kwargs.get("vessel_line_plots_points", self.config.vessel_line_plots_points)
+        vessel_line_plots_points = kwargs.get("vessel_line_plots_points", DEFAULT_VESSEL_LINE_PLOTS_POINTS)
         save_fig = kwargs.get("save_fig", True)
 
         output_dir = "%s/Line Plots Per Vessel" % self.results_dir
@@ -203,8 +205,8 @@ class Visualizer:
         """
 
         marker_clusters = self.config.marker_clusters
-        color_maps = self.config.line_plots_color_maps
-        colors = self.config.line_plots_bin_colors
+        color_maps = DEFAULT_LINE_PLOTS_COLOR_MAPS
+        colors = DEFAULT_LINE_PLOT_BIN_COLORS
 
         style = kwargs.get("style", None)
         size = kwargs.get("size", None)
@@ -349,8 +351,8 @@ class Visualizer:
         """
 
         marker_clusters = self.config.marker_clusters
-        color_maps = self.config.line_plots_color_maps
-        colors = self.config.line_plots_bin_colors
+        color_maps = DEFAULT_LINE_PLOTS_COLOR_MAPS
+        colors = DEFAULT_LINE_PLOT_BIN_COLORS
 
         style = kwargs.get("style", None)
         size = kwargs.get("size", None)
@@ -488,8 +490,8 @@ class Visualizer:
         """
 
         marker_clusters = self.config.marker_clusters
-        color_maps = self.config.line_plots_color_maps
-        colors = self.config.line_plots_bin_colors
+        color_maps = DEFAULT_LINE_PLOTS_COLOR_MAPS
+        colors = DEFAULT_LINE_PLOT_BIN_COLORS
 
         style = kwargs.get("style", None)
         size = kwargs.get("size", None)
@@ -506,13 +508,16 @@ class Visualizer:
                                             self.config.data_resolution_units)
         mkdir_p(parent_dir)
 
-        for feed_idx, feed_contours, feed_features, feed_dir, brain_region_point_ranges, brain_region_names in feed_features_iterator(
+        for feed_idx, feed, feed_features, feed_contours, feed_dir in feed_features_iterator(
                 self.all_samples_features,
                 self.all_feeds_data,
                 self.all_feeds_contour_data,
                 self.all_feeds_metadata,
                 save_to_dir=True,
                 parent_dir=parent_dir):
+
+            brain_region_point_ranges = feed.brain_region_point_ranges
+            brain_region_names = feed.brain_region_names
 
             marker_color_dict = {}
             for marker_cluster in marker_clusters.keys():
@@ -655,18 +660,20 @@ class Visualizer:
 
         mkdir_p(parent_dir)
 
-        parent_dir = "%s/%s %s" % (parent_dir,
-                                   str(round_to_nearest_half(expansion_upper_bound * self.config.pixels_to_distance)),
-                                   self.config.data_resolution_units)
+        parent_dir = "%s/%s Pixel Expansion" % (parent_dir, str(expansion_upper_bound))
+
         mkdir_p(parent_dir)
 
-        for feed_idx, feed_contours, feed_features, feed_dir, brain_region_point_ranges, brain_region_names in feed_features_iterator(
+        for feed_idx, feed, feed_features, feed_contours, feed_dir in feed_features_iterator(
                 self.all_samples_features,
                 self.all_feeds_data,
                 self.all_feeds_contour_data,
                 self.all_feeds_metadata,
                 save_to_dir=True,
                 parent_dir=parent_dir):
+
+            brain_region_point_ranges = feed.brain_region_point_ranges
+            brain_region_names = feed.brain_region_names
 
             distinct_dir = "%s/Original Mask Excluded" % feed_dir
             mkdir_p(distinct_dir)
@@ -721,21 +728,21 @@ class Visualizer:
         n_points = len(self.all_samples_features.index.get_level_values("Point").unique())
 
         parent_dir = "%s/Embedded Vessel Masks" % self.results_dir
-
         mkdir_p(parent_dir)
 
-        parent_dir = "%s/%s %s" % (parent_dir,
-                                   str(round_to_nearest_half(expansion_upper_bound * self.config.pixels_to_distance)),
-                                   self.config.data_resolution_units)
+        parent_dir = "%s/%s Pixel Expansion" % (parent_dir, str(expansion_upper_bound))
         mkdir_p(parent_dir)
 
-        for feed_idx, feed_contours, feed_features, feed_dir, brain_region_point_ranges, brain_region_names in feed_features_iterator(
+        for feed_idx, feed, feed_features, feed_contours, feed_dir in feed_features_iterator(
                 self.all_samples_features,
                 self.all_feeds_data,
                 self.all_feeds_contour_data,
                 self.all_feeds_metadata,
                 save_to_dir=True,
                 parent_dir=parent_dir):
+
+            brain_region_point_ranges = feed.brain_region_point_ranges
+            brain_region_names = feed.brain_region_names
 
             distinct_dir = "%s/Original Mask Excluded" % feed_dir
             mkdir_p(distinct_dir)
@@ -791,13 +798,16 @@ class Visualizer:
 
         mkdir_p(parent_dir)
 
-        for feed_idx, feed_contours, feed_features, feed_dir, brain_region_point_ranges, brain_region_names in feed_features_iterator(
+        for feed_idx, feed, feed_features, feed_contours, feed_dir in feed_features_iterator(
                 self.all_samples_features,
                 self.all_feeds_data,
                 self.all_feeds_contour_data,
                 self.all_feeds_metadata,
                 save_to_dir=True,
                 parent_dir=parent_dir):
+
+            brain_region_point_ranges = feed.brain_region_point_ranges
+            brain_region_names = feed.brain_region_names
 
             for point_num in range(n_points):
                 current_interval = interval
@@ -951,22 +961,16 @@ class Visualizer:
         marker_clusters = self.config.marker_clusters
         selected_clusters = ["Vessels", "Astrocytes"]
 
-        norm = matplotlib.colors.Normalize(-1, 1)
-        colors = [[norm(-1.0), "black"],
-                  [norm(-0.5), "indigo"],
-                  [norm(0), "firebrick"],
-                  [norm(0.5), "orange"],
-                  [norm(1.0), "khaki"]]
-
-        cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", colors)
-
-        for feed_idx, feed_contours, feed_features, feed_dir, brain_region_point_ranges, brain_region_names in feed_features_iterator(
+        for feed_idx, feed, feed_features, feed_contours, feed_dir in feed_features_iterator(
                 self.all_samples_features,
                 self.all_feeds_data,
                 self.all_feeds_contour_data,
                 self.all_feeds_metadata,
                 save_to_dir=True,
                 parent_dir=parent_dir):
+
+            brain_region_point_ranges = feed.brain_region_point_ranges
+            brain_region_names = feed.brain_region_names
 
             feed_features = loc_by_expansion(feed_features,
                                              expansion_type=mask_type,
@@ -1024,7 +1028,6 @@ class Visualizer:
         mask_type = kwargs.get('mask_type', "expansion_only")
         outward_expansion = kwargs.get("outward_expansion", 0)
         inward_expansion = kwargs.get("inward_expansion", 0)
-        mask_size = kwargs.get("mask_size", self.config.segmentation_mask_size)
 
         primary_categorical_analysis_variable = kwargs.get('primary_categorical_analysis_variable',
                                                            "Solidity")
@@ -1040,13 +1043,22 @@ class Visualizer:
 
         cmap = matplotlib.cm.get_cmap('viridis')
 
-        for feed_idx, feed_contours, feed_features, feed_dir, brain_region_point_ranges, brain_region_names in feed_features_iterator(
+        for feed_idx, feed, feed_features, feed_contours, feed_dir in feed_features_iterator(
                 self.all_samples_features,
                 self.all_feeds_data,
                 self.all_feeds_contour_data,
                 self.all_feeds_metadata,
                 save_to_dir=True,
                 parent_dir=parent_dir):
+
+            brain_region_point_ranges = feed.brain_region_point_ranges
+            brain_region_names = feed.brain_region_names
+            mask_size = feed.segmentation_mask_size
+
+            marker_clusters = feed.marker_clusters
+            brain_region_point_ranges = feed.brain_region_point_ranges
+            brain_region_names = feed.brain_region_names
+            feed_contours = feed.feed_contours
 
             feed_features = loc_by_expansion(feed_features,
                                              expansion_type=mask_type,
@@ -1209,13 +1221,16 @@ class Visualizer:
 
         marker_clusters = self.config.marker_clusters
 
-        for feed_idx, feed_contours, feed_features, feed_dir, brain_region_point_ranges, brain_region_names in feed_features_iterator(
+        for feed_idx, feed, feed_features, feed_contours, feed_dir in feed_features_iterator(
                 self.all_samples_features,
                 self.all_feeds_data,
                 self.all_feeds_contour_data,
                 self.all_feeds_metadata,
                 save_to_dir=True,
                 parent_dir=parent_dir):
+
+            brain_region_point_ranges = feed.brain_region_point_ranges
+            brain_region_names = feed.brain_region_names
 
             feed_features = loc_by_expansion(feed_features,
                                              expansion_type=mask_type,
@@ -1307,26 +1322,18 @@ class Visualizer:
         bins_dir = "%s/Per Bin" % output_dir
         mkdir_p(bins_dir)
 
-        per_bin_expansions_dir = "%s/%s%s Expansion" % (bins_dir,
-                                                        str(round_to_nearest_half(n_expansions *
-                                                                                  self.config.pixel_interval *
-                                                                                  self.config.pixels_to_distance)),
-                                                        self.config.data_resolution_units)
+        per_bin_expansions_dir = "%s/Expansion #%s" % (bins_dir, str(n_expansions))
         mkdir_p(per_bin_expansions_dir)
 
         markers_dir = "%s/Per Marker" % output_dir
         mkdir_p(markers_dir)
 
-        per_marker_expansions_dir = "%s/%s%s Expansion" % (markers_dir,
-                                                           str(round_to_nearest_half(n_expansions *
-                                                                                     self.config.pixel_interval *
-                                                                                     self.config.pixels_to_distance)),
-                                                           self.config.data_resolution_units)
+        per_marker_expansions_dir = "%s/Expansion #%s" % (markers_dir, str(n_expansions))
         mkdir_p(per_marker_expansions_dir)
 
         marker_clusters = self.config.marker_clusters
-        color_maps = self.config.line_plots_color_maps
-        colors = self.config.line_plots_bin_colors
+        color_maps = DEFAULT_LINE_PLOTS_COLOR_MAPS
+        colors = DEFAULT_LINE_PLOT_BIN_COLORS
 
         marker_color_dict = {}
         for marker_cluster in marker_clusters.keys():
@@ -1449,8 +1456,8 @@ class Visualizer:
         mkdir_p(per_marker_expansions_dir)
 
         marker_clusters = self.config.marker_clusters
-        color_maps = self.config.line_plots_color_maps
-        colors = self.config.line_plots_bin_colors
+        color_maps = DEFAULT_LINE_PLOTS_COLOR_MAPS
+        colors = DEFAULT_LINE_PLOT_BIN_COLORS
 
         marker_color_dict = {}
         for marker_cluster in marker_clusters.keys():
@@ -1537,20 +1544,23 @@ class Visualizer:
         :return:
         """
 
-        mask_size = kwargs.get("mask_size", self.config.segmentation_mask_size)
         save_fig = kwargs.get("save_fig", True)
 
         parent_dir = "%s/Pixel Expression Spatial Maps" % self.results_dir
 
         mkdir_p(parent_dir)
 
-        for feed_idx, feed_contours, feed_features, feed_dir, brain_region_point_ranges, brain_region_names in feed_features_iterator(
+        for feed_idx, feed, feed_features, feed_contours, feed_dir in feed_features_iterator(
                 self.all_samples_features,
                 self.all_feeds_data,
                 self.all_feeds_contour_data,
                 self.all_feeds_metadata,
                 save_to_dir=True,
                 parent_dir=parent_dir):
+
+            brain_region_point_ranges = feed.brain_region_point_ranges
+            brain_region_names = feed.brain_region_names
+            mask_size = feed.segmentation_mask_size
 
             n_points = len(feed_features.index.get_level_values("Point").unique())
 
@@ -1700,15 +1710,17 @@ class Visualizer:
         parent_dir = "%s/%s Vessel Images" % (self.results_dir,
                                               primary_categorical_analysis_variable)
 
-        img_shape = self.config.segmentation_mask_size
-
-        for feed_idx, feed_contours, feed_features, feed_dir, brain_region_point_ranges, brain_region_names in feed_features_iterator(
+        for feed_idx, feed, feed_features, feed_contours, feed_dir in feed_features_iterator(
                 self.all_samples_features,
                 self.all_feeds_data,
                 self.all_feeds_contour_data,
                 self.all_feeds_metadata,
                 save_to_dir=True,
                 parent_dir=parent_dir):
+
+            brain_region_point_ranges = feed.brain_region_point_ranges
+            brain_region_names = feed.brain_region_names
+            img_shape = feed.segmentation_mask_size
 
             for val in feed_features[primary_categorical_analysis_variable].unique():
 
@@ -1790,13 +1802,16 @@ class Visualizer:
 
         parent_dir = self.results_dir + "/UMAP Scatter Plot Projection"
 
-        for feed_idx, feed_contours, feed_features, feed_dir, brain_region_point_ranges, brain_region_names in feed_features_iterator(
+        for feed_idx, feed, feed_features, feed_contours, feed_dir in feed_features_iterator(
                 self.all_samples_features,
                 self.all_feeds_data,
                 self.all_feeds_contour_data,
                 self.all_feeds_metadata,
                 save_to_dir=True,
                 parent_dir=parent_dir):
+
+            brain_region_point_ranges = feed.brain_region_point_ranges
+            brain_region_names = feed.brain_region_names
 
             plot_features = loc_by_expansion(feed_features,
                                              expansion_type=mask_type,
@@ -2047,14 +2062,7 @@ class Visualizer:
                        "Vascular Expansion Space (SMA-) - CAUD",
                        ]
 
-        norm = matplotlib.colors.Normalize(-1, 1)
-        colors = [[norm(-1.0), "black"],
-                  [norm(-0.5), "indigo"],
-                  [norm(0), "firebrick"],
-                  [norm(0.5), "orange"],
-                  [norm(1.0), "khaki"]]
-
-        cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", colors)
+        cmap = DEFAULT_HEATMAP_COLORMAP
 
         plt.figure(figsize=(22, 10))
 
@@ -2129,13 +2137,16 @@ class Visualizer:
                                               , primary_continuous_analysis_variable)
         mkdir_p(parent_dir)
 
-        for feed_idx, feed_contours, feed_features, feed_dir, brain_region_point_ranges, brain_region_names in feed_features_iterator(
+        for feed_idx, feed, feed_features, feed_contours, feed_dir in feed_features_iterator(
                 self.all_samples_features,
                 self.all_feeds_data,
                 self.all_feeds_contour_data,
                 self.all_feeds_metadata,
                 save_to_dir=True,
                 parent_dir=parent_dir):
+
+            brain_region_point_ranges = feed.brain_region_point_ranges
+            brain_region_names = feed.brain_region_names
 
             by_primary_analysis_variable_dir = "%s/By %s" % (feed_dir, primary_categorical_analysis_variable)
             mkdir_p(by_primary_analysis_variable_dir)
@@ -2165,7 +2176,7 @@ class Visualizer:
             feed_features = feed_features[feed_features["Expansion"] == feed_features["Expansion"].max()]
 
             if len(feed_features[primary_categorical_analysis_variable].unique()) <= 2:
-                cmap = colors.ListedColormap(['blue', 'red'])(np.linspace(0, 1, 2))
+                cmap = DEFAULT_BINARY_COLORMAP
             else:
                 cmap = matplotlib.cm.get_cmap('Set1')(np.linspace(0,
                                                                   1,
@@ -2190,7 +2201,7 @@ class Visualizer:
                                  figure_path=by_primary_analysis_variable_dir + '/%s.png' % str(marker))
 
             if len(feed_features[primary_categorical_analysis_variable].unique()) <= 3:
-                cmap = colors.ListedColormap(['cyan', 'pink', 'yellow'])(np.linspace(0, 1, 3))
+                cmap = DEFAULT_MULTICLASS_COLORMAP
             else:
                 cmap = matplotlib.cm.get_cmap('Set1')(
                     np.linspace(0,
@@ -2279,13 +2290,16 @@ class Visualizer:
 
         mkdir_p(parent_dir)
 
-        for feed_idx, feed_contours, feed_features, feed_dir, brain_region_point_ranges, brain_region_names in feed_features_iterator(
+        for feed_idx, feed, feed_features, feed_contours, feed_dir in feed_features_iterator(
                 self.all_samples_features,
                 self.all_feeds_data,
                 self.all_feeds_contour_data,
                 self.all_feeds_metadata,
                 save_to_dir=True,
                 parent_dir=parent_dir):
+
+            brain_region_point_ranges = feed.brain_region_point_ranges
+            brain_region_names = feed.brain_region_names
 
             if primary_categorical_analysis_variable is None:
                 self._vessel_nonvessel_heatmap(n_expansions, feed_features, brain_region_point_ranges, marker_clusters,
@@ -2311,7 +2325,9 @@ class Visualizer:
                                                     secondary_splitter: str = None,
                                                     marker: str = "Astrocytes",
                                                     cluster=True,
-                                                    save_fig=True
+                                                    save_fig=True,
+                                                    distance_interval=1.0,
+                                                    data_resolution_units="μm"
                                                     ):
         """
         Helper method to generate categorical split expansion heatmap
@@ -2329,7 +2345,6 @@ class Visualizer:
 
         heatmap_data = []
         y_tick_labels = []
-        pixel_interval = round_to_nearest_half(abs(self.config.pixel_interval) * self.config.pixels_to_distance)
 
         classes_to_ignore = ["NA"]
 
@@ -2407,18 +2422,11 @@ class Visualizer:
 
                     y_tick_labels.append("%s  %s" % (y_lab_split_first_level, y_lab_split_second_level))
 
-        norm = matplotlib.colors.Normalize(-1, 1)
-        colors = [[norm(-1.0), "black"],
-                  [norm(-0.5), "indigo"],
-                  [norm(0), "firebrick"],
-                  [norm(0.5), "orange"],
-                  [norm(1.0), "khaki"]]
-
-        cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", colors)
+        cmap = DEFAULT_HEATMAP_COLORMAP
 
         plt.figure(figsize=(22, 10))
 
-        x_tick_labels = np.array(sorted(expansion_features.index.unique("Expansion").tolist())) * pixel_interval
+        x_tick_labels = np.array(sorted(expansion_features.index.unique("Expansion").tolist())) * distance_interval
         x_tick_labels = x_tick_labels.tolist()
         x_tick_labels = [str(x) for x in x_tick_labels]
 
@@ -2439,8 +2447,7 @@ class Visualizer:
 
         output_dir = "%s/%s%s Expansion" % (heatmaps_dir,
                                             str(round_to_nearest_half(n_expansions *
-                                                                      self.config.pixel_interval *
-                                                                      self.config.pixels_to_distance)),
+                                                                      distance_interval)),
                                             self.config.data_resolution_units)
         mkdir_p(output_dir)
 
@@ -2466,13 +2473,16 @@ class Visualizer:
 
         assert primary_categorical_analysis_variable is not None, "No categorical splitter selected!"
 
-        for feed_idx, feed_contours, feed_features, feed_dir, brain_region_point_ranges, brain_region_names in feed_features_iterator(
+        for feed_idx, feed, feed_features, feed_contours, feed_dir in feed_features_iterator(
                 self.all_samples_features,
                 self.all_feeds_data,
                 self.all_feeds_contour_data,
                 self.all_feeds_metadata,
                 save_to_dir=True,
                 parent_dir=parent_dir):
+
+            brain_region_point_ranges = feed.brain_region_point_ranges
+            brain_region_names = feed.brain_region_names
 
             expansion_features = feed_features.loc[pd.IndexSlice[:, :, :n_expansions, :], :]
 
@@ -2762,14 +2772,7 @@ class Visualizer:
         x_tick_labels = [str(round_to_nearest_half(x)) for x in x_tick_labels]
         x_tick_labels.append("Nonvessel Space")
 
-        norm = matplotlib.colors.Normalize(-1, 1)
-        colors = [[norm(-1.0), "black"],
-                  [norm(-0.5), "indigo"],
-                  [norm(0), "firebrick"],
-                  [norm(0.5), "orange"],
-                  [norm(1.0), "khaki"]]
-
-        cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", colors)
+        cmap = DEFAULT_HEATMAP_COLORMAP
 
         # Heatmaps Output
 
@@ -2847,13 +2850,16 @@ class Visualizer:
 
         mkdir_p(parent_dir)
 
-        for feed_idx, feed_contours, feed_features, feed_dir, brain_region_point_ranges, brain_region_names in feed_features_iterator(
+        for feed_idx, feed, feed_features, feed_contours, feed_dir in feed_features_iterator(
                 self.all_samples_features,
                 self.all_feeds_data,
                 self.all_feeds_contour_data,
                 self.all_feeds_metadata,
                 save_to_dir=True,
                 parent_dir=parent_dir):
+
+            brain_region_point_ranges = feed.brain_region_point_ranges
+            brain_region_names = feed.brain_region_names
 
             expansion_features = feed_features.loc[pd.IndexSlice[:, :, :n_expansions, :], :]
 
@@ -2897,13 +2903,16 @@ class Visualizer:
 
         mkdir_p(parent_dir)
 
-        for feed_idx, feed_contours, feed_features, feed_dir, brain_region_point_ranges, brain_region_names in feed_features_iterator(
+        for feed_idx, feed, feed_features, feed_contours, feed_dir in feed_features_iterator(
                 self.all_samples_features,
                 self.all_feeds_data,
                 self.all_feeds_contour_data,
                 self.all_feeds_metadata,
                 save_to_dir=True,
                 parent_dir=parent_dir):
+
+            brain_region_point_ranges = feed.brain_region_point_ranges
+            brain_region_names = feed.brain_region_names
 
             for i in range(n_points):
                 point_contours = feed_contours.loc[i, "Contours"]
@@ -3079,25 +3088,21 @@ class Visualizer:
         mkdir_p(parent_dir)
 
         if cmap is None:
-            norm = matplotlib.colors.Normalize(-1, 1)
-            colors = [[norm(-1.0), "black"],
-                      [norm(-0.5), "indigo"],
-                      [norm(0), "firebrick"],
-                      [norm(0.5), "orange"],
-                      [norm(1.0), "khaki"]]
-
-            cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", colors)
+            cmap = DEFAULT_HEATMAP_COLORMAP
 
         primary_continuous_analysis_variable = kwargs.get('primary_continuous_analysis_variable', "Solidity Score")
         mask_type = kwargs.get('mask_type', "expansion_only")
 
-        for feed_idx, feed_contours, feed_features, feed_dir, brain_region_point_ranges, brain_region_names in feed_features_iterator(
+        for feed_idx, feed, feed_features, feed_contours, feed_dir in feed_features_iterator(
                 self.all_samples_features,
                 self.all_feeds_data,
                 self.all_feeds_contour_data,
                 self.all_feeds_metadata,
                 save_to_dir=True,
                 parent_dir=parent_dir):
+
+            brain_region_point_ranges = feed.brain_region_point_ranges
+            brain_region_names = feed.brain_region_names
 
             feed_features.reset_index(level=['Point', 'Vessel', 'Expansion', 'Expansion Type'], inplace=True)
 
@@ -3251,20 +3256,22 @@ class Visualizer:
         :param n_expansions: int, Number of expansions
         """
 
-        mask_size = kwargs.get("mask_size", self.config.segmentation_mask_size)
-
-        example_img = np.zeros(mask_size, np.uint8)
-        example_img = cv.cvtColor(example_img, cv.COLOR_GRAY2BGR)
-
         parent_dir = "%s/Associated Area Masks" % self.results_dir
 
-        for feed_idx, feed_contours, feed_features, feed_dir, brain_region_point_ranges, brain_region_names in feed_features_iterator(
+        for feed_idx, feed, feed_features, feed_contours, feed_dir in feed_features_iterator(
                 self.all_samples_features,
                 self.all_feeds_data,
                 self.all_feeds_contour_data,
                 self.all_feeds_metadata,
                 save_to_dir=True,
                 parent_dir=parent_dir):
+
+            brain_region_point_ranges = feed.brain_region_point_ranges
+            brain_region_names = feed.brain_region_names
+            mask_size = feed.segmentation_mask_size
+
+            example_img = np.zeros(mask_size, np.uint8)
+            example_img = cv.cvtColor(example_img, cv.COLOR_GRAY2BGR)
 
             n_points = len(feed_features.index.get_level_values("Point").unique())
 
@@ -3308,13 +3315,16 @@ class Visualizer:
 
         mkdir_p(parent_dir)
 
-        for feed_idx, feed_contours, feed_features, feed_dir, brain_region_point_ranges, brain_region_names in feed_features_iterator(
+        for feed_idx, feed, feed_features, feed_contours, feed_dir in feed_features_iterator(
                 self.all_samples_features,
                 self.all_feeds_data,
                 self.all_feeds_contour_data,
                 self.all_feeds_metadata,
                 save_to_dir=True,
                 parent_dir=parent_dir):
+
+            brain_region_point_ranges = feed.brain_region_point_ranges
+            brain_region_names = feed.brain_region_names
 
             n_points = len(feed_features.index.get_level_values("Point").unique())
 

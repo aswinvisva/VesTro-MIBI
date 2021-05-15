@@ -1,0 +1,66 @@
+{
+  "marker_clusters": [
+    {
+      "Nucleus": [
+        "HH3"
+      ],
+      "Microglia": [
+        "CD45",
+        "HLADR",
+        "Iba1"
+      ],
+      "Disease": [
+        "CD47",
+        "ABeta42",
+        "polyubiK48",
+        "PHFTau",
+        "8OHGuanosine"
+      ],
+      "Vessels": [
+        "SMA",
+        "CD31",
+        "CollagenIV",
+        "TrkA",
+        "GLUT1",
+        "Desmin",
+        "vWF",
+        "CD105"
+      ],
+      "Astrocytes": [
+        "S100b",
+        "GlnSyn",
+        "Cx30",
+        "EAAT2",
+        "CD44",
+        "GFAP",
+        "Cx43"
+      ],
+      "Synapse": [
+        "CD56",
+        "Synaptophysin",
+        "VAMP2",
+        "PSD95"
+      ],
+      "Oligodendrocytes": [
+        "MOG",
+        "MAG"
+      ],
+      "Neurons": [
+        "Calretinin",
+        "Parvalbumin",
+        "MAP2",
+        "Gephyrin"
+      ]
+    }
+  ],
+  "mask_marker_clusters": [
+        {
+          "Vessels": [
+            "GLUT1",
+            "vWF",
+            "CD31",
+            "SMA"
+          ]
+        }
+    ]
+}

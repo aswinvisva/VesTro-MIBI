@@ -35,12 +35,7 @@ def hires_example():
     mkdir_p(results_dir)
 
     hires_feed = MIBIDataFeed(
-        feed_data_loc="/media/aswin/large_storage/oliveria_data/data/hires",
-        feed_mask_loc="/media/aswin/large_storage/oliveria_data/masks/hires",
-        feed_name="Hires",
-        n_points=48,
-        brain_region_point_ranges=[(1, 16), (17, 32), (33, 48)],
-        brain_region_names=["MFG", "HIP", "CAUD"]
+        json_file_path="specs/hires_spec.json"
     )
 
     pipe = MIBIPipeline(conf, results_dir,

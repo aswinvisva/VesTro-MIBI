@@ -534,7 +534,9 @@ def calculate_composition_marker_expression(config: Config,
                                             per_point_vessel_areas: list,
                                             marker_names: list,
                                             point_num: int = 1,
-                                            data_name: str = "Hires") -> np.ndarray:
+                                            data_name: str = "Hires",
+                                            vessel_id_plot: bool = False,
+                                            embedded_id_plot: bool = False) -> np.ndarray:
     """
     Get normalized expression of markers in given cells
 
@@ -550,8 +552,6 @@ def calculate_composition_marker_expression(config: Config,
 
     expression_type = config.expression_type
     plot = config.show_probability_distribution_for_expression
-    vessel_id_plot = config.create_vessel_id_plot
-    embedded_id_plot = config.create_embedded_vessel_id_masks
 
     per_point_features = []
     img_shape = per_point_marker_data[0].shape
