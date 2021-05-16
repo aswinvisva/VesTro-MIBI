@@ -379,7 +379,8 @@ class TestVisualizer(unittest.TestCase):
                 feed_data_loc="%s/data" % temp_dir,
                 feed_mask_loc="%s/masks" % temp_dir,
                 feed_name="Test",
-                n_points=2
+                n_points=2,
+                segmentation_mask_size=(2048, 2048)
             )
 
             pipe = MIBIPipeline(config, temp_dir,

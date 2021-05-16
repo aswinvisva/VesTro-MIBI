@@ -675,6 +675,8 @@ class Visualizer:
             brain_region_point_ranges = feed.brain_region_point_ranges
             brain_region_names = feed.brain_region_names
 
+            mask_size = feed.segmentation_mask_size
+
             distinct_dir = "%s/Original Mask Excluded" % feed_dir
             mkdir_p(distinct_dir)
 
@@ -684,14 +686,14 @@ class Visualizer:
             for idx in range(n_points):
                 point_contours = feed_contours.loc[idx, "Contours"].contours
 
-                original_not_included_point_mask = np.zeros(self.config.segmentation_mask_size, np.uint8)
-                original_included_point_mask = np.zeros(self.config.segmentation_mask_size, np.uint8)
+                original_not_included_point_mask = np.zeros(mask_size, np.uint8)
+                original_included_point_mask = np.zeros(mask_size, np.uint8)
 
-                regions = get_assigned_regions(point_contours, self.config.segmentation_mask_size)
+                regions = get_assigned_regions(point_contours, mask_size)
 
                 for vessel_idx, vessel in enumerate(point_contours):
                     original_not_included_mask = expand_vessel_region(vessel,
-                                                                      self.config.segmentation_mask_size,
+                                                                      mask_size,
                                                                       upper_bound=expansion_upper_bound,
                                                                       lower_bound=0.5)
 
@@ -699,7 +701,7 @@ class Visualizer:
                                                                 regions[vessel_idx].astype(np.uint8))
 
                     original_included_mask = expand_vessel_region(vessel,
-                                                                  self.config.segmentation_mask_size,
+                                                                  mask_size,
                                                                   upper_bound=expansion_upper_bound)
 
                     original_included_mask = cv.bitwise_and(original_included_mask,
@@ -744,6 +746,8 @@ class Visualizer:
             brain_region_point_ranges = feed.brain_region_point_ranges
             brain_region_names = feed.brain_region_names
 
+            mask_size = feed.segmentation_mask_size
+
             distinct_dir = "%s/Original Mask Excluded" % feed_dir
             mkdir_p(distinct_dir)
 
@@ -751,16 +755,16 @@ class Visualizer:
             mkdir_p(nondistinct_dir)
 
             for idx in range(n_points):
-                original_not_included_point_mask = np.zeros(self.config.segmentation_mask_size, np.uint8)
-                original_included_point_mask = np.zeros(self.config.segmentation_mask_size, np.uint8)
+                original_not_included_point_mask = np.zeros(mask_size, np.uint8)
+                original_included_point_mask = np.zeros(mask_size, np.uint8)
 
                 point_contours = feed_contours.loc[idx, "Contours"].contours
 
-                regions = get_assigned_regions(point_contours, self.config.segmentation_mask_size)
+                regions = get_assigned_regions(point_contours, mask_size)
 
                 for vessel_idx, vessel in enumerate(point_contours):
                     original_not_included_mask = expand_vessel_region(vessel,
-                                                                      self.config.segmentation_mask_size,
+                                                                      mask_size,
                                                                       upper_bound=expansion_upper_bound,
                                                                       lower_bound=0.5)
 
@@ -768,7 +772,7 @@ class Visualizer:
                                                                 regions[vessel_idx].astype(np.uint8))
 
                     original_included_mask = expand_vessel_region(vessel,
-                                                                  self.config.segmentation_mask_size,
+                                                                  mask_size,
                                                                   upper_bound=expansion_upper_bound)
 
                     original_included_mask = cv.bitwise_and(original_included_mask,
@@ -806,13 +810,14 @@ class Visualizer:
                 save_to_dir=True,
                 parent_dir=parent_dir):
 
-            brain_region_point_ranges = feed.brain_region_point_ranges
-            brain_region_names = feed.brain_region_names
+            mask_size = feed.segmentation_mask_size
+            data_resolution_units = feed.data_resolution_units
+            pixels_to_distance = feed.pixels_to_distance
 
             for point_num in range(n_points):
                 current_interval = interval
 
-                expansion_image = np.zeros(self.config.segmentation_mask_size, np.uint8)
+                expansion_image = np.zeros(mask_size, np.uint8)
 
                 colors = pl.cm.Greys(np.linspace(0, 1, n_expansions + 10))
 
@@ -827,8 +832,8 @@ class Visualizer:
                     if x + 1 in expansions:
                         child_dir = parent_dir + "/%s%s Expansion" % (str(round_to_nearest_half(n_expansions *
                                                                                                 self.config.pixel_interval *
-                                                                                                self.config.pixels_to_distance)),
-                                                                      self.config.data_resolution_units)
+                                                                                                pixels_to_distance)),
+                                                                      data_resolution_units)
                         mkdir_p(child_dir)
 
                         cv.imwrite(child_dir + "/Point%s.png" % str(point_num + 1), expansion_image)
@@ -1038,8 +1043,6 @@ class Visualizer:
         parent_dir = "%s/Categorical Violin Plots with Images" % self.results_dir
 
         mkdir_p(parent_dir)
-
-        marker_clusters = self.config.marker_clusters
 
         cmap = matplotlib.cm.get_cmap('viridis')
 
@@ -1558,8 +1561,6 @@ class Visualizer:
                 save_to_dir=True,
                 parent_dir=parent_dir):
 
-            brain_region_point_ranges = feed.brain_region_point_ranges
-            brain_region_names = feed.brain_region_names
             mask_size = feed.segmentation_mask_size
 
             n_points = len(feed_features.index.get_level_values("Point").unique())
@@ -2442,13 +2443,13 @@ class Visualizer:
         if axis_ticklabels_overlap(ax.get_xticklabels()):
             ax.set_xticklabels(ax.get_xticklabels(), rotation=45, ha="right")
 
-        plt.xlabel("Distance Expanded (%s)" % self.config.data_resolution_units)
+        plt.xlabel("Distance Expanded (%s)" % data_resolution_units)
         plt.title("%s" % title)
 
         output_dir = "%s/%s%s Expansion" % (heatmaps_dir,
                                             str(round_to_nearest_half(n_expansions *
                                                                       distance_interval)),
-                                            self.config.data_resolution_units)
+                                            data_resolution_units)
         mkdir_p(output_dir)
 
         save_fig_or_show(save_fig=save_fig,
@@ -3327,6 +3328,7 @@ class Visualizer:
             brain_region_names = feed.brain_region_names
 
             n_points = len(feed_features.index.get_level_values("Point").unique())
+            n_markers = feed.n_markers
 
             # Iterate through each point
             for i in range(n_points):
@@ -3382,7 +3384,6 @@ class Visualizer:
             scaling_factor = self.config.scaling_factor
             transformation = self.config.transformation_type
             normalization = self.config.normalization_type
-            n_markers = self.config.n_markers
 
             kept_removed_features = normalize_expression_data(self.config,
                                                               kept_removed_features,
