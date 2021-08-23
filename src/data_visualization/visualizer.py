@@ -2505,6 +2505,91 @@ class Visualizer:
                                                                      cluster=False,
                                                                      save_fig=save_fig)
 
+    def marker_covariance_heatmap(self, **kwargs):
+        """
+        Marker Covariance Heatmap
+        """
+
+        degree = kwargs.get("deg", 4)
+        save_fig = kwargs.get("save_fig", True)
+
+        marker_clusters = self.config.marker_clusters
+
+        parent_dir = "%s/Covariance Heatmap" % self.results_dir
+        mkdir_p(parent_dir)
+
+        for feed_idx, feed_contours, feed_features, feed_dir, brain_region_point_ranges, brain_region_names in feed_features_iterator(
+                self.all_samples_features,
+                self.all_feeds_data,
+                self.all_feeds_contour_data,
+                self.all_feeds_metadata,
+                save_to_dir=True,
+                parent_dir=parent_dir):
+
+            idx = pd.IndexSlice
+            plot_features = self.all_samples_features.loc[idx[:,
+                                                          :,
+                                                          :,
+                                                          "Data"], :]
+
+            plot_features = melt_markers(plot_features,
+                                         non_id_vars=self.markers_names,
+                                         reset_index=['Expansion'],
+                                         add_marker_group=True,
+                                         marker_groups=marker_clusters)
+
+            plot_features['Expansion'] = plot_features['Expansion'].apply(lambda x:
+                                                                          round_to_nearest_half(
+                                                                              x * self.config.pixel_interval
+                                                                              * self.config.pixels_to_distance))
+
+            plot_features = plot_features[["Marker", "Expansion", "Expression"]]
+            plot_features = plot_features.groupby(["Marker", "Expansion"]).mean()
+            plot_features.reset_index(level=['Marker'], inplace=True)
+
+            marker_poly = {}
+            n_markers = len(self.markers_names)
+            n_expansions = len(plot_features.index.unique("Expansion"))
+
+            heatmap_data = np.zeros((n_markers, n_expansions))
+
+            for marker_name in self.markers_names:
+                y = plot_features[plot_features["Marker"] == marker_name]["Expression"].values
+                x = np.arange(len(y))
+
+                p = np.poly1d(np.polyfit(x, y, degree))
+                marker_poly[marker_name] = np.polyder(p)
+
+            for m, marker_name in enumerate(self.markers_names):
+                for n, expansion in enumerate(plot_features.index.unique("Expansion")):
+                    p = marker_poly[marker_name]
+                    slope = p(n)
+
+                    heatmap_data[m, n] = slope
+
+            norm = matplotlib.colors.Normalize(-1, 1)
+            colors = [[norm(-1.0), "black"],
+                      [norm(-0.5), "indigo"],
+                      [norm(0), "firebrick"],
+                      [norm(0.5), "orange"],
+                      [norm(1.0), "khaki"]]
+
+            cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", colors)
+
+            plt.figure(figsize=(22, 10))
+
+            xticklabels = plot_features.index.unique("Expansion")
+
+            ax = sns.heatmap(heatmap_data,
+                             cmap=cmap,
+                             xticklabels=xticklabels,
+                             yticklabels=self.markers_names,
+                             linewidths=0,
+                             )
+
+            save_fig_or_show(save_fig=save_fig,
+                             figure_path=feed_dir + '/Expansion_%s.png' % str(n_expansions))
+
     def _heatmap_clustermap_generator(self,
                                       data,
                                       x_tick_labels,

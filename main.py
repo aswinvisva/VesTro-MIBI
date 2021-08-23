@@ -61,6 +61,8 @@ def hires_example():
     pipe.analyze_data(marker_settings="all_markers",
                       shape_quantification_method=shape_quantification_method)
 
+    pipe.visualizer.marker_covariance_heatmap()
+
 
 if __name__ == '__main__':
     hires_example()
