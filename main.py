@@ -31,21 +31,19 @@ def medres_example():
 def hires_example():
     conf = Config()
 
-    results_dir = "/media/aswin/large_storage/results/experiment_%s/" % datetime.now().strftime("%d_%m_%Y_%H:%M:%S")
+    results_dir = "/Users/aswinvisva/Documents/oliveria_data/results/experiment_%s/" % datetime.now().strftime("%d_%m_%Y_%H:%M:%S")
     mkdir_p(results_dir)
 
     hires_feed = MIBIDataFeed(
-        feed_data_loc="/media/aswin/large_storage/oliveria_data/data/hires",
-        feed_mask_loc="/media/aswin/large_storage/oliveria_data/masks/hires",
+        feed_data_loc="/Users/aswinvisva/Documents/oliveria_data/data/",
+        feed_mask_loc="/Users/aswinvisva/Documents/oliveria_data//masks/",
         feed_name="Hires",
         n_points=48,
         brain_region_point_ranges=[(1, 16), (17, 32), (33, 48)],
         brain_region_names=["MFG", "HIP", "CAUD"]
     )
 
-    pipe = MIBIPipeline(conf, results_dir,
-                        csv_loc="/media/aswin/large_storage/results/5um_impansion_5um_expansion.csv"
-                        )
+    pipe = MIBIPipeline(conf, results_dir, csv_loc="/Users/aswinvisva/Documents/oliveria_data/results/5_um_in_out.csv")
     pipe.add_feed(hires_feed)
     pipe.load_preprocess_data()
 
@@ -54,14 +52,14 @@ def hires_example():
     # pipe.add_analyzer(DimensionalityReductionClusteringAnalyzer)
 
     shape_quantification_method = {
-        "Name": "Solidity",
-        "Metric": solidity
+        "Name": "Circularity",
+        "Metric": circularity
     }
 
     pipe.analyze_data(marker_settings="all_markers",
                       shape_quantification_method=shape_quantification_method)
 
-    pipe.visualizer.marker_covariance_heatmap()
+    pipe.visualizer.categorical_spatial_probability_maps(primary_categorical_analysis_variable=shape_quantification_method["Name"])
 
 
 if __name__ == '__main__':

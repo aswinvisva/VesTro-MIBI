@@ -3,6 +3,8 @@ from abc import ABC
 from collections import Counter
 from multiprocessing import Pool
 
+from scipy.stats import ttest_ind
+
 from src.data_analysis._shape_quantification_metrics import *
 from src.data_analysis.base_analyzer import BaseAnalyzer
 from src.data_loading.mibi_data_feed import MIBIDataFeed
@@ -12,6 +14,7 @@ from src.data_preprocessing.markers_feature_gen import *
 from src.data_visualization.visualizer import Visualizer
 from config.config_settings import Config
 from src.data_preprocessing.markers_feature_gen import arcsinh
+from src.data_preprocessing.transforms import melt_markers, loc_by_expansion
 
 
 class ShapeQuantificationAnalyzer(BaseAnalyzer, ABC):
@@ -145,3 +148,30 @@ class ShapeQuantificationAnalyzer(BaseAnalyzer, ABC):
                                                           cnt_idx,
                                                           :,
                                                           :], shape_quantification_name] = "25%"
+
+        t_test_dict = {
+            "Marker": [],
+            "T-Statistic": [],
+            "P-Value": []
+        }
+
+        t_test_features = loc_by_expansion(self.all_samples_features)
+        t_test_features[shape_quantification_name] = pd.cut(t_test_features["%s Score" % shape_quantification_name],
+                                                            bins=[0, quartile_25, quartile_50, quartile_75, np.inf],
+                                                            labels=["25%", "50%", "75%", "100%"])
+
+        for marker in self.markers_names:
+            low_pop = t_test_features[
+                t_test_features[shape_quantification_name].isin(["25%", "50%"]).to_numpy()][marker].to_numpy()
+
+            hi_pop = t_test_features.iloc[
+                t_test_features[shape_quantification_name].isin(["75%", "100%"]).to_numpy()][marker].to_numpy()
+
+            t_statistic, p_value = ttest_ind(hi_pop, low_pop, alternative="two-sided")
+
+            t_test_dict["Marker"].append(marker)
+            t_test_dict["T-Statistic"].append(t_statistic)
+            t_test_dict["P-Value"].append(p_value)
+
+        t_test_df = pd.DataFrame.from_dict(t_test_dict)
+        t_test_df.to_csv(os.path.join(results_dir, "t_test.csv"))

@@ -1530,6 +1530,87 @@ class Visualizer:
             save_fig_or_show(save_fig=save_fig,
                              figure_path=per_bin_expansions_dir + '/%s.png' % str(key))
 
+    def categorical_spatial_probability_maps(self, **kwargs):
+        """
+        Spatial Probability Maps
+
+        :return:
+        """
+
+        mask_size = kwargs.get("mask_size", self.config.segmentation_mask_size)
+        save_fig = kwargs.get("save_fig", True)
+        n_samples = kwargs.get("n_samples", 3)
+
+        primary_categorical_analysis_variable = kwargs.get("primary_categorical_analysis_variable", "Solidity")
+
+        parent_dir = "%s/Pixel Expression Spatial Maps" % self.results_dir
+        mkdir_p(parent_dir)
+
+        for feed_idx, feed_contours, feed_features, feed_dir, brain_region_point_ranges, brain_region_names in feed_features_iterator(
+                self.all_samples_features,
+                self.all_feeds_data,
+                self.all_feeds_contour_data,
+                self.all_feeds_metadata,
+                save_to_dir=True,
+                parent_dir=parent_dir):
+
+            n_points = len(feed_features.index.get_level_values("Point").unique())
+
+            all_markers_dir = "%s/All Markers" % feed_dir
+            mkdir_p(all_markers_dir)
+
+            for point_idx in range(n_points):
+
+                marker_data = self.all_feeds_data[feed_idx, point_idx]
+
+                marker_dict = dict(zip(self.markers_names, marker_data))
+
+                point_dir = "%s/Point %s" % (all_markers_dir, str(point_idx + 1))
+                mkdir_p(point_dir)
+
+                for marker in self.markers_names:
+                    marker_dir = "%s/%s" % (point_dir, marker)
+                    mkdir_p(marker_dir)
+
+                    data = marker_dict[marker]
+                    blurred_data = gaussian_filter(data, sigma=4)
+
+                    for category in feed_features[primary_categorical_analysis_variable].unique():
+                        category_dir = "%s/%s" % (marker_dir, category)
+                        mkdir_p(category_dir)
+
+                        point_features = feed_features.loc[pd.IndexSlice[point_idx + 1, :, :, "Data"]]
+                        contour_indices = point_features[point_features[primary_categorical_analysis_variable] == category].index.get_level_values("Vessel").unique().tolist()
+
+                        point_contours = feed_contours.loc[point_idx, "Contours"].contours
+                        point_contours = [point_contours[i] for i in contour_indices]
+
+                        if len(point_contours) > n_samples:
+                            point_contours = point_contours[:n_samples]
+
+                        for contour_idx, c in enumerate(point_contours):
+                            mask = np.zeros(mask_size, np.uint8)
+                            cv.drawContours(mask, [c], -1, (1, 1, 1), cv.FILLED)
+
+                            my_cm = matplotlib.cm.get_cmap('jet')
+                            normed_data = (blurred_data - np.min(blurred_data)) / (np.max(blurred_data) - np.min(blurred_data))
+                            mapped_data = my_cm(normed_data)
+
+                            result = (cv.bitwise_and(mapped_data, mapped_data, mask=mask) * 255).astype("uint8")
+                            result = cv.cvtColor(result, cv.COLOR_RGBA2RGB)
+
+                            x, y, w, h = cv.boundingRect(c)
+                            roi = result[y:y + h, x:x + w]
+
+                            color_map = plt.imshow(roi)
+                            divider = make_axes_locatable(plt.gca())
+                            ax_cb = divider.new_horizontal(size="5%", pad=0.05)
+                            cb1 = matplotlib.colorbar.ColorbarBase(ax_cb, cmap=matplotlib.cm.jet, orientation='vertical')
+                            plt.gcf().add_axes(ax_cb)
+
+                            save_fig_or_show(save_fig=save_fig,
+                                             figure_path=os.path.join(category_dir, "Vessel_ID_%s.png" % str(contour_idx + 1)))
+
     def spatial_probability_maps(self, **kwargs):
         """
         Spatial Probability Maps
