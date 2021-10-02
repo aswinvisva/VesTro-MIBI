@@ -4,6 +4,7 @@ from config.config_settings import Config
 from src.data_analysis._shape_quantification_metrics import *
 from src.data_analysis.dimensionality_reduction_clustering import DimensionalityReductionClusteringAnalyzer
 from src.data_analysis.positive_vessel_summary_analyzer import PositiveVesselSummaryAnalyzer
+from src.data_analysis.anova_marker_expression_analyzer import ANOVAMarkerExpressionAnalyzer
 from src.data_analysis.shape_quantification_analyzer import ShapeQuantificationAnalyzer
 from src.data_analysis.linear_regression_analyzer import LinearRegressionAnalyzer
 from src.data_loading.mibi_data_feed import MIBIDataFeed
@@ -48,8 +49,8 @@ def hires_example():
     pipe.add_feed(hires_feed)
     pipe.load_preprocess_data()
 
-    pipe.add_analyzer(ShapeQuantificationAnalyzer)
-    pipe.add_analyzer(LinearRegressionAnalyzer)
+    pipe.add_analyzer(ANOVAMarkerExpressionAnalyzer)
+    # pipe.add_analyzer(LinearRegressionAnalyzer)
     # pipe.add_analyzer(PositiveVesselSummaryAnalyzer)
     # pipe.add_analyzer(DimensionalityReductionClusteringAnalyzer)
     # #
