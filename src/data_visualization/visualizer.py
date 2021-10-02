@@ -872,8 +872,13 @@ class Visualizer:
         x = "SMA"
         y = "GLUT1"
 
-        x_data = self.all_samples_features.loc[idx[:, :, 0, "Data"], x].values
-        y_data = self.all_samples_features.loc[idx[:, :, 0, "Data"], y].values
+        visualization_features = loc_by_expansion(self.all_samples_features.copy(),
+                                                  columns_to_keep=self.markers_names,
+                                                  expansion_type="mask_only",
+                                                  average=True)
+
+        x_data = visualization_features[x].values
+        y_data = visualization_features[y].values
 
         positive_sma = len(self.all_samples_features.loc[self.all_samples_features[x] > 0.1].values)
         all_vess = len(self.all_samples_features.values)
@@ -884,6 +889,9 @@ class Visualizer:
         xy = np.vstack([x_data, y_data])
 
         z = gaussian_kde(xy)(xy)
+
+        x_data = np.expand_dims(x_data, axis=0)
+        y_data = np.expand_dims(y_data, axis=0)
 
         plt.scatter(x_data, y_data, c=z, s=35, edgecolor='')
         plt.xlabel(x)
@@ -1021,7 +1029,7 @@ class Visualizer:
         Categorical Violin Plot with Images
         """
         save_fig = kwargs.get("save_fig", True)
-        mask_type = kwargs.get('mask_type', "expansion_only")
+        mask_type = kwargs.get('mask_type', "mask_only")
         outward_expansion = kwargs.get("outward_expansion", 0)
         inward_expansion = kwargs.get("inward_expansion", 0)
         mask_size = kwargs.get("mask_size", self.config.segmentation_mask_size)
