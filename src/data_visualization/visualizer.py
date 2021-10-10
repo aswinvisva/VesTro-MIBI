@@ -2505,9 +2505,9 @@ class Visualizer:
                                                                      cluster=False,
                                                                      save_fig=save_fig)
 
-    def marker_covariance_heatmap(self, **kwargs):
+    def marker_covariance_plots(self, **kwargs):
         """
-        Marker Covariance Heatmap
+        Marker Covariance Plots
         """
 
         degree = kwargs.get("deg", 4)
@@ -2515,7 +2515,7 @@ class Visualizer:
 
         marker_clusters = self.config.marker_clusters
 
-        parent_dir = "%s/Covariance Heatmap" % self.results_dir
+        parent_dir = "%s/Covariance Plots" % self.results_dir
         mkdir_p(parent_dir)
 
         for feed_idx, feed_contours, feed_features, feed_dir, brain_region_point_ranges, brain_region_names in feed_features_iterator(
@@ -2543,27 +2543,42 @@ class Visualizer:
                                                                               x * self.config.pixel_interval
                                                                               * self.config.pixels_to_distance))
 
-            plot_features = plot_features[["Marker", "Expansion", "Expression"]]
-            plot_features = plot_features.groupby(["Marker", "Expansion"]).mean()
-            plot_features.reset_index(level=['Marker'], inplace=True)
-
             marker_poly = {}
             n_markers = len(self.markers_names)
-            n_expansions = len(plot_features.index.unique("Expansion"))
+            n_expansions = len(plot_features["Expansion"].unique())
 
             heatmap_data = np.zeros((n_markers, n_expansions))
 
             for marker_name in self.markers_names:
                 y = plot_features[plot_features["Marker"] == marker_name]["Expression"].values
-                x = np.arange(len(y))
+                x = plot_features[plot_features["Marker"] == marker_name]["Expansion"].values
 
                 p = np.poly1d(np.polyfit(x, y, degree))
-                marker_poly[marker_name] = np.polyder(p)
+                p_prime = np.polyder(p)
+                p_double_prime = np.polyder(p_prime)
+
+                marker_poly[marker_name] = {
+                    "Original": p,
+                    "1st Derivative": p_prime,
+                    "2nd Derivative": p_double_prime
+                }
 
             for m, marker_name in enumerate(self.markers_names):
-                for n, expansion in enumerate(plot_features.index.unique("Expansion")):
-                    p = marker_poly[marker_name]
-                    slope = p(n)
+                for n, expansion in enumerate(plot_features["Expansion"].sort_values().unique()):
+
+                    p = marker_poly[marker_name]["Original"]
+                    expression = p(expansion)
+                    p_prime = marker_poly[marker_name]["1st Derivative"]
+                    slope = p_prime(expansion)
+                    p_double_prime = marker_poly[marker_name]["2nd Derivative"]
+                    slope_prime = p_double_prime(expansion)
+
+                    plot_features.loc[(plot_features["Marker"] == marker_name) & (
+                            plot_features["Expansion"] == expansion), "Original"] = expression
+                    plot_features.loc[(plot_features["Marker"] == marker_name) & (
+                                plot_features["Expansion"] == expansion), "1st Derivative"] = slope
+                    plot_features.loc[(plot_features["Marker"] == marker_name) & (
+                                plot_features["Expansion"] == expansion), "2nd Derivative"] = slope_prime
 
                     heatmap_data[m, n] = slope
 
@@ -2578,7 +2593,7 @@ class Visualizer:
 
             plt.figure(figsize=(22, 10))
 
-            xticklabels = plot_features.index.unique("Expansion")
+            xticklabels = plot_features["Expansion"].sort_values().unique()
 
             ax = sns.heatmap(heatmap_data,
                              cmap=cmap,
@@ -2588,7 +2603,59 @@ class Visualizer:
                              )
 
             save_fig_or_show(save_fig=save_fig,
-                             figure_path=feed_dir + '/Expansion_%s.png' % str(n_expansions))
+                             figure_path=feed_dir + '/covariance_heatmap.png')
+
+            ax = sns.lineplot(data=plot_features,
+                              x="Expansion",
+                              y="Expression",
+                              hue="Marker Group",
+                              ci=95)
+
+            box = ax.get_position()
+            ax.set_position([box.x0, box.y0, box.width * 0.85, box.height])  # resize position
+            ax.legend(loc='center left', bbox_to_anchor=(1, 0.5), ncol=1)
+
+            save_fig_or_show(save_fig=save_fig,
+                             figure_path=feed_dir + '/covariance_original_lineplot.png')
+
+            ax = sns.lineplot(data=plot_features,
+                              x="Expansion",
+                              y="Original",
+                              hue="Marker Group",
+                              ci=95)
+
+            box = ax.get_position()
+            ax.set_position([box.x0, box.y0, box.width * 0.85, box.height])  # resize position
+            ax.legend(loc='center left', bbox_to_anchor=(1, 0.5), ncol=1)
+
+            save_fig_or_show(save_fig=save_fig,
+                             figure_path=feed_dir + '/covariance_lineplot.png')
+
+            ax = sns.lineplot(data=plot_features,
+                              x="Expansion",
+                              y="1st Derivative",
+                              hue="Marker Group",
+                              ci=95)
+
+            box = ax.get_position()
+            ax.set_position([box.x0, box.y0, box.width * 0.85, box.height])  # resize position
+            ax.legend(loc='center left', bbox_to_anchor=(1, 0.5), ncol=1)
+
+            save_fig_or_show(save_fig=save_fig,
+                             figure_path=feed_dir + '/covariance_lineplot_prime.png')
+
+            ax = sns.lineplot(data=plot_features,
+                              x="Expansion",
+                              y="2nd Derivative",
+                              hue="Marker Group",
+                              ci=95)
+
+            box = ax.get_position()
+            ax.set_position([box.x0, box.y0, box.width * 0.85, box.height])  # resize position
+            ax.legend(loc='center left', bbox_to_anchor=(1, 0.5), ncol=1)
+
+            save_fig_or_show(save_fig=save_fig,
+                             figure_path=feed_dir + '/covariance_lineplot_double_prime.png')
 
     def _heatmap_clustermap_generator(self,
                                       data,

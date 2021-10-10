@@ -2,6 +2,7 @@ import datetime
 from abc import ABC
 from collections import Counter
 from multiprocessing import Pool
+from scipy.stats import ttest_ind
 
 from src.data_analysis._shape_quantification_metrics import *
 from src.data_analysis.base_analyzer import BaseAnalyzer
@@ -9,9 +10,36 @@ from src.data_loading.mibi_data_feed import MIBIDataFeed
 from src.data_loading.mibi_loader import MIBILoader
 from src.data_loading.mibi_point_contours import MIBIPointContours
 from src.data_preprocessing.markers_feature_gen import *
+from src.data_preprocessing.transforms import loc_by_expansion
 from src.data_visualization.visualizer import Visualizer
 from config.config_settings import Config
 from src.data_preprocessing.markers_feature_gen import arcsinh
+
+
+def _t_test(mibi_features, shape_quantification_name, t_test_analysis_variable, null_hypothesis, t_test_dict):
+    """Helper method for conducting a t-test"""
+
+    quartile_25 = np.percentile(mibi_features["%s Score" % shape_quantification_name], 25)
+    quartile_75 = np.percentile(mibi_features["%s Score" % shape_quantification_name], 75)
+
+    q25_data = mibi_features.loc[
+        mibi_features["%s Score" % shape_quantification_name] <= quartile_25,
+        t_test_analysis_variable].values
+    q75_data = mibi_features.loc[
+        mibi_features["%s Score" % shape_quantification_name] >= quartile_75,
+        t_test_analysis_variable].values
+
+    t_test_statistic, p_value = ttest_ind(q75_data, q25_data, alternative=null_hypothesis, equal_var=False)
+
+    t_test_dict["Null Hypothesis"].append(
+        f"{null_hypothesis} t-test for {t_test_analysis_variable} "
+        f"comparing Q25 and Q75 {shape_quantification_name}")
+    t_test_dict["T-statistic"].append(t_test_statistic)
+    t_test_dict["p-value"].append(p_value)
+    t_test_dict["Q25 mean"].append(np.mean(q25_data))
+    t_test_dict["Q75 mean"].append(np.mean(q75_data))
+    t_test_dict["Q25 std"].append(np.std(q25_data))
+    t_test_dict["Q75 std"].append(np.std(q75_data))
 
 
 class ShapeQuantificationAnalyzer(BaseAnalyzer, ABC):
@@ -61,6 +89,10 @@ class ShapeQuantificationAnalyzer(BaseAnalyzer, ABC):
             "Name": "Circularity",
             "Metric": circularity
         })
+
+        t_test_analysis_variable = kwargs.get("t_test_analysis_variable", "all")
+
+        null_hypothesis = kwargs.get("null_hypothesis", "two-sided")
 
         img_shape = kwargs.get("img_shape", self.config.segmentation_mask_size)
 
@@ -145,3 +177,34 @@ class ShapeQuantificationAnalyzer(BaseAnalyzer, ABC):
                                                           cnt_idx,
                                                           :,
                                                           :], shape_quantification_name] = "25%"
+            mibi_features = loc_by_expansion(self.all_samples_features)
+            t_test_dict = {
+                "Null Hypothesis": [],
+                "T-statistic": [],
+                "p-value": [],
+                "Q25 mean": [],
+                "Q75 mean": [],
+                "Q25 std": [],
+                "Q75 std": []
+            }
+
+            if t_test_analysis_variable == "all":
+                for marker in self.markers_names:
+                    _t_test(mibi_features,
+                            shape_quantification_name,
+                            marker,
+                            null_hypothesis,
+                            t_test_dict)
+            else:
+                _t_test(mibi_features,
+                        shape_quantification_name,
+                        t_test_analysis_variable,
+                        null_hypothesis,
+                        t_test_dict)
+
+            t_test_df = pd.DataFrame(t_test_dict)
+
+            t_test_df.to_csv(
+                os.path.join(results_dir, "t_test_df.csv"))
+
+            logging.info("\n" + t_test_df.to_markdown())

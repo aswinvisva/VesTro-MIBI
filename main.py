@@ -54,14 +54,15 @@ def hires_example():
     # pipe.add_analyzer(DimensionalityReductionClusteringAnalyzer)
 
     shape_quantification_method = {
-        "Name": "Solidity",
-        "Metric": solidity
+        "Name": "Circularity",
+        "Metric": circularity
     }
 
     pipe.analyze_data(marker_settings="all_markers",
-                      shape_quantification_method=shape_quantification_method)
+                      shape_quantification_method=shape_quantification_method,
+                      t_test_analysis_variable="all")
 
-    pipe.visualizer.marker_covariance_heatmap()
+    pipe.visualizer.marker_covariance_plots()
 
 
 if __name__ == '__main__':
