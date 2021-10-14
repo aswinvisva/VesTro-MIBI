@@ -94,6 +94,64 @@ class LinearRegressionAnalyzer(BaseAnalyzer, ABC):
 
             feed_features.set_index(['Point', 'Vessel', 'Expansion', 'Expansion Type'], inplace=True)
 
+            reg_features = loc_by_expansion(feed_features,
+                                            expansion_type="mask_and_expansion",
+                                            average=False)
+
+            heatmap_data = np.zeros((n_markers, n_markers))
+
+            for i, marker_a in enumerate(self.markers_names):
+                for j, marker_b in enumerate(self.markers_names):
+                    x = reg_features[marker_a].values
+                    y = reg_features[marker_b].values
+
+                    x2 = sm.add_constant(x)
+
+                    est = sm.OLS(y, x2)
+                    est2 = est.fit()
+
+                    coef = est2.params[1]
+
+                    heatmap_data[i, j] = est2.rsquared * sign(coef)
+
+            norm = matplotlib.colors.Normalize(-1, 1)
+            colors = [[norm(-1.0), "darkblue"],
+                      [norm(-0.5), "blue"],
+                      [norm(0), "white"],
+                      [norm(0.5), "red"],
+                      [norm(1.0), "darkred"]]
+
+            cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", colors)
+
+            plt.figure(figsize=(22, 10))
+
+            ax = sns.heatmap(heatmap_data,
+                             cmap=cmap,
+                             xticklabels=self.markers_names,
+                             yticklabels=self.markers_names,
+                             linewidths=0,
+                             vmin=-1.0,
+                             vmax=1.0,
+                             )
+
+            save_fig_or_show(save_fig=save_fig,
+                             figure_path=feed_dir + '/marker_correlation_heatmap.png')
+
+            ax = sns.clustermap(heatmap_data,
+                                cmap=cmap,
+                                row_cluster=True,
+                                col_cluster=True,
+                                linewidths=0,
+                                xticklabels=self.markers_names,
+                                yticklabels=self.markers_names,
+                                figsize=(22, 10),
+                                vmin=-1.0,
+                                vmax=1.0,
+                                )
+
+            save_fig_or_show(save_fig=save_fig,
+                             figure_path=feed_dir + '/marker_correlation_heatmap_clustered.png')
+
             for region in feed_features['Region'].unique():
                 region_dir = "%s/%s" % (feed_dir, region)
                 mkdir_p(region_dir)
@@ -104,19 +162,12 @@ class LinearRegressionAnalyzer(BaseAnalyzer, ABC):
                                                 expansion_type="mask_and_expansion",
                                                 average=False)
 
-                small_features = reg_features[reg_features["Contour Area"].isin(["25%", "50%"]).to_numpy()]
-                large_features = reg_features[reg_features["Contour Area"].isin(["75%", "100%"]).to_numpy()]
-
                 heatmap_data = np.zeros((n_markers, n_markers))
 
                 for i, marker_a in enumerate(self.markers_names):
                     for j, marker_b in enumerate(self.markers_names):
-                        if i <= j:
-                            x = large_features[marker_a].values
-                            y = large_features[marker_b].values
-                        else:
-                            x = small_features[marker_a].values
-                            y = small_features[marker_b].values
+                        x = reg_features[marker_a].values
+                        y = reg_features[marker_b].values
 
                         x2 = sm.add_constant(x)
 
@@ -149,3 +200,18 @@ class LinearRegressionAnalyzer(BaseAnalyzer, ABC):
 
                 save_fig_or_show(save_fig=save_fig,
                                  figure_path=region_dir + '/marker_correlation_heatmap.png')
+
+                ax = sns.clustermap(heatmap_data,
+                                    cmap=cmap,
+                                    row_cluster=True,
+                                    col_cluster=True,
+                                    linewidths=0,
+                                    xticklabels=self.markers_names,
+                                    yticklabels=self.markers_names,
+                                    figsize=(22, 10),
+                                    vmin=-1.0,
+                                    vmax=1.0,
+                                    )
+
+                save_fig_or_show(save_fig=save_fig,
+                                 figure_path=region_dir + '/marker_correlation_heatmap_clustered.png')
